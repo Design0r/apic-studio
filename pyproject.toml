@@ -1,0 +1,14 @@
+[project]
+name = "apic-studio"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pyside6>=6.8.2.1",
+]
+
+[dependency-groups]
+dev = [
+    "pyside6-stubs>=6.7.3.0",
+]
