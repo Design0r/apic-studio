@@ -7,8 +7,8 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import QWidget
 
-from apic_studio.core import Logger
 from apic_studio.core.asset_loader import Asset, AssetLoader
+from apic_studio.core.settings import SettingsManager
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.flow_layout import FlowLayout
 
@@ -16,25 +16,23 @@ from apic_studio.ui.flow_layout import FlowLayout
 class MainWindow(QWidget):
     win_instance = None
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, settings: SettingsManager, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self._widgets: dict[Path, ViewportButton] = {}
+        self.settings = settings
+
         self.setWindowTitle("Apic Studio")
         self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
         self.setWindowFlag(Qt.WindowType.Window)
-
-        # Logger.write_to_file(self.settings.LOGGING_PATH)
-        Logger.set_propagate(False)
-        Logger.info("starting Apic Studio...")
 
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
 
     @classmethod
-    def show_window(cls) -> MainWindow:
+    def show_window(cls, settings: SettingsManager) -> MainWindow:
         if not cls.win_instance:
-            cls.win_instance = MainWindow()
+            cls.win_instance = MainWindow(settings)
             cls.win_instance.show()
         elif cls.win_instance.isHidden():
             cls.win_instance.show()

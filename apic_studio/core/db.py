@@ -122,7 +122,7 @@ def init_db():
         Logger.debug("DB already exists.")
         return
 
-    path.parent.mkdir(exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)
 
     conn = create_connection()
     try:

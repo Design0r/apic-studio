@@ -10,3 +10,6 @@ wheels/
 # Virtual environments
 .venv
 *.json
+db
+logs
+settings

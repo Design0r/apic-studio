@@ -96,7 +96,7 @@ class WindowSettings(Settings):
 class SettingsManager:
     _instance = None
 
-    ROOT_PATH = Path(__file__).parent.parent
+    ROOT_PATH = Path(__file__).parent.parent.parent
     CONFIG_PATH = ROOT_PATH / f"settings/config-{gethostname()}.json"
     DB_PATH = ROOT_PATH / "db" / "apic_studio.db"
     LOGS = ROOT_PATH / "logs"

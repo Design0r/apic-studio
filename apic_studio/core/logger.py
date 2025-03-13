@@ -1,6 +1,7 @@
 import logging
 import socket
 import sys
+from pathlib import Path
 from typing import Callable
 
 from apic_studio import __version__
@@ -102,7 +103,10 @@ class Logger:
         lg.exception(msg)
 
     @classmethod
-    def write_to_file(cls, path: str, level: int = logging.INFO):
+    def write_to_file(cls, path: Path, level: int = logging.INFO):
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+
         lg = cls.logger_obj()
 
         for handler in lg.handlers:
