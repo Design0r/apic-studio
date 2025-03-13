@@ -3,12 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import QSize, Qt
+from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import QWidget
 
 from apic_studio.core import Logger
-from apic_studio.core.asset_loader import Asset, AsyncAssetLoader
+from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.flow_layout import FlowLayout
 
@@ -44,11 +44,11 @@ class MainWindow(QWidget):
         return cls.win_instance
 
     def init_widgets(self):
-        self.setGeometry(300, 300, 300, 400)
+        self.setGeometry(300, 300, 1000, 700)
 
     def init_layouts(self):
         self.main_layout = FlowLayout(self)
-        self.al = AsyncAssetLoader()
+        self.al = AssetLoader()
         self.al.asset_loaded.connect(self.replace_icon)
 
         for x in Path(
@@ -57,13 +57,17 @@ class MainWindow(QWidget):
             b = ViewportButton(x, (200, 200))
             self._widgets[x] = b
             self.main_layout.addWidget(b)
-            self.al.load_asset_async(x)
+            self.al.load_asset(x)
 
     def replace_icon(self, asset: Asset):
         print(f"asset {asset.name}")
         w = self._widgets[asset.path]
         w.icon.setIcon(asset.icon)
-        w.repaint()
+        w.icon.setIconSize(QSize(200, 200))
 
     def init_signals(self):
         pass
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.al.stop()
+        return super().closeEvent(event)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Optional
@@ -17,43 +18,13 @@ class Asset:
         self.icon = icon
 
 
-class AssetLoader:
-    def __init__(self) -> None:
+class AssetLoaderWorker(QObject):
+    asset_loaded = Signal(object)
+
+    def __init__(self, parent: Optional[QObject] = None):
+        super().__init__(parent)
         self._cache: dict[Path, Asset] = {}
 
-    def load_asset(self, path: Path) -> Asset:
-        if path in self._cache:
-            return self._cache[path]
-
-        width, height = 200, 200
-        # thumbnail = str(path / path.stem / ".jpg")
-        icon = QIcon(str(path))
-        available_sizes = icon.availableSizes()
-        if available_sizes and available_sizes[0].width() < width:
-            pixmap = icon.pixmap(available_sizes[0])
-            scaled_pixmap = pixmap.scaled(
-                width,
-                height,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.FastTransformation,
-            )
-            icon = QIcon(scaled_pixmap)
-
-        asset = Asset(path, icon)
-        self._cache[path] = asset
-
-        return asset
-
-    def load_dir(self, path: Path):
-        pass
-
-
-class AssetLoaderWorker(QObject):
-    assetLoaded = Signal(object)
-
-    def __init__(self, asset_loader: AssetLoader, parent: Optional[QObject] = None):
-        super().__init__(parent)
-        self.asset_loader = asset_loader
         self.task_queue: Queue[Path] = Queue()
         self._running = True
 
@@ -70,31 +41,54 @@ class AssetLoaderWorker(QObject):
             except Empty:
                 continue
 
-            asset = self.asset_loader.load_asset(path)
-            self.assetLoaded.emit(asset)
+            asset = self.load_asset(path)
+            time.sleep(3)
+            self.asset_loaded.emit(asset)
+
+    def load_asset(self, path: Path) -> Asset:
+        if path in self._cache:
+            return self._cache[path]
+
+        width, height = 200, 200
+        # thumbnail = str(path / path.stem / ".jpg")
+        icon = QIcon(str(path))
+        available_sizes = icon.availableSizes()
+        if available_sizes and available_sizes[0].width() != width:
+            pixmap = icon.pixmap(available_sizes[0])
+            scaled_pixmap = pixmap.scaled(
+                width,
+                height,
+                Qt.AspectRatioMode.KeepAspectRatio,
+                Qt.TransformationMode.FastTransformation,
+            )
+            icon = QIcon(scaled_pixmap)
+
+        asset = Asset(path, icon)
+        self._cache[path] = asset
+
+        return asset
 
 
-class AsyncAssetLoader(QObject):
+class AssetLoader(QObject):
     asset_loaded = Signal(Asset)
 
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
-        self.asset_loader = AssetLoader()
-        self.worker = AssetLoaderWorker(self.asset_loader)
+        self.worker = AssetLoaderWorker()
         self.t = QThread()
 
         self.worker.moveToThread(self.t)
         self.t.started.connect(self.worker.run)
-        self.worker.assetLoaded.connect(self.on_asset_loaded)
+        self.worker.asset_loaded.connect(self.on_asset_loaded)
         self.t.start()
 
-    def load_asset_async(self, path: Path) -> None:
+    def load_asset(self, path: Path):
         self.worker.add_task(path)
 
-    def on_asset_loaded(self, asset: Asset) -> None:
+    def on_asset_loaded(self, asset: Asset):
         self.asset_loaded.emit(asset)
 
-    def stop(self) -> None:
+    def stop(self):
         self.worker.stop()
         self.t.quit()
         self.t.wait()

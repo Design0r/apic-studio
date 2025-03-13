@@ -97,9 +97,9 @@ class Logger:
         lg.log(level, msg, *args, **kwargs)
 
     @classmethod
-    def exception(cls, msg: str, *args, **kwargs):
+    def exception(cls, msg: Exception):
         lg = cls.logger_obj()
-        lg.exception(msg, *args, **kwargs)
+        lg.exception(msg)
 
     @classmethod
     def write_to_file(cls, path: str, level: int = logging.INFO):
