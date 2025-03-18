@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from socket import gethostname
-from typing import Any
+from typing import Any, TypeVar
 
 from .logger import Logger
 
@@ -42,7 +42,10 @@ class Settings(ABC):
             setattr(self, key, data.get(key, default))
 
 
-def register(settings: type[Settings]) -> type[Settings]:
+T = TypeVar("T", bound="Settings")
+
+
+def register(settings: type[T]) -> type[T]:
     setting_name = settings.__name__
     if setting_name not in Settings.settings:
         Settings.settings[setting_name] = settings
@@ -87,6 +90,7 @@ class LightsetSettings(Settings):
 @register
 class WindowSettings(Settings):
     def __init__(self) -> None:
+        super().__init__()
         self.window_geometry = [100, 100, 1000, 700]
         self.current_viewport = 0
         self.asset_button_size = 350
@@ -95,6 +99,12 @@ class WindowSettings(Settings):
 
 class SettingsManager:
     _instance = None
+
+    WindowSettings: WindowSettings
+    MaterialSettings: MaterialSettings
+    ModelSettings: ModelSettings
+    LightsetSettings: LightsetSettings
+    HdriSettings: HdriSettings
 
     ROOT_PATH = Path(__file__).parent.parent.parent
     CONFIG_PATH = ROOT_PATH / f"settings/config-{gethostname()}.json"
@@ -107,15 +117,17 @@ class SettingsManager:
             cls._instance = super().__new__(cls)
 
             cls._instance._initialized = False
+
         return cls._instance
 
     def __init__(self):
+        if self._initialized:
+            return
+
         for n, t in Settings.settings.items():
-            print(n, t)
             setattr(self, n, t())
 
-        if not self._initialized:
-            self._initialized = True
+        self._initialized = True
 
     def load_settings(self):
         if not self.CONFIG_PATH.exists():

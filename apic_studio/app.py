@@ -14,8 +14,7 @@ from apic_studio.ui.main_window import MainWindow
 class Application:
     def __init__(self) -> None:
         self.settings = SettingsManager()
-        self.qapp = QApplication(sys.argv)
-        self.window = MainWindow.show_window(self.settings)
+        self.app = QApplication(sys.argv)
         self.server = Thread(target=Server, daemon=True)
 
         self.init()
@@ -24,7 +23,9 @@ class Application:
         self.settings.load_settings()
         db.init_db()
 
-        self.qapp.setStyle("Fusion")
+        self.app.setStyle("Fusion")
+
+        self.window = MainWindow()
 
         Logger.write_to_file(self.settings.LOGGING_PATH)
         Logger.set_propagate(False)
@@ -33,10 +34,13 @@ class Application:
     def shutdown(self):
         Logger.info("shutting down Apic Studio...")
         self.settings.save_settings()
-        self.qapp.exit()
+        self.app.exit()
 
     def run(self):
         Logger.info("starting Apic Studio...")
+
         self.server.start()
-        self.qapp.exec()
+        self.window.show()
+        self.app.exec()
+
         self.shutdown()
