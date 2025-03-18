@@ -22,7 +22,7 @@ class Message(NamedTuple):
         return json.dumps(message).encode(encoding)
 
 
-type MsgHandlerFunc = Callable[[ClientHandler, Message], None]
+MsgHandlerFunc = Callable[["ClientHandler", Message], None]
 
 
 class MessageRouter:

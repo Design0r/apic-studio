@@ -36,18 +36,33 @@ class ClientHandler:
         self.connection.close()
 
 
-def start_server() -> None:
-    server_address = ("localhost", 65432)
-    server_socket = Connection.server_connection(server_address)
-    print("RenderBox server listening on", server_address)
+class Server:
+    def __init__(
+        self,
+        addr: str = "localhost",
+        port: int = 65432,
+        router: MessageRouter = MessageRouter(),
+    ) -> None:
+        self.addr = addr
+        self.port = port
+        self.router = router
+        self._running = False
 
-    router = MessageRouter()
+    def run(self):
+        self._running = True
 
-    while True:
-        try:
-            sock = server_socket.accept()
-            client_handler = ClientHandler(Connection(sock), router)
-            thread = Thread(target=client_handler.run, daemon=True)
-            thread.start()
-        except socket.timeout:
-            continue
+        server_address = (self.addr, self.port)
+        server_socket = Connection.server_connection(server_address)
+        print("apic studio server listening on", server_address)
+
+        while self._running:
+            try:
+                sock = server_socket.accept()
+                client_handler = ClientHandler(Connection(sock), self.router)
+                thread = Thread(target=client_handler.run)
+                thread.start()
+            except socket.timeout:
+                continue
+
+    def stop(self):
+        self._running = False

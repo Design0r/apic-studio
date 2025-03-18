@@ -49,9 +49,7 @@ class MainWindow(QWidget):
         self.al = AssetLoader()
         self.al.asset_loaded.connect(self.replace_icon)
 
-        for x in Path(
-            "/Users/alex/GitHub/apic-studio/apic_studio/resource/icons/"
-        ).iterdir():
+        for x in (self.settings.ROOT_PATH / "apic_studio/resource/icons").iterdir():
             b = ViewportButton(x, (200, 200))
             self._widgets[x] = b
             self.main_layout.addWidget(b)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Optional
@@ -42,7 +41,6 @@ class AssetLoaderWorker(QObject):
                 continue
 
             asset = self.load_asset(path)
-            time.sleep(3)
             self.asset_loaded.emit(asset)
 
     def load_asset(self, path: Path) -> Asset:
