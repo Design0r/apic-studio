@@ -5,7 +5,7 @@ from .connection import Connection
 from .router import Message, MessageRouter
 
 
-class ClientHandler:
+class ConnectionHandler:
     def __init__(self, connection: Connection, router: MessageRouter) -> None:
         self.connection = connection
         self.router = router
@@ -58,8 +58,8 @@ class Server:
         while self._running:
             try:
                 sock = server_socket.accept()
-                client_handler = ClientHandler(Connection(sock), self.router)
-                thread = Thread(target=client_handler.run)
+                conn_handler = ConnectionHandler(Connection(sock), self.router)
+                thread = Thread(target=conn_handler.run)
                 thread.start()
             except socket.timeout:
                 continue

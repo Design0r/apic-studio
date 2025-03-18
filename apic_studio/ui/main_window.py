@@ -23,6 +23,7 @@ class MainWindow(QWidget):
         super().__init__(parent)
         self._widgets: dict[Path, ViewportButton] = {}
         self.settings = SettingsManager()
+        self.loader = AssetLoader()
 
         self.setWindowTitle("Apic Studio")
         self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
@@ -45,14 +46,6 @@ class MainWindow(QWidget):
 
     def init_layouts(self):
         self.flow_layout = FlowLayout(self.grid_widget)
-        self.al = AssetLoader()
-        self.al.asset_loaded.connect(self.replace_icon)
-
-        for x in (self.settings.ROOT_PATH / "apic_studio/resource/icons").iterdir():
-            b = ViewportButton(x, (200, 200))
-            self._widgets[x] = b
-            self.flow_layout.addWidget(b)
-            self.al.load_asset(x)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
@@ -64,7 +57,7 @@ class MainWindow(QWidget):
         w.icon.setIconSize(QSize(200, 200))
 
     def init_signals(self):
-        pass
+        self.loader.asset_loaded.connect(self.replace_icon)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [
@@ -73,5 +66,12 @@ class MainWindow(QWidget):
             self.width(),
             self.height(),
         ]
-        self.al.stop()
+        self.loader.stop()
         return super().closeEvent(event)
+
+    def draw(self):
+        for x in (self.settings.ROOT_PATH / "apic_studio/resource/icons").iterdir():
+            b = ViewportButton(x, (200, 200))
+            self._widgets[x] = b
+            self.flow_layout.addWidget(b)
+            self.loader.load_asset(x)

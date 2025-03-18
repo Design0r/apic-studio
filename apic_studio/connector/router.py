@@ -6,7 +6,7 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, DefaultDict, NamedTuple, Optional
 
 if TYPE_CHECKING:
-    from .server import ClientHandler
+    from .server import ConnectionHandler
 
 
 class MessageType(StrEnum):
@@ -22,7 +22,7 @@ class Message(NamedTuple):
         return json.dumps(message).encode(encoding)
 
 
-MsgHandlerFunc = Callable[["ClientHandler", Message], None]
+MsgHandlerFunc = Callable[["ConnectionHandler", Message], None]
 
 
 class MessageRouter:
@@ -30,7 +30,7 @@ class MessageRouter:
         self.prefix = prefix
         self.routes: dict[str, list[MsgHandlerFunc]] = DefaultDict(list)
 
-    def serve(self, ctx: ClientHandler, message: Message):
+    def serve(self, ctx: ConnectionHandler, message: Message):
         routes = self.routes.get(message.message)
         if not routes:
             ctx.connection.send(Message("unregistered message").as_json())
@@ -44,7 +44,7 @@ class MessageRouter:
             self.routes[self.prefix + message].append(fn)
 
             @wraps(fn)
-            def wrapper(ctx: ClientHandler, msg: Message):
+            def wrapper(ctx: ConnectionHandler, msg: Message):
                 fn(ctx, msg)
 
             return wrapper
