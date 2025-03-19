@@ -21,15 +21,15 @@ class Application:
 
     def init(self):
         self.settings.load_settings()
-        db.init_db()
-
-        self.app.setStyle("Fusion")
-
-        self.window = MainWindow()
 
         Logger.write_to_file(self.settings.LOGGING_PATH)
         Logger.set_propagate(False)
         Logger.info("initializing Apic Studio...")
+
+        db.init_db()
+
+        self.app.setStyle("Fusion")
+        self.window = MainWindow()
 
     def shutdown(self):
         Logger.info("shutting down Apic Studio...")

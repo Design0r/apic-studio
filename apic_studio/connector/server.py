@@ -1,6 +1,7 @@
 import socket
 from threading import Thread
 
+from ..core import Logger
 from .connection import Connection
 from .router import Message, MessageRouter
 
@@ -13,10 +14,10 @@ class ConnectionHandler:
         ip, port = connection.socket.getpeername()
         self.client_ip = f"{ip}:{port}"
 
-        print(f"client: {self.client_ip} connected")
+        Logger.info(f"client: {self.client_ip} connected")
 
     def handle_message(self, message: Message) -> None:
-        print(f"MSG: {message}")
+        Logger.debug(f"MSG: {message}")
         self.router.serve(self, message)
 
     def send(self, data: bytes):
@@ -29,10 +30,10 @@ class ConnectionHandler:
                 message = Message(**data)
                 self.handle_message(message)
             except Exception as e:
-                print(e)
+                Logger.exception(e)
                 break
 
-        print(f"client {self.client_ip} disconnected")
+        Logger.info(f"client {self.client_ip} disconnected")
         self.connection.close()
 
 
@@ -48,12 +49,15 @@ class Server:
         self.router = router
         self._running = False
 
+        self.run()
+        self.stop()
+
     def run(self):
         self._running = True
 
         server_address = (self.addr, self.port)
         server_socket = Connection.server_connection(server_address)
-        print("apic studio server listening on", server_address)
+        Logger.info(f"connection server listening on {self.addr}:{self.port}")
 
         while self._running:
             try:
@@ -66,3 +70,4 @@ class Server:
 
     def stop(self):
         self._running = False
+        Logger.info("stopping connection server")

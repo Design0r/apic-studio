@@ -49,7 +49,7 @@ def register(settings: type[T]) -> type[T]:
     setting_name = settings.__name__
     if setting_name not in Settings.settings:
         Settings.settings[setting_name] = settings
-        print(f"Registered settings class {setting_name}")
+        Logger.debug(f"Registered settings class {setting_name}")
 
     return settings
 
