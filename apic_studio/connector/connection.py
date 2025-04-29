@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import socket
-from typing import Any
+from typing import Any, Self
 
 
 class Connection:
@@ -28,8 +28,9 @@ class Connection:
     def close(self) -> None:
         self.socket.close()
 
-    def connect(self, adress: tuple[str, int]) -> None:
+    def connect(self, adress: tuple[str, int]) -> Self:
         self.socket.connect(adress)
+        return self
 
     @classmethod
     def client_connection(cls) -> Connection:

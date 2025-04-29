@@ -131,6 +131,9 @@ class Toolbar(QWidget):
         if stretch:
             self.main_layout.addStretch()
 
+    def add_widget(self, widget: QWidget):
+        self.main_layout.addWidget(widget)
+
 
 class Sidebar(Toolbar):
     def __init__(self, width: int, parent: Optional[QWidget] = None):

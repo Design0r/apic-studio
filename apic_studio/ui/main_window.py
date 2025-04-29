@@ -5,12 +5,15 @@ from typing import Optional
 
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QCloseEvent, QIcon
-from PySide6.QtWidgets import QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QPushButton, QScrollArea, QVBoxLayout, QWidget
 
+from apic_studio import messages
+from apic_studio.connector import Connection, Message
 from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.core.settings import SettingsManager
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.flow_layout import FlowLayout
+from apic_studio.ui.toolbar import Toolbar, ToolbarDirection
 
 
 class MainWindow(QWidget):
@@ -18,12 +21,14 @@ class MainWindow(QWidget):
 
     def __init__(
         self,
+        ctx: Connection,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._widgets: dict[Path, ViewportButton] = {}
         self.settings = SettingsManager()
         self.loader = AssetLoader()
+        self.ctx = ctx
 
         self.setWindowTitle("Apic Studio")
         self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
@@ -44,11 +49,18 @@ class MainWindow(QWidget):
         self.scroll_area.setWidget(self.grid_widget)
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
 
+        self.toolbar = Toolbar(ToolbarDirection.Horizontal, 20)
+        self.hello_btn = QPushButton("Hello")
+        self.export_btn = QPushButton("Export")
+        self.toolbar.add_widget(self.hello_btn)
+        self.toolbar.add_widget(self.export_btn)
+
     def init_layouts(self):
         self.flow_layout = FlowLayout(self.grid_widget)
 
         self.main_layout = QVBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.addWidget(self.toolbar)
         self.main_layout.addWidget(self.scroll_area)
 
     def replace_icon(self, asset: Asset):
@@ -58,6 +70,11 @@ class MainWindow(QWidget):
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.replace_icon)
+        self.hello_btn.clicked.connect(lambda: self.send_msg(messages.MSG_HELLO))
+        self.export_btn.clicked.connect(lambda: self.send_msg(messages.MSG_EXPORT_ALL))
+
+    def send_msg(self, msg: Message):
+        self.ctx.send(msg.as_json())
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [
