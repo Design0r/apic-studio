@@ -135,6 +135,52 @@ class Toolbar(QWidget):
         self.main_layout.addWidget(widget)
 
 
+class MultiToolbar(QWidget):
+    def __init__(
+        self,
+        direction: ToolbarDirection,
+        multibars: dict[str, Toolbar],
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent)
+        self.mutibars = multibars
+        self.direction = direction
+        self.thickness = (
+            next(iter(self.mutibars.values())).thickness if len(multibars) > 0 else 30
+        )
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+        if len(multibars) > 0:
+            self.set_current(next(iter(self.mutibars)))
+
+    def init_widgets(self):
+        if self.direction == ToolbarDirection.Horizontal:
+            self.setFixedHeight(self.thickness)
+        elif self.direction == ToolbarDirection.Vertical:
+            self.setFixedWidth(self.thickness)
+
+    def init_layouts(self):
+        self.main_layout = QHBoxLayout(self)
+
+    def init_signals(self):
+        pass
+
+    def _clear_layout(self):
+        while self.main_layout.count():
+            widget = self.main_layout.takeAt(0).widget()
+            widget.setParent(None)
+
+    def set_current(self, toolbar_id: str) -> Optional[Toolbar]:
+        if toolbar_id not in self.mutibars.keys():
+            return None
+
+        self._clear_layout()
+        self.main_layout.addWidget(self.mutibars[toolbar_id])
+
+
 class Sidebar(Toolbar):
     def __init__(self, width: int, parent: Optional[QWidget] = None):
         super().__init__(ToolbarDirection.Vertical, width, parent)
@@ -153,7 +199,7 @@ class Sidebar(Toolbar):
     def init_widgets(self):
         super().init_widgets()
 
-        size = 25
+        size = 30
         btn_size = (size, size)
         icon_size = btn_size
 
@@ -242,12 +288,10 @@ class Statusbar(Toolbar):
         self,
         thickness: int,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
-        parent=None,
+        parent: Optional[QWidget] = None,
     ):
         super().__init__(direction, thickness, parent)
-        self.settings = SettingsManager
-        self.ui_scale = self.settings.window_settings.ui_scale
-        self.thickness = 30 * self.ui_scale
+        self.thickness = thickness
         self.setStyleSheet(STATUSBAR_STYLE)
 
     def init_widgets(self):
@@ -266,7 +310,7 @@ class Statusbar(Toolbar):
 
     def init_layouts(self) -> None:
         super().init_layouts()
-        self.main_layout.setAlignment(Qt.AlignHCenter)
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.main_layout.setContentsMargins(0, 0, 10, 0)
 
         self.main_layout.addWidget(self.info)

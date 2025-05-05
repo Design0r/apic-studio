@@ -3,17 +3,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QIcon
-from PySide6.QtWidgets import QPushButton, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
-from apic_studio.core.asset_loader import Asset, AssetLoader
+from apic_studio.core.asset_loader import AssetLoader
 from apic_studio.core.settings import SettingsManager
-from apic_studio.messaging import Message, cinema
 from apic_studio.network import Connection
 from apic_studio.ui.buttons import ViewportButton
-from apic_studio.ui.flow_layout import FlowLayout
-from apic_studio.ui.toolbar import Toolbar, ToolbarDirection
+from apic_studio.ui.toolbar import MultiToolbar, Sidebar, Toolbar, ToolbarDirection
+from apic_studio.ui.viewport import Viewport
 
 
 class MainWindow(QWidget):
@@ -39,46 +38,38 @@ class MainWindow(QWidget):
         self.init_signals()
 
     def init_widgets(self):
-        self.grid_widget = QWidget()
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOn
-        )
-        self.scroll_area.setWidget(self.grid_widget)
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
 
-        self.toolbar = Toolbar(ToolbarDirection.Horizontal, 20)
-        self.hello_btn = QPushButton("Hello")
-        self.export_btn = QPushButton("Export")
-        self.toolbar.add_widget(self.hello_btn)
-        self.toolbar.add_widget(self.export_btn)
+        self.sidebar = Sidebar(40)
+        self.sidebar.highlight_modes(1)
+
+        self.model_tb = Toolbar(ToolbarDirection.Horizontal, 30)
+        self.model_tb.add_widget(QPushButton("Models"))
+
+        self.material_tb = Toolbar(ToolbarDirection.Horizontal, 30)
+        self.material_tb.add_widget(QPushButton("Materials"))
+
+        self.toolbar = MultiToolbar(
+            ToolbarDirection.Horizontal,
+            {"materials": self.material_tb, "models": self.model_tb},
+        )
+        self.viewport = Viewport(self.ctx, self.settings)
 
     def init_layouts(self):
-        self.flow_layout = FlowLayout(self.grid_widget)
+        self.vp_layout = QVBoxLayout()
+        self.vp_layout.addWidget(self.toolbar)
+        self.vp_layout.addWidget(self.viewport)
 
-        self.main_layout = QVBoxLayout(self)
+        self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
-        self.main_layout.addWidget(self.toolbar)
-        self.main_layout.addWidget(self.scroll_area)
 
-    def replace_icon(self, asset: Asset):
-        w = self._widgets[asset.path]
-        w.icon.setIcon(asset.icon)
-        w.icon.setIconSize(QSize(200, 200))
+        self.main_layout.addWidget(self.sidebar)
+        self.main_layout.addLayout(self.vp_layout)
 
     def init_signals(self):
-        self.loader.asset_loaded.connect(self.replace_icon)
-        self.hello_btn.clicked.connect(
-            lambda: self.send_msg(cinema.MSG_MODELS_EXPORT_SELECTED)
-        )
-        self.export_btn.clicked.connect(
-            lambda: self.send_msg(cinema.MSG_MODELS_EXPORT_ALL)
-        )
-
-    def send_msg(self, msg: Message):
-        self.ctx.send(msg.as_json())
+        s = self.sidebar
+        s.models.clicked.connect(lambda: self.toolbar.set_current("models"))
+        s.materials.clicked.connect(lambda: self.toolbar.set_current("materials"))
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [
@@ -89,10 +80,3 @@ class MainWindow(QWidget):
         ]
         self.loader.stop()
         return super().closeEvent(event)
-
-    def draw(self):
-        for x in (self.settings.ROOT_PATH / "apic_studio/resource/icons").iterdir():
-            b = ViewportButton(x, (200, 200))
-            self._widgets[x] = b
-            self.flow_layout.addWidget(b)
-            self.loader.load_asset(x)
