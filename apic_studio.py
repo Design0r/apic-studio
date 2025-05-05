@@ -1,7 +1,7 @@
 import sys
 
 from apic_studio.app import Application
-from apic_studio.resource import resources  # noqa: F401
+from apic_studio.resources import resources  # noqa: F401
 
 
 def main():

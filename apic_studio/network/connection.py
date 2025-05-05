@@ -4,19 +4,21 @@ import json
 import socket
 from typing import Any, Self
 
+from apic_studio.core import Logger
+
 
 class Connection:
     def __init__(self, socket: socket.socket) -> None:
         self.socket = socket
 
-    def send(self, data: bytes):
+    def send(self, data: bytes) -> Self:
         header = len(data).to_bytes(4, "big")
         self.socket.sendall(header + data)
+        return self
 
     def send_recv(self, data: bytes) -> dict[Any, Any]:
         self.send(data)
         response = self.recv()
-
         return response
 
     def recv(self) -> dict[Any, Any]:
@@ -29,7 +31,10 @@ class Connection:
         self.socket.close()
 
     def connect(self, adress: tuple[str, int]) -> Self:
-        self.socket.connect(adress)
+        try:
+            self.socket.connect(adress)
+        except Exception as e:
+            Logger.exception(e)
         return self
 
     @classmethod
@@ -43,10 +48,8 @@ class Connection:
         server_socket.bind(adress)
         server_socket.listen(1)
         server_socket.settimeout(1.0)
-
         return Connection(server_socket)
 
     def accept(self) -> socket.socket:
         socket, _ = self.socket.accept()
-
         return socket

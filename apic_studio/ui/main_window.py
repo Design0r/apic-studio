@@ -7,10 +7,10 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import QPushButton, QScrollArea, QVBoxLayout, QWidget
 
-from apic_studio import messages
-from apic_studio.connector import Connection, Message
 from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.core.settings import SettingsManager
+from apic_studio.messaging import Message, cinema
+from apic_studio.network import Connection
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.flow_layout import FlowLayout
 from apic_studio.ui.toolbar import Toolbar, ToolbarDirection
@@ -70,8 +70,12 @@ class MainWindow(QWidget):
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.replace_icon)
-        self.hello_btn.clicked.connect(lambda: self.send_msg(messages.MSG_HELLO))
-        self.export_btn.clicked.connect(lambda: self.send_msg(messages.MSG_EXPORT_ALL))
+        self.hello_btn.clicked.connect(
+            lambda: self.send_msg(cinema.MSG_MODELS_EXPORT_SELECTED)
+        )
+        self.export_btn.clicked.connect(
+            lambda: self.send_msg(cinema.MSG_MODELS_EXPORT_ALL)
+        )
 
     def send_msg(self, msg: Message):
         self.ctx.send(msg.as_json())

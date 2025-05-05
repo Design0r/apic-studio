@@ -1,9 +1,10 @@
 import socket
 from threading import Thread
 
-from ..core import Logger
-from .connection import Connection
-from .router import Message, MessageRouter
+from apic_studio.core import Logger
+from apic_studio.messaging import Message, MessageRouter
+
+from . import Connection
 
 
 class ConnectionHandler:
@@ -18,10 +19,7 @@ class ConnectionHandler:
 
     def handle_message(self, message: Message) -> None:
         Logger.debug(f"MSG: {message}")
-        self.router.serve(self, message)
-
-    def send(self, data: bytes):
-        self.connection.send(data)
+        self.router.serve(self.connection, message)
 
     def run(self) -> None:
         while True:
