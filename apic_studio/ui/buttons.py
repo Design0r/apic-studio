@@ -49,9 +49,10 @@ class IconButton(QPushButton):
         self.setCheckable(checkable)
         self.setFixedSize(*size)
         self.clicked.connect(self.handle_shift)
+        self.icon_size = size
 
-    def set_icon(self, icon_path: str, icon_size: tuple[int, int]) -> None:
-        width, height = icon_size
+    def set_icon(self, icon_path: str) -> None:
+        width, height = self.icon_size
         self.icon_path = icon_path
         icon = QIcon(icon_path)
         available_sizes = icon.availableSizes()

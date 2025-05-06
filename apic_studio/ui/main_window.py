@@ -5,13 +5,20 @@ from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QIcon
-from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
+from apic_studio import __version__
 from apic_studio.core.asset_loader import AssetLoader
 from apic_studio.core.settings import SettingsManager
 from apic_studio.network import Connection
 from apic_studio.ui.buttons import ViewportButton
-from apic_studio.ui.toolbar import MultiToolbar, Sidebar, Toolbar, ToolbarDirection
+from apic_studio.ui.toolbar import (
+    MaterialToolbar,
+    ModelToolbar,
+    MultiToolbar,
+    Sidebar,
+    ToolbarDirection,
+)
 from apic_studio.ui.viewport import Viewport
 
 
@@ -29,9 +36,11 @@ class MainWindow(QWidget):
         self.loader = AssetLoader()
         self.ctx = ctx
 
-        self.setWindowTitle("Apic Studio")
+        self.setWindowTitle(f"Apic Studio - {__version__}")
         self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
         self.setWindowFlag(Qt.WindowType.Window)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+        self.setStyleSheet("QWidget {background-color: #444}")
 
         self.init_widgets()
         self.init_layouts()
@@ -43,11 +52,8 @@ class MainWindow(QWidget):
         self.sidebar = Sidebar(40)
         self.sidebar.highlight_modes(1)
 
-        self.model_tb = Toolbar(ToolbarDirection.Horizontal, 30)
-        self.model_tb.add_widget(QPushButton("Models"))
-
-        self.material_tb = Toolbar(ToolbarDirection.Horizontal, 30)
-        self.material_tb.add_widget(QPushButton("Materials"))
+        self.model_tb = ModelToolbar()
+        self.material_tb = MaterialToolbar()
 
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
@@ -57,11 +63,13 @@ class MainWindow(QWidget):
 
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
+        self.vp_layout.setContentsMargins(0, 0, 0, 0)
         self.vp_layout.addWidget(self.toolbar)
         self.vp_layout.addWidget(self.viewport)
 
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setSpacing(0)
 
         self.main_layout.addWidget(self.sidebar)
         self.main_layout.addLayout(self.vp_layout)

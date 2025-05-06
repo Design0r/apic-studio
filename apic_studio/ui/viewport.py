@@ -47,7 +47,7 @@ class Viewport(QWidget):
         self.vp_layout = QVBoxLayout()
 
         self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setContentsMargins(5, 5, 0, 0)
         self.main_layout.addWidget(self.scroll_area)
 
     def replace_icon(self, asset: Asset):

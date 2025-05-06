@@ -1,17 +1,21 @@
 from enum import Enum
-from typing import Callable, Optional, Union
+from typing import Callable, Optional, Union, override
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QComboBox,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
+from apic_studio.ui.lines import VLine
+
 from ..core import Logger
-from .buttons import SidebarButton
+from .buttons import IconButton, SidebarButton
 
 SIDEBAR_STYLE = """
 QWidget{
@@ -38,37 +42,6 @@ QWidget{
     background-color: rgb(50,50,50);
 }
 
-QPushButton{
-    background-color: none;
-    border-radius: 5px;
-}
-
-QPushButton::hover{
-    background-color: rgb(235, 177, 52);
-}
-
-QComboBox, QAbstractItemView{
-    background-color: rgb(38,38,38);
-    border: 1px solid black;
-    border-radius: 5px;
-    font-size: 10pt;
-    color: white;
-}
-
-QLineEdit{
-    background-color: rgb(38,38,38);
-    font-size: 10pt;
-    border-radius: 5px;
-    border: 1px solid black;
-
-}
-
-
-
-QLabel{
-    font-size: 12pt;
-    color: white;
-}
 """
 
 STATUSBAR_STYLE = """
@@ -100,7 +73,8 @@ class Toolbar(QWidget):
         self.direction = direction
         self.thickness = thickness
 
-        # self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setStyleSheet(TOOLBAR_STYLE)
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
 
         self.init_widgets()
         self.init_layouts()
@@ -164,6 +138,7 @@ class MultiToolbar(QWidget):
 
     def init_layouts(self):
         self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
     def init_signals(self):
         pass
@@ -196,6 +171,7 @@ class Sidebar(Toolbar):
             self.settings_btn,
         )
 
+    @override
     def init_widgets(self):
         super().init_widgets()
 
@@ -253,6 +229,7 @@ class Sidebar(Toolbar):
     ):
         pass
 
+    @override
     def init_layouts(self) -> None:
         super().init_layouts()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
@@ -294,6 +271,7 @@ class Statusbar(Toolbar):
         self.thickness = thickness
         self.setStyleSheet(STATUSBAR_STYLE)
 
+    @override
     def init_widgets(self):
         super().init_widgets()
         self.info = QLineEdit("")
@@ -308,6 +286,7 @@ class Statusbar(Toolbar):
             "QPushButton{border: none;}QPushButton::hover{background-color: rgb(100,100,100);}"
         )
 
+    @override
     def init_layouts(self) -> None:
         super().init_layouts()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
@@ -316,7 +295,9 @@ class Statusbar(Toolbar):
         self.main_layout.addWidget(self.info)
         self.main_layout.addWidget(self.clear_btn)
 
+    @override
     def init_signals(self) -> None:
+        super().init_signals()
         Logger.register_callback(self.update_info)
         self.clear_btn.clicked.connect(lambda: self.update_info("Clear", ""))
 
@@ -336,3 +317,115 @@ class Statusbar(Toolbar):
 
     def update_status(self, status: Status):
         pass
+
+
+class LabledToolbar(Toolbar):
+    def __init__(
+        self,
+        label: str,
+        thickness: int = 30,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        self.label_str = label
+        super().__init__(direction, thickness, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+        self.label = QLabel(self.label_str)
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+        self.add_widget(self.label)
+
+    @override
+    def init_signals(self):
+        super().init_signals()
+
+
+class AssetToolbar(LabledToolbar):
+    add = Signal()
+    remove = Signal()
+    open = Signal()
+
+    def __init__(
+        self,
+        label: str,
+        thickness: int = 30,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+        self.dropdown = QComboBox()
+        size = (30, 30)
+        self.add_folder = IconButton(size)
+        self.add_folder.set_icon(":icons/tabler-icon-folder-plus.png")
+        self.remove_folder = IconButton(size)
+        self.remove_folder.set_icon(":icons/tabler-icon-folder-minus.png")
+        self.open_folder = IconButton(size)
+        self.open_folder.set_icon(":icons/tabler-icon-folder-open.png")
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+        self.main_layout.addWidget(self.dropdown)
+        self.main_layout.addWidget(self.add_folder)
+        self.main_layout.addWidget(self.remove_folder)
+        self.main_layout.addWidget(self.open_folder)
+        self.main_layout.addWidget(VLine())
+
+    @override
+    def init_signals(self):
+        super().init_signals()
+        self.add_folder.clicked.connect(lambda: self.add.emit())
+        self.remove_folder.clicked.connect(lambda: self.remove.emit())
+        self.open_folder.clicked.connect(lambda: self.open.emit())
+
+
+class ModelToolbar(AssetToolbar):
+    def __init__(
+        self,
+        label: str = "Model",
+        thickness: int = 30,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+
+    @override
+    def init_signals(self):
+        super().init_signals()
+
+
+class MaterialToolbar(AssetToolbar):
+    def __init__(
+        self,
+        label: str = "Materials",
+        thickness: int = 40,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+        self.add_widgets([], stretch=True)
+
+    @override
+    def init_signals(self):
+        super().init_signals()
