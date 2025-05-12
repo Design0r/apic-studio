@@ -83,8 +83,9 @@ class MainWindow(QWidget):
         s.models.clicked.connect(lambda: self.set_view("models"))
         s.materials.clicked.connect(lambda: self.set_view("materials"))
         self.ctx.on_connect(lambda: s.conn_btn.setText("C"))
+        self.ctx.on_disconnect(lambda: s.conn_btn.setText("D"))
         s.conn_btn.clicked.connect(
-            lambda: self.ctx.connect(self.settings.WindowSettings.socket_addr)
+            lambda: self.ctx.connect(self.settings.WindowSettings.address)
         )
 
     def closeEvent(self, event: QCloseEvent) -> None:

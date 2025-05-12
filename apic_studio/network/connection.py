@@ -45,20 +45,29 @@ class Connection:
             self.is_connected = False
             return False
 
-        return res["status"] == 200
+        return res.get("status") == 200
 
     def _disconnect(self):
         self.is_connected = False
         for c in self._on_disconnect:
             c()
 
-    def connect(self, adress: tuple[str, int]) -> Self:
+    def connect(self, address: tuple[str, int]) -> Self:
         Logger.debug("Connecting to C4D connector...")
         if self.is_connected and self.status():
             return self
 
         try:
-            self.socket.connect(tuple(adress))
+            self.socket.connect(address)
+        except ConnectionRefusedError as e:
+            Logger.exception(e)
+            self._disconnect()
+            return self
+        except OSError as e:
+            Logger.exception(e)
+            self.close()
+            self.socket = self.client_connection().socket
+            return self.connect(address)
         except Exception as e:
             Logger.exception(e)
             self._disconnect()

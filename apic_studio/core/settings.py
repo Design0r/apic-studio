@@ -95,7 +95,12 @@ class WindowSettings(Settings):
         self.current_viewport = 0
         self.asset_button_size = 350
         self.ui_scale = 1
-        self.socket_addr = ("localhost", 65432)
+        self.socket_addr = "localhost"
+        self.socket_port = 65432
+
+    @property
+    def address(self) -> tuple[str, int]:
+        return (self.socket_addr, self.socket_port)
 
 
 class SettingsManager:

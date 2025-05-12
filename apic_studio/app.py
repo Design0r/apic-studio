@@ -43,7 +43,7 @@ class Application:
     def run(self):
         Logger.info("starting Apic Studio...")
 
-        self.connection.connect(self.settings.WindowSettings.socket_addr)
+        self.connection.connect(self.settings.WindowSettings.address)
         self.window.show()
         self.app.exec()
 
