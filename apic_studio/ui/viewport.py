@@ -26,6 +26,12 @@ class Viewport(QWidget):
         self.loader = AssetLoader()
         self.settings = settings
         self.ctx = ctx
+        self.cache: dict[str, dict[Path, Asset]] = {
+            "models": {},
+            "materials": {},
+            "hdris": {},
+        }
+        self.curr_view = "models"
 
         self.init_widgets()
         self.init_layouts()
@@ -61,9 +67,22 @@ class Viewport(QWidget):
     def send_msg(self, msg: Message):
         self.ctx.send(msg.as_json())
 
+    def _clear_layout(self):
+        while self.flow_layout.count():
+            w = self.flow_layout.takeAt(0).widget()
+            w.setParent(None)
+
     def draw(self):
         for x in (self.settings.ROOT_PATH / "apic_studio/resources/icons").iterdir():
             b = ViewportButton(x, (200, 200))
             self._widgets[x] = b
             self.flow_layout.addWidget(b)
             self.loader.load_asset(x)
+
+    def set_current(self, view: str):
+        if view not in self.cache:
+            return
+
+        self.curr_view = view
+        self._clear_layout()
+        self.draw()

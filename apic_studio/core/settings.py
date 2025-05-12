@@ -95,6 +95,7 @@ class WindowSettings(Settings):
         self.current_viewport = 0
         self.asset_button_size = 350
         self.ui_scale = 1
+        self.socket_addr = ("localhost", 65432)
 
 
 class SettingsManager:

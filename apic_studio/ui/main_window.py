@@ -10,6 +10,7 @@ from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from apic_studio import __version__
 from apic_studio.core.asset_loader import AssetLoader
 from apic_studio.core.settings import SettingsManager
+from apic_studio.messaging.message import Message
 from apic_studio.network import Connection
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
@@ -60,6 +61,9 @@ class MainWindow(QWidget):
             {"materials": self.material_tb, "models": self.model_tb},
         )
         self.viewport = Viewport(self.ctx, self.settings)
+        self.model_tb.add_folder.clicked.connect(
+            lambda: self.viewport.send_msg(Message("models.export.all"))
+        )
 
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
@@ -76,8 +80,12 @@ class MainWindow(QWidget):
 
     def init_signals(self):
         s = self.sidebar
-        s.models.clicked.connect(lambda: self.toolbar.set_current("models"))
-        s.materials.clicked.connect(lambda: self.toolbar.set_current("materials"))
+        s.models.clicked.connect(lambda: self.set_view("models"))
+        s.materials.clicked.connect(lambda: self.set_view("materials"))
+        self.ctx.on_connect(lambda: s.conn_btn.setText("C"))
+        s.conn_btn.clicked.connect(
+            lambda: self.ctx.connect(self.settings.WindowSettings.socket_addr)
+        )
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [
@@ -88,3 +96,7 @@ class MainWindow(QWidget):
         ]
         self.loader.stop()
         return super().closeEvent(event)
+
+    def set_view(self, view: str):
+        self.toolbar.set_current(view)
+        self.viewport.set_current(view)

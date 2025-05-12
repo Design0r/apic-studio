@@ -219,6 +219,8 @@ class Sidebar(Toolbar):
         self.settings_btn.set_tooltip("Settings")
         self.settings_btn.activated.connect(self.highlight_modes)
 
+        self.conn_btn = QPushButton("D")
+
     def _add_button(
         self,
         size: tuple[int, int],
@@ -243,6 +245,7 @@ class Sidebar(Toolbar):
         self.main_layout.addWidget(self.help)
         self.main_layout.addWidget(self.about)
         self.main_layout.addWidget(self.settings_btn)
+        self.main_layout.addWidget(self.conn_btn)
 
     def highlight_modes(self, button: Union[SidebarButton, int]):
         for btn in self.buttons:
@@ -392,7 +395,7 @@ class ModelToolbar(AssetToolbar):
     def __init__(
         self,
         label: str = "Model",
-        thickness: int = 30,
+        thickness: int = 40,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
@@ -401,6 +404,11 @@ class ModelToolbar(AssetToolbar):
     @override
     def init_widgets(self):
         super().init_widgets()
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+        self.add_widgets([], stretch=True)
 
     @override
     def init_signals(self):
