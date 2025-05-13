@@ -65,7 +65,7 @@ class Viewport(QWidget):
         self.loader.asset_loaded.connect(self.replace_icon)
 
     def send_msg(self, msg: Message):
-        self.ctx.send(msg.as_json())
+        self.ctx.send_recv(msg)
 
     def _clear_layout(self):
         while self.flow_layout.count():

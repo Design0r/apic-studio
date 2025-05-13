@@ -15,12 +15,18 @@ class Connection:
         self._on_disconnect: list[Callable[[], None]] = []
         self.is_connected = False
 
-    def send(self, data: bytes) -> Self:
+    def send(self, data: bytes | Message) -> Self:
+        if isinstance(data, Message):
+            Logger.debug(f"sending message {data.message}")
+            data = data.as_json()
+        else:
+            Logger.debug(f"sending message len({len(data)})")
+
         header = len(data).to_bytes(4, "big")
         self.socket.sendall(header + data)
         return self
 
-    def send_recv(self, data: bytes) -> dict[Any, Any]:
+    def send_recv(self, data: bytes | Message) -> dict[Any, Any]:
         self.send(data)
         response = self.recv()
         return response
@@ -29,7 +35,9 @@ class Connection:
         header = self.socket.recv(4)
         body_size = int.from_bytes(header, "big")
         response = self.socket.recv(body_size).decode("utf-8")
-        return json.loads(response)
+        rjson = json.loads(response)
+        Logger.debug(f"receiving message {rjson.get('message')}")
+        return rjson
 
     def close(self) -> None:
         self.socket.close()
@@ -39,7 +47,7 @@ class Connection:
         msg = Message("core.status")
 
         try:
-            res = self.send_recv(msg.as_json())
+            res = self.send_recv(msg)
         except Exception as e:
             Logger.exception(e)
             self.is_connected = False

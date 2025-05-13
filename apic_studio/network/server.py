@@ -1,5 +1,7 @@
 import socket
+from queue import Queue
 from threading import Thread
+from typing import Optional
 
 from apic_studio.core import Logger
 from apic_studio.messaging import Message, MessageRouter
@@ -8,9 +10,15 @@ from . import Connection
 
 
 class ConnectionHandler:
-    def __init__(self, connection: Connection, router: MessageRouter) -> None:
+    def __init__(
+        self,
+        connection: Connection,
+        router: MessageRouter,
+        msg_queue: Optional[Queue[tuple[Connection, Message]]] = None,
+    ) -> None:
         self.connection = connection
         self.router = router
+        self.msg_queue = msg_queue
 
         ip, port = connection.socket.getpeername()
         self.client_ip = f"{ip}:{port}"
@@ -18,8 +26,9 @@ class ConnectionHandler:
         Logger.info(f"client: {self.client_ip} connected")
 
     def handle_message(self, message: Message) -> None:
-        Logger.debug(f"MSG: {message}")
         self.router.serve(self.connection, message)
+        if self.msg_queue:
+            self.msg_queue.put((self.connection, message))
 
     def run(self) -> None:
         while True:
@@ -41,11 +50,13 @@ class Server:
         addr: str = "localhost",
         port: int = 65432,
         router: MessageRouter = MessageRouter(),
+        msg_queue: Optional[Queue[tuple[Connection, Message]]] = None,
     ) -> None:
         self.addr = addr
         self.port = port
         self.router = router
         self._running = False
+        self.msg_queue = msg_queue
 
         self.run()
         self.stop()
@@ -60,9 +71,11 @@ class Server:
         while self._running:
             try:
                 sock = server_socket.accept()
-                conn_handler = ConnectionHandler(Connection(sock), self.router)
-                thread = Thread(target=conn_handler.run)
-                thread.start()
+                conn_handler = ConnectionHandler(
+                    Connection(sock), self.router, msg_queue=self.msg_queue
+                )
+                conn_handler.run()
+                Thread(target=conn_handler.run).start()
             except socket.timeout:
                 continue
 

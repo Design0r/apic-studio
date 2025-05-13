@@ -62,7 +62,7 @@ class MainWindow(QWidget):
         )
         self.viewport = Viewport(self.ctx, self.settings)
         self.model_tb.add_folder.clicked.connect(
-            lambda: self.viewport.send_msg(Message("models.export.all"))
+            lambda: self.viewport.send_msg(Message("models.export.selected"))
         )
 
     def init_layouts(self):

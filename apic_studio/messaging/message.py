@@ -33,7 +33,7 @@ class MessageRouter:
     def serve(self, ctx: Connection, message: Message):
         routes = self.routes.get(message.message)
         if not routes:
-            ctx.send(Message("unregistered message").as_json())
+            ctx.send(Message("unregistered message"))
             return
 
         for handler in routes:
