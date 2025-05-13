@@ -1,3 +1,4 @@
+import importlib
 import sys
 from queue import Empty, Queue
 
@@ -5,12 +6,13 @@ import c4d
 from c4d.threading import C4DThread
 
 sys.path.append(r"C:\Users\TheApic\GitHub\apic-studio")
-from apic_studio.connector.router import msg_router
-from apic_studio.messaging import Message
+from apic_studio.connector import c4d as routers
+from apic_studio.core import Logger
+from apic_studio.messaging import Message, MessageRouter
 from apic_studio.network import Connection, Server
 
-msg_queue: Queue[tuple[Connection, Message]] = Queue()
 thread = None
+PLUGIN_ID = 1234567
 
 
 class ServerThread(C4DThread):
@@ -26,8 +28,9 @@ class ServerThread(C4DThread):
 
 
 class TimerMessage(c4d.plugins.MessageData):
-    def __init__(self):
-        self.router = msg_router
+    def __init__(self, queue: Queue[tuple[Connection, Message]], router: MessageRouter):
+        self.queue = queue
+        self.router = router
 
     def GetTimer(self) -> int:
         return 200
@@ -41,7 +44,7 @@ class TimerMessage(c4d.plugins.MessageData):
     def process_queue(self):
         while True:
             try:
-                conn, message = msg_queue.get_nowait()
+                conn, message = self.queue.get_nowait()
             except Empty:
                 break
 
@@ -49,20 +52,47 @@ class TimerMessage(c4d.plugins.MessageData):
 
 
 def PluginMessage(id: int, _) -> bool:
-    if id == c4d.C4DPL_ENDPROGRAM or id == c4d.C4DPL_SHUTDOWNTHREADS:
-        if thread:
-            thread.End(wait=False)
+    global thread
+
+    if thread and (id == c4d.C4DPL_ENDPROGRAM or id == c4d.C4DPL_SHUTDOWNTHREADS):
+        thread.End(wait=False)
+        thread = None
+
+    if id == c4d.C4DPL_RELOADPYTHONPLUGINS:
+        Logger.debug("reloading apic studio connector...")
+
+        import apic_studio
+
+        importlib.reload(apic_studio)
+        for name, mod in list(sys.modules.items()):
+            if name.startswith("apic_studio."):
+                importlib.reload(mod)
+
+        main()
+
     return True
 
 
 def main():
     global thread
 
-    c4d.plugins.RegisterMessagePlugin(
-        id=1234567, str="Apic Studio Connector", info=0, dat=TimerMessage()
-    )
+    if thread is not None:
+        return True
 
-    thread = ServerThread(Server(router=msg_router, msg_queue=msg_queue))
+    router = MessageRouter()
+    router.include_router(routers.core_router)
+    router.include_router(routers.models_router)
+    queue: Queue[tuple[Connection, Message]] = Queue()
+
+    if not c4d.plugins.FindPlugin(PLUGIN_ID):
+        c4d.plugins.RegisterMessagePlugin(
+            id=PLUGIN_ID,
+            str="Apic Studio Connector",
+            info=0,
+            dat=TimerMessage(queue, router),
+        )
+
+    thread = ServerThread(Server(router=router, msg_queue=queue))
     thread.Start()
 
 

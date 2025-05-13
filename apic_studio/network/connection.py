@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import socket
-from typing import Any, Callable, Self
+from typing import Any, Callable, Optional, Self
 
 from apic_studio.core import Logger
 from apic_studio.messaging.message import Message
@@ -118,9 +118,16 @@ class Connection:
         return Connection(client_socket)
 
     @classmethod
-    def server_connection(cls, adress: tuple[str, int]) -> Connection:
-        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_socket.bind(adress)
+    def server_connection(cls, adress: tuple[str, int]) -> Optional[Connection]:
+        try:
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server_socket.bind(adress)
+        except OSError as e:
+            Logger.exception(e)
+            Logger.error("failed to create server socket")
+            return None
+
         server_socket.listen(1)
         server_socket.settimeout(1.0)
         return Connection(server_socket)

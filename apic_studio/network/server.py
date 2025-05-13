@@ -62,19 +62,27 @@ class Server:
         self._running = False
         self.msg_queue = msg_queue
         self.handlers: list[ConnectionHandler] = []
+        self.socket: Optional[Connection] = None
 
     def run(self):
         self._running = True
 
         server_address = (self.addr, self.port)
-        server_socket = Connection.server_connection(server_address)
+        self.socket = Connection.server_connection(server_address)
+        if not self.socket:
+            Logger.error("oops")
+            return
+
         Logger.info(f"connection server listening on {self.addr}:{self.port}")
 
         while self._running:
             try:
-                sock = server_socket.accept()
+                sock = self.socket.accept()
             except socket.timeout:
                 continue
+            except Exception:
+                self.stop()
+                return
 
             conn = Connection(sock)
             conn_handler = ConnectionHandler(conn, self.router, self.msg_queue)
@@ -86,3 +94,8 @@ class Server:
         self._running = False
         for h in self.handlers:
             h.stop()
+
+        if not self.socket:
+            return
+
+        self.socket.close()
