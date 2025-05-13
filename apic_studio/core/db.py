@@ -119,7 +119,7 @@ def run_migration(data: dict[str, dict[str, str]]) -> None:
 def init_db():
     path = SettingsManager.DB_PATH
     if path.exists():
-        Logger.debug("DB already exists.")
+        Logger.debug("database already exists. skipping initialization")
         return
 
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -137,7 +137,7 @@ def init_db():
 
         conn.commit()
 
-        Logger.debug(f"Created DB {path.stem}")
+        Logger.debug(f"created database {path.stem}")
     except Exception as e:
         Logger.exception(e)
     finally:

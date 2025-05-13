@@ -23,7 +23,7 @@ def take_screenshot(path: Path, geometry: tuple[int, int, int, int]) -> None:
         img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
         img.resize((350, 350)).save(path, "JPEG")
 
-        Logger.info(f"Saved Screenshot in {path}")
+        Logger.info(f"saved Screenshot in {path}")
 
 
 def create_sdr_preview(hdri_path: Path, thumbnail_path: Path, size: int):

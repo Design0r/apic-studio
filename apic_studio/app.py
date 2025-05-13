@@ -1,3 +1,4 @@
+import logging
 import sys
 
 from PySide6.QtWidgets import QApplication
@@ -20,7 +21,7 @@ class Application:
     def init(self):
         self.settings.load_settings()
 
-        Logger.write_to_file(self.settings.LOGGING_PATH)
+        Logger.write_to_file(self.settings.LOGGING_PATH, level=logging.DEBUG)
         Logger.set_propagate(False)
         Logger.info("initializing Apic Studio...")
 

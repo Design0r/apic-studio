@@ -19,6 +19,7 @@ class ConnectionHandler:
         self.connection = connection
         self.router = router
         self.msg_queue = msg_queue
+        self._is_running = True
 
         ip, port = connection.socket.getpeername()
         self.client_ip = f"{ip}:{port}"
@@ -31,7 +32,7 @@ class ConnectionHandler:
             self.msg_queue.put((self.connection, message))
 
     def run(self) -> None:
-        while True:
+        while self._is_running:
             try:
                 data = self.connection.recv()
                 message = Message(**data)
@@ -42,6 +43,10 @@ class ConnectionHandler:
 
         Logger.info(f"client {self.client_ip} disconnected")
         self.connection.close()
+
+    def stop(self):
+        self.connection.close()
+        self._is_running = False
 
 
 class Server:
@@ -57,9 +62,7 @@ class Server:
         self.router = router
         self._running = False
         self.msg_queue = msg_queue
-
-        self.run()
-        self.stop()
+        self.handlers: list[ConnectionHandler] = []
 
     def run(self):
         self._running = True
@@ -71,14 +74,17 @@ class Server:
         while self._running:
             try:
                 sock = server_socket.accept()
-                conn_handler = ConnectionHandler(
-                    Connection(sock), self.router, msg_queue=self.msg_queue
-                )
-                conn_handler.run()
-                Thread(target=conn_handler.run).start()
             except socket.timeout:
                 continue
 
+            conn_handler = ConnectionHandler(
+                Connection(sock), self.router, msg_queue=self.msg_queue
+            )
+            self.handlers.append(conn_handler)
+            Thread(target=conn_handler.run).start()
+
     def stop(self):
-        self._running = False
         Logger.info("stopping connection server")
+        self._running = False
+        for h in self.handlers:
+            h.stop()

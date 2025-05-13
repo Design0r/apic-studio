@@ -17,10 +17,10 @@ class Connection:
 
     def send(self, data: bytes | Message) -> Self:
         if isinstance(data, Message):
-            Logger.debug(f"sending message {data.message}")
+            Logger.debug(f"sending message: {data.message}")
             data = data.as_json()
         else:
-            Logger.debug(f"sending message len({len(data)})")
+            Logger.debug(f"sending message: {len(data)} bytes")
 
         header = len(data).to_bytes(4, "big")
         self.socket.sendall(header + data)
@@ -36,7 +36,7 @@ class Connection:
         body_size = int.from_bytes(header, "big")
         response = self.socket.recv(body_size).decode("utf-8")
         rjson = json.loads(response)
-        Logger.debug(f"receiving message {rjson.get('message')}")
+        Logger.debug(f"receiving message: {rjson.get('message')}")
         return rjson
 
     def close(self) -> None:
@@ -61,7 +61,7 @@ class Connection:
             c()
 
     def connect(self, address: tuple[str, int]) -> Self:
-        Logger.debug("Connecting to C4D connector...")
+        Logger.debug("connecting to C4D connector...")
         if self.is_connected and self.status():
             return self
 
@@ -81,7 +81,7 @@ class Connection:
             self._disconnect()
             return self
 
-        Logger.debug("Connected to C4D connector")
+        Logger.debug("connected to C4D connector")
         self.is_connected = True
         for c in self._on_connect:
             c()
