@@ -15,18 +15,14 @@ thread = None
 
 class ServerThread(C4DThread):
     def __init__(self, server: Server):
-        self.srv = server
+        self.server = server
 
     def Main(self):
-        self.srv.run()
+        self.server.run()
 
     def End(self, wait: bool = True):
-        self.srv.stop()
+        self.server.stop()
         super().End(wait)
-
-    def TestBreak(self) -> bool:
-        print("breaking")
-        return super().TestBreak()
 
 
 class TimerMessage(c4d.plugins.MessageData):
@@ -53,7 +49,6 @@ class TimerMessage(c4d.plugins.MessageData):
 
 
 def PluginMessage(id: int, _) -> bool:
-    # called during shutdown (before BaseThread system goes away)
     if id == c4d.C4DPL_ENDPROGRAM or id == c4d.C4DPL_SHUTDOWNTHREADS:
         if thread:
             thread.End(wait=False)

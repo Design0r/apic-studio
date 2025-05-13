@@ -29,11 +29,12 @@ class MainWindow(QWidget):
     def __init__(
         self,
         ctx: Connection,
+        settings: SettingsManager,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._widgets: dict[Path, ViewportButton] = {}
-        self.settings = SettingsManager()
+        self.settings = settings
         self.loader = AssetLoader()
         self.ctx = ctx
 
@@ -60,7 +61,7 @@ class MainWindow(QWidget):
             ToolbarDirection.Horizontal,
             {"materials": self.material_tb, "models": self.model_tb},
         )
-        self.viewport = Viewport(self.ctx, self.settings)
+        self.viewport = Viewport(self.ctx, self.settings, self.loader)
         self.model_tb.add_folder.clicked.connect(
             lambda: self.viewport.send_msg(Message("models.export.selected"))
         )

@@ -35,18 +35,17 @@ class ConnectionHandler:
         while self._is_running:
             try:
                 data = self.connection.recv()
-                message = Message(**data)
-                self.handle_message(message)
-            except Exception as e:
-                Logger.exception(e)
+            except Exception:
+                self.stop()
                 break
 
-        Logger.info(f"client {self.client_ip} disconnected")
-        self.connection.close()
+            message = Message(**data)
+            self.handle_message(message)
 
     def stop(self):
         self.connection.close()
         self._is_running = False
+        Logger.info(f"client {self.client_ip} disconnected")
 
 
 class Server:
@@ -77,9 +76,8 @@ class Server:
             except socket.timeout:
                 continue
 
-            conn_handler = ConnectionHandler(
-                Connection(sock), self.router, msg_queue=self.msg_queue
-            )
+            conn = Connection(sock)
+            conn_handler = ConnectionHandler(conn, self.router, self.msg_queue)
             self.handlers.append(conn_handler)
             Thread(target=conn_handler.run).start()
 

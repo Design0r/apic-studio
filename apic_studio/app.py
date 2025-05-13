@@ -28,7 +28,7 @@ class Application:
         db.init_db()
 
         self.app.setStyle("Fusion")
-        self.window = MainWindow(self.connection)
+        self.window = MainWindow(self.connection, self.settings)
 
     def shutdown(self):
         Logger.info("shutting down Apic Studio...")

@@ -119,7 +119,7 @@ def run_migration(data: dict[str, dict[str, str]]) -> None:
 def init_db():
     path = SettingsManager.DB_PATH
     if path.exists():
-        Logger.debug("database already exists. skipping initialization")
+        Logger.info("database already exists. skipping initialization")
         return
 
     path.parent.mkdir(parents=True, exist_ok=True)

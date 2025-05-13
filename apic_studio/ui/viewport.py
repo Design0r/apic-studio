@@ -19,11 +19,12 @@ class Viewport(QWidget):
         self,
         ctx: Connection,
         settings: SettingsManager,
+        loader: AssetLoader,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self._widgets: dict[Path, ViewportButton] = {}
-        self.loader = AssetLoader()
+        self.loader = loader
         self.settings = settings
         self.ctx = ctx
         self.cache: dict[str, dict[Path, Asset]] = {

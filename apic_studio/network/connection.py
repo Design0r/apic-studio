@@ -23,7 +23,13 @@ class Connection:
             Logger.debug(f"sending message: {len(data)} bytes")
 
         header = len(data).to_bytes(4, "big")
-        self.socket.sendall(header + data)
+        try:
+            self.socket.sendall(header + data)
+        except OSError:
+            Logger.error("failed to send message, socket is already closed")
+        except Exception as e:
+            Logger.exception(e)
+
         return self
 
     def send_recv(self, data: bytes | Message) -> dict[Any, Any]:
@@ -32,15 +38,27 @@ class Connection:
         return response
 
     def recv(self) -> dict[Any, Any]:
-        header = self.socket.recv(4)
-        body_size = int.from_bytes(header, "big")
-        response = self.socket.recv(body_size).decode("utf-8")
-        rjson = json.loads(response)
+        try:
+            header = self.socket.recv(4)
+            body_size = int.from_bytes(header, "big")
+            response = self.socket.recv(body_size).decode("utf-8")
+        except ConnectionAbortedError as e:
+            raise e
+
+        try:
+            rjson = json.loads(response)
+        except json.JSONDecodeError as e:
+            Logger.error("failed to decode message")
+            raise e
+
         Logger.debug(f"receiving message: {rjson.get('message')}")
         return rjson
 
     def close(self) -> None:
-        self.socket.close()
+        try:
+            self.socket.close()
+        except Exception:
+            pass
         self.is_connected = False
 
     def status(self) -> bool:
@@ -61,7 +79,7 @@ class Connection:
             c()
 
     def connect(self, address: tuple[str, int]) -> Self:
-        Logger.debug("connecting to C4D connector...")
+        Logger.info("connecting to C4D connector...")
         if self.is_connected and self.status():
             return self
 
@@ -81,7 +99,7 @@ class Connection:
             self._disconnect()
             return self
 
-        Logger.debug("connected to C4D connector")
+        Logger.info("connected to C4D connector")
         self.is_connected = True
         for c in self._on_connect:
             c()
