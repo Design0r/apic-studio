@@ -12,6 +12,7 @@ from apic_studio.core.asset_loader import AssetLoader
 from apic_studio.core.settings import SettingsManager
 from apic_studio.messaging.message import Message
 from apic_studio.network import Connection
+from apic_studio.services import pools
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
     MaterialToolbar,
@@ -54,8 +55,8 @@ class MainWindow(QWidget):
         self.sidebar = Sidebar(40)
         self.sidebar.highlight_modes(1)
 
-        self.model_tb = ModelToolbar()
-        self.material_tb = MaterialToolbar()
+        self.model_tb = ModelToolbar(pools.ModelPoolManager())
+        self.material_tb = MaterialToolbar(pools.MaterialPoolManager())
 
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,

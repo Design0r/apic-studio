@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from apic_studio.services.pools import PoolManager
+from apic_studio.ui.dialogs import CreatePoolDialog, DeletePoolDialog
 from apic_studio.ui.lines import VLine
 
 from ..core import Logger
@@ -356,10 +358,12 @@ class AssetToolbar(LabledToolbar):
     def __init__(
         self,
         label: str,
+        pool: PoolManager,
         thickness: int = 30,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
+        self.pool = pool
         super().__init__(label, thickness, direction, parent)
 
     @override
@@ -389,17 +393,30 @@ class AssetToolbar(LabledToolbar):
         self.add_folder.clicked.connect(lambda: self.add.emit())
         self.remove_folder.clicked.connect(lambda: self.remove.emit())
         self.open_folder.clicked.connect(lambda: self.open.emit())
+        self.add_folder.clicked.connect(self.open_add_dialog)
+        self.remove_folder.clicked.connect(self.open_delete_dialog)
+        self.open_folder.clicked.connect(self.pool.open_dir)
+
+    def open_add_dialog(self):
+        create_dialog = CreatePoolDialog()
+        create_dialog.pool_created.connect(lambda x: self.pool.new(*x))
+        create_dialog.exec()
+
+    def open_delete_dialog(self):
+        dialog = DeletePoolDialog()
+        dialog.pool_deleted.connect(self.pool.delete)
 
 
 class ModelToolbar(AssetToolbar):
     def __init__(
         self,
+        pool: PoolManager,
         label: str = "Model",
         thickness: int = 40,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
-        super().__init__(label, thickness, direction, parent)
+        super().__init__(label, pool, thickness, direction, parent)
 
     @override
     def init_widgets(self):
@@ -418,12 +435,13 @@ class ModelToolbar(AssetToolbar):
 class MaterialToolbar(AssetToolbar):
     def __init__(
         self,
+        pool: PoolManager,
         label: str = "Materials",
         thickness: int = 40,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
-        super().__init__(label, thickness, direction, parent)
+        super().__init__(label, pool, thickness, direction, parent)
 
     @override
     def init_widgets(self):

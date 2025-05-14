@@ -20,7 +20,7 @@ def create_dir(path: Union[str, Path]) -> None:
         return
 
     try:
-        path.mkdir()
+        path.mkdir(parents=True)
     except Exception as e:
         Logger.exception(e)
 

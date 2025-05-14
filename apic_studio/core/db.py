@@ -63,12 +63,12 @@ def insert(table: Tables, data: DBSchema) -> None:
         close_connection(conn)
 
 
-def select(table: Tables) -> dict[str, str]:
+def select(table: Tables) -> dict[str, Path]:
     data = {}
     conn = create_connection()
     try:
         cursor = conn.execute(f"SELECT name, path FROM {table.name};")
-        p = {name: path for name, path in cursor.fetchall()}
+        p = {name: Path(path) for name, path in cursor.fetchall()}
         data = dict(sorted(p.items()))
     except Exception as e:
         Logger.exception(e)
@@ -89,7 +89,7 @@ def delete(table: Tables, data: DBSchema) -> None:
         close_connection(conn)
 
 
-DBRow = dict[str, str]
+DBRow = dict[str, Path]
 
 
 def select_all() -> dict[str, DBRow]:
@@ -98,7 +98,7 @@ def select_all() -> dict[str, DBRow]:
     try:
         for table in Tables.members():
             cursor = conn.execute(f"SELECT name, path FROM {table}")
-            p = {name: path for name, path in cursor.fetchall()}
+            p = {name: Path(path) for name, path in cursor.fetchall()}
             data[table] = dict(sorted(p.items()))
 
     except Exception as e:
