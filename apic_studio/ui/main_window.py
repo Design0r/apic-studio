@@ -49,6 +49,8 @@ class MainWindow(QWidget):
         self.init_layouts()
         self.init_signals()
 
+        self.draw()
+
     def init_widgets(self):
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
 
@@ -90,6 +92,9 @@ class MainWindow(QWidget):
             lambda: self.ctx.connect(self.settings.WindowSettings.address)
         )
 
+        for t in self.toolbar.multibars.values():
+            t.pool_changed.connect(self.viewport.draw)
+
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [
             self.x(),
@@ -103,3 +108,9 @@ class MainWindow(QWidget):
     def set_view(self, view: str):
         self.toolbar.set_current(view)
         self.viewport.set_current(view)
+
+    def draw(self):
+        curr_pool = self.toolbar.current.current_pool
+        if not curr_pool:
+            return
+        self.viewport.draw(curr_pool)

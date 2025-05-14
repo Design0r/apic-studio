@@ -111,7 +111,6 @@ class ViewportButton(QWidget):
     ):
         super().__init__(parent)
         self.button_size = button_size
-        self.filesize = file.stat().st_size
         self.name = file.stem
         self.suffix = file.suffix
         self.checkable = checkable
@@ -131,7 +130,7 @@ class ViewportButton(QWidget):
         self.label.setContentsMargins(0, 3, 0, 5)
         self.label.setMaximumWidth(self.button_size[0])
 
-        self.file_size = QLabel(f"Size: {self.format_filesize()}")
+        self.file_size = QLabel("Size: ")
         self.file_size.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.file_size.setContentsMargins(0, 5, 0, 5)
         self.file_size.setStyleSheet(
@@ -161,12 +160,17 @@ class ViewportButton(QWidget):
     def init_signals(self):
         pass
 
-    def format_filesize(self) -> str:
+    @staticmethod
+    def _format_filesize(size: int) -> str:
         # bytes
-        filesize = f"{self.filesize / 1_000:.2f}KB"
-        if self.filesize >= 100_000_000:
-            filesize = f"{self.filesize / 1_000_000_000:.2f}GB"
-        elif self.filesize >= 100_000:
-            filesize = f"{self.filesize / 1_000_000:.2f}MB"
+        filesize = f"{size / 1_000:.2f}KB"
+        if size >= 100_000_000:
+            filesize = f"{size / 1_000_000_000:.2f}GB"
+        elif size >= 100_000:
+            filesize = f"{size / 1_000_000:.2f}MB"
 
         return filesize
+
+    def set_filesize(self, size: int):
+        filesize = self._format_filesize(size)
+        self.file_size.setText(f"Size: {filesize}")

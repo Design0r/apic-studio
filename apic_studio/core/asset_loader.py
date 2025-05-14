@@ -36,7 +36,7 @@ class AssetLoaderWorker(QObject):
     def run(self) -> None:
         while self._running:
             try:
-                path = self.task_queue.get(timeout=0.1)
+                path = self.task_queue.get()
             except Empty:
                 continue
 

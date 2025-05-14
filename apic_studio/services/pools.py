@@ -5,7 +5,7 @@ from apic_studio.core import Logger, db, fs
 
 
 class PoolManager(Protocol):
-    def new(self, path: Path, name: str) -> None: ...
+    def new(self, name: str, path: Path) -> tuple[str, Path]: ...
     def delete(self, path: Path) -> None: ...
     def open_dir(self, path: Path) -> None: ...
     def get(self) -> dict[str, Path]: ...
@@ -14,14 +14,16 @@ class PoolManager(Protocol):
 class _AssetPoolManager:
     POOL_TYPE = ""
 
-    def new(self, name: str, path: Path):
-        full_path = path / self.POOL_TYPE / name
+    def new(self, name: str, path: Path) -> tuple[str, Path]:
+        full_path = path / name / self.POOL_TYPE
         fs.create_dir(full_path)
 
-        schema = db.DBSchema(name, path)
+        schema = db.DBSchema(name, full_path)
         db.insert(db.Tables(self.POOL_TYPE), schema)
 
         Logger.info(f"created pool: {name} at {full_path}")
+
+        return name, full_path
 
     def delete(self, path: Path):
         fs.remove_dir(path)

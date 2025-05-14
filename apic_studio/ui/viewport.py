@@ -6,6 +6,7 @@ from typing import Optional
 from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
+from apic_studio.core import Logger
 from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.core.settings import SettingsManager
 from apic_studio.messaging import Message
@@ -37,7 +38,6 @@ class Viewport(QWidget):
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
-        self.draw()
 
     def init_widgets(self):
         self.grid_widget = QWidget()
@@ -57,13 +57,14 @@ class Viewport(QWidget):
         self.main_layout.setContentsMargins(5, 5, 0, 0)
         self.main_layout.addWidget(self.scroll_area)
 
-    def replace_icon(self, asset: Asset):
+    def init_signals(self):
+        self.loader.asset_loaded.connect(self.on_asset_load)
+
+    def on_asset_load(self, asset: Asset):
         w = self._widgets[asset.path]
         w.icon.setIcon(asset.icon)
         w.icon.setIconSize(QSize(200, 200))
-
-    def init_signals(self):
-        self.loader.asset_loaded.connect(self.replace_icon)
+        w.set_filesize(asset.size)
 
     def send_msg(self, msg: Message):
         self.ctx.send_recv(msg)
@@ -73,8 +74,18 @@ class Viewport(QWidget):
             w = self.flow_layout.takeAt(0).widget()
             w.setParent(None)
 
-    def draw(self):
-        for x in (self.settings.ROOT_PATH / "apic_studio/resources/icons").iterdir():
+    def draw(self, path: Path):
+        self._clear_layout()
+
+        Logger.debug(f"drawing called: {path}")
+        if not path:
+            return
+
+        for x in path.iterdir():
+            if cached_widget := self._widgets.get(x):
+                self.flow_layout.addWidget(cached_widget)
+                continue
+
             b = ViewportButton(x, (200, 200))
             self._widgets[x] = b
             self.flow_layout.addWidget(b)
@@ -86,4 +97,3 @@ class Viewport(QWidget):
 
         self.curr_view = view
         self._clear_layout()
-        self.draw()

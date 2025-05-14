@@ -1,4 +1,5 @@
 from enum import Enum
+from pathlib import Path
 from typing import Callable, Optional, Union, override
 
 from PySide6.QtCore import Qt, Signal
@@ -109,53 +110,6 @@ class Toolbar(QWidget):
 
     def add_widget(self, widget: QWidget):
         self.main_layout.addWidget(widget)
-
-
-class MultiToolbar(QWidget):
-    def __init__(
-        self,
-        direction: ToolbarDirection,
-        multibars: dict[str, Toolbar],
-        parent: Optional[QWidget] = None,
-    ):
-        super().__init__(parent)
-        self.mutibars = multibars
-        self.direction = direction
-        self.thickness = (
-            next(iter(self.mutibars.values())).thickness if len(multibars) > 0 else 30
-        )
-
-        self.init_widgets()
-        self.init_layouts()
-        self.init_signals()
-
-        if len(multibars) > 0:
-            self.set_current(next(iter(self.mutibars)))
-
-    def init_widgets(self):
-        if self.direction == ToolbarDirection.Horizontal:
-            self.setFixedHeight(self.thickness)
-        elif self.direction == ToolbarDirection.Vertical:
-            self.setFixedWidth(self.thickness)
-
-    def init_layouts(self):
-        self.main_layout = QHBoxLayout(self)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-
-    def init_signals(self):
-        pass
-
-    def _clear_layout(self):
-        while self.main_layout.count():
-            widget = self.main_layout.takeAt(0).widget()
-            widget.setParent(None)
-
-    def set_current(self, toolbar_id: str) -> Optional[Toolbar]:
-        if toolbar_id not in self.mutibars.keys():
-            return None
-
-        self._clear_layout()
-        self.main_layout.addWidget(self.mutibars[toolbar_id])
 
 
 class Sidebar(Toolbar):
@@ -354,6 +308,7 @@ class AssetToolbar(LabledToolbar):
     add = Signal()
     remove = Signal()
     open = Signal()
+    pool_changed = Signal(Path)
 
     def __init__(
         self,
@@ -370,6 +325,8 @@ class AssetToolbar(LabledToolbar):
     def init_widgets(self):
         super().init_widgets()
         self.dropdown = QComboBox()
+        self._pools: dict[str, Path] = {}
+
         size = (30, 30)
         self.add_folder = IconButton(size)
         self.add_folder.set_icon(":icons/tabler-icon-folder-plus.png")
@@ -377,6 +334,8 @@ class AssetToolbar(LabledToolbar):
         self.remove_folder.set_icon(":icons/tabler-icon-folder-minus.png")
         self.open_folder = IconButton(size)
         self.open_folder.set_icon(":icons/tabler-icon-folder-open.png")
+
+        self._load_pools()
 
     @override
     def init_layouts(self):
@@ -396,15 +355,85 @@ class AssetToolbar(LabledToolbar):
         self.add_folder.clicked.connect(self.open_add_dialog)
         self.remove_folder.clicked.connect(self.open_delete_dialog)
         self.open_folder.clicked.connect(self.pool.open_dir)
+        self.dropdown.currentTextChanged.connect(
+            lambda: self.pool_changed.emit(self.current_pool)
+        )
+
+    @property
+    def current_pool(self) -> Optional[Path]:
+        text = self.dropdown.currentText()
+        return self._pools.get(text)
 
     def open_add_dialog(self):
         create_dialog = CreatePoolDialog()
-        create_dialog.pool_created.connect(lambda x: self.pool.new(*x))
+        create_dialog.pool_created.connect(self.new_pool)
         create_dialog.exec()
+
+    def new_pool(self, data: tuple[str, Path]):
+        name, path = data
+        name, path = self.pool.new(name, path)
+
+        self.dropdown.addItem(name)
+        self.dropdown.setCurrentText(name)
+        self._pools[name] = path
 
     def open_delete_dialog(self):
         dialog = DeletePoolDialog()
         dialog.pool_deleted.connect(self.pool.delete)
+
+    def _load_pools(self):
+        items = self.pool.get()
+        self.dropdown.addItems(tuple(items.keys()))
+        self._pools = items
+
+
+class MultiToolbar(QWidget):
+    def __init__(
+        self,
+        direction: ToolbarDirection,
+        multibars: dict[str, AssetToolbar],
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent)
+        self.multibars = multibars
+        self.direction = direction
+        self.thickness = (
+            next(iter(self.multibars.values())).thickness if len(multibars) > 0 else 30
+        )
+        self.current = next(iter(self.multibars.values()))
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+        if len(multibars) > 0:
+            self.set_current(next(iter(self.multibars)))
+
+    def init_widgets(self):
+        if self.direction == ToolbarDirection.Horizontal:
+            self.setFixedHeight(self.thickness)
+        elif self.direction == ToolbarDirection.Vertical:
+            self.setFixedWidth(self.thickness)
+
+    def init_layouts(self):
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
+
+    def init_signals(self):
+        pass
+
+    def _clear_layout(self):
+        while self.main_layout.count():
+            widget = self.main_layout.takeAt(0).widget()
+            widget.setParent(None)
+
+    def set_current(self, toolbar_id: str) -> Optional[Toolbar]:
+        if toolbar_id not in self.multibars.keys():
+            return None
+
+        self._clear_layout()
+        self.current = self.multibars[toolbar_id]
+        self.main_layout.addWidget(self.current)
 
 
 class ModelToolbar(AssetToolbar):
