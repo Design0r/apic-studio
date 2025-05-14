@@ -108,6 +108,7 @@ class MainWindow(QWidget):
     def set_view(self, view: str):
         self.toolbar.set_current(view)
         self.viewport.set_current(view)
+        self.draw()
 
     def draw(self):
         curr_pool = self.toolbar.current.current_pool

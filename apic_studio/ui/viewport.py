@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QSize, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
 from apic_studio.core import Logger
@@ -62,9 +62,9 @@ class Viewport(QWidget):
 
     def on_asset_load(self, asset: Asset):
         w = self._widgets[asset.path]
-        w.icon.setIcon(asset.icon)
-        w.icon.setIconSize(QSize(200, 200))
+        w.set_thumbnail(asset.icon, 200)
         w.set_filesize(asset.size)
+        w.set_filetype(asset.suffix)
 
     def send_msg(self, msg: Message):
         self.ctx.send_recv(msg)

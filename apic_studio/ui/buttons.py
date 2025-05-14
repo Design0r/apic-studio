@@ -136,7 +136,7 @@ class ViewportButton(QWidget):
         self.file_size.setStyleSheet(
             "border-right: none;border-bottom:1px solid black; font-size: 8pt;"
         )
-        self.file_type = QLabel(f"Type: {self.suffix}")
+        self.file_type = QLabel("Type: ")
         self.file_type.setStyleSheet(
             "border-left: none;border-bottom:1px solid black;font-size: 8pt;"
         )
@@ -174,3 +174,10 @@ class ViewportButton(QWidget):
     def set_filesize(self, size: int):
         filesize = self._format_filesize(size)
         self.file_size.setText(f"Size: {filesize}")
+
+    def set_filetype(self, filetype: str):
+        self.file_type.setText(f"Type: {filetype}")
+
+    def set_thumbnail(self, icon: QIcon, size: int):
+        self.icon.setIcon(icon)
+        self.icon.setIconSize(QSize(size, size))

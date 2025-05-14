@@ -7,14 +7,21 @@ from typing import Optional
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 
+IMG_EXT = (".jpg", ".png")
+
 
 class Asset:
+    __slots__ = ("path", "name", "suffix", "size", "icon")
+
     def __init__(self, path: Path, icon: QIcon) -> None:
         self.path = path
         self.name = path.stem
         self.suffix = path.suffix
         self.size = path.stat().st_size
         self.icon = icon
+
+    def __repr__(self) -> str:
+        return f"Asset(path={self.path}, icon={self.icon})"
 
 
 class AssetLoaderWorker(QObject):
@@ -26,6 +33,7 @@ class AssetLoaderWorker(QObject):
 
         self.task_queue: Queue[Path] = Queue()
         self._running = True
+        self._default_icon = ":icons/tabler-icon-photo.png"
 
     def add_task(self, path: Path) -> None:
         self.task_queue.put(path)
@@ -36,7 +44,7 @@ class AssetLoaderWorker(QObject):
     def run(self) -> None:
         while self._running:
             try:
-                path = self.task_queue.get()
+                path = self.task_queue.get(timeout=0.2)
             except Empty:
                 continue
 
@@ -47,9 +55,16 @@ class AssetLoaderWorker(QObject):
         if path in self._cache:
             return self._cache[path]
 
+        icon = self._create_icon(self._search_thumbnail(path))
+        asset = Asset(path, icon)
+        self._cache[path] = asset
+
+        return asset
+
+    def _create_icon(self, thumbnail: str) -> QIcon:
         width, height = 200, 200
-        # thumbnail = str(path / path.stem / ".jpg")
-        icon = QIcon(str(path))
+        icon = QIcon(thumbnail)
+
         available_sizes = icon.availableSizes()
         if available_sizes and available_sizes[0].width() != width:
             pixmap = icon.pixmap(available_sizes[0])
@@ -57,14 +72,21 @@ class AssetLoaderWorker(QObject):
                 width,
                 height,
                 Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.FastTransformation,
+                Qt.TransformationMode.SmoothTransformation,
             )
             icon = QIcon(scaled_pixmap)
 
-        asset = Asset(path, icon)
-        self._cache[path] = asset
+        return icon
 
-        return asset
+    def _search_thumbnail(self, path: Path) -> str:
+        if not path.is_dir():
+            return self._default_icon
+
+        for p in path.iterdir():
+            if p.suffix.lower() in IMG_EXT:
+                return str(path / p.name)
+
+        return self._default_icon
 
 
 class AssetLoader(QObject):
