@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 
 IMG_EXT = (".jpg", ".png")
+CG_EXT = ("c4d",)
 
 
 class Asset:
