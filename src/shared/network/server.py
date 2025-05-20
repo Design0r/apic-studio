@@ -3,8 +3,8 @@ from queue import Queue
 from threading import Thread
 from typing import Optional
 
-from apic_studio.core import Logger
-from apic_studio.messaging import Message, MessageRouter
+from shared.logger import Logger
+from shared.messaging import Message, MessageRouter
 
 from . import Connection
 

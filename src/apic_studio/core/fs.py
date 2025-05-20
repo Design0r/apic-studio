@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 from typing import Union
 
-from . import Logger
+from shared.logger import Logger
 
 
 def create_dir(path: Union[str, Path]) -> None:

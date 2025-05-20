@@ -8,7 +8,7 @@ from pathlib import Path
 from socket import gethostname
 from typing import Any, TypeVar
 
-from .logger import Logger
+from shared.logger import Logger
 
 
 class Renderer(Enum):
@@ -113,8 +113,8 @@ class SettingsManager:
     HdriSettings: HdriSettings
 
     ROOT_PATH = Path(__file__).parent.parent.parent
-    CONFIG_PATH = ROOT_PATH / f"settings/config-{gethostname()}.json"
-    DB_PATH = ROOT_PATH / "db" / "apic_studio.db"
+    CONFIG_PATH = ROOT_PATH / f"configs/config-{gethostname()}.json"
+    DB_PATH = ROOT_PATH / "apic_studio.db"
     LOGS = ROOT_PATH / "logs"
     LOGGING_PATH = LOGS / f"{datetime.now().date()}.log"
 

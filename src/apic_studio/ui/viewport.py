@@ -6,13 +6,13 @@ from typing import Optional
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
 
-from apic_studio.core import Logger
 from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.core.settings import SettingsManager
-from apic_studio.messaging import Message
-from apic_studio.network import Connection
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.flow_layout import FlowLayout
+from shared.logger import Logger
+from shared.messaging import Message
+from shared.network import Connection
 
 
 class Viewport(QWidget):

@@ -16,8 +16,8 @@ from PySide6.QtWidgets import (
 from apic_studio.services.pools import PoolManager
 from apic_studio.ui.dialogs import CreatePoolDialog, DeletePoolDialog
 from apic_studio.ui.lines import VLine
+from shared.logger import Logger
 
-from ..core import Logger
 from .buttons import IconButton, SidebarButton
 
 SIDEBAR_STYLE = """

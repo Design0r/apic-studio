@@ -4,10 +4,10 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from apic_studio.core import db
-from apic_studio.core.logger import Logger
 from apic_studio.core.settings import SettingsManager
-from apic_studio.network import Connection
 from apic_studio.ui.main_window import MainWindow
+from shared.logger import Logger
+from shared.network import Connection
 
 
 class Application:

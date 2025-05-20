@@ -10,8 +10,6 @@ from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 from apic_studio import __version__
 from apic_studio.core.asset_loader import AssetLoader
 from apic_studio.core.settings import SettingsManager
-from apic_studio.messaging.message import Message
-from apic_studio.network import Connection
 from apic_studio.services import pools
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
@@ -22,6 +20,8 @@ from apic_studio.ui.toolbar import (
     ToolbarDirection,
 )
 from apic_studio.ui.viewport import Viewport
+from shared.messaging.message import Message
+from shared.network import Connection
 
 
 class MainWindow(QWidget):

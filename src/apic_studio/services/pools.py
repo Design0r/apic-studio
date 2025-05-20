@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Protocol
 
-from apic_studio.core import Logger, db, fs
+from apic_studio.core import db, fs
+from shared.logger import Logger
 
 
 class PoolManager(Protocol):

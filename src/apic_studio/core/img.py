@@ -2,7 +2,7 @@ import sys
 import time
 from pathlib import Path
 
-from . import Logger
+from shared.logger import Logger
 
 
 def take_screenshot(path: Path, geometry: tuple[int, int, int, int]) -> None:

@@ -5,11 +5,11 @@ from queue import Empty, Queue
 import c4d
 from c4d.threading import C4DThread
 
-sys.path.append(r"C:\Users\TheApic\GitHub\apic-studio")
-from apic_studio.connector import c4d as routers
-from apic_studio.core import Logger
-from apic_studio.messaging import Message, MessageRouter
-from apic_studio.network import Connection, Server
+# sys.path.append(r"C:\Users\TheApic\GitHub\apic-studio")
+from apic_connector import c4d as routers
+from shared.logger import Logger
+from shared.messaging import Message, MessageRouter
+from shared.network import Connection, Server
 
 thread = None
 PLUGIN_ID = 1234567

@@ -7,12 +7,23 @@ requires-python = ">=3.13"
 dependencies = ["pyside6>=6.8.2.1"]
 
 [dependency-groups]
-dev = ["pyside6-stubs>=6.7.3.0"]
+dev = ["pyinstaller>=6.13.0", "pyside6-stubs>=6.7.3.0"]
 
 [tool.pyrefly]
+python_version = "3.13"
+replace_imports_with_any = []
+ignore_errors_in_generated_code = false
+use_untyped_imports = false
+ignore_missing_source = false
+
+include = ["src"]
+
 site_package_path = [
     "C:\\Program Files\\Maxon Cinema 4D 2025\\resource\\modules\\python\\libs\\python311",
 ]
 search_path = [
     "C:\\Program Files\\Maxon Cinema 4D 2025\\resource\\modules\\python\\libs\\python311",
 ]
+
+[project.scripts]
+connector = "apic_connector:main"

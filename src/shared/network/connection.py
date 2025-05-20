@@ -4,8 +4,8 @@ import json
 import socket
 from typing import Any, Callable, Optional, Self
 
-from apic_studio.core import Logger
-from apic_studio.messaging.message import Message
+from shared.logger import Logger
+from shared.messaging.message import Message
 
 
 class Connection:

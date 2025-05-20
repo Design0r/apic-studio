@@ -13,3 +13,4 @@ wheels/
 db
 logs
 settings
+*.spec

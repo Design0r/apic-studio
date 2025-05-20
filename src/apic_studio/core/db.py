@@ -5,7 +5,8 @@ from enum import StrEnum
 from pathlib import Path
 from typing import NamedTuple
 
-from ..core import Logger
+from shared.logger import Logger
+
 from .settings import SettingsManager
 
 

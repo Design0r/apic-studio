@@ -10,7 +10,7 @@ LoggerCallback = Callable[[str, str], None]
 
 
 class Logger:
-    LOGGER_NAME = "render_vault"
+    LOGGER_NAME = "apic_studio"
 
     FORMAT_DEFAULT = f"[%(name)s][{__version__}][%(levelname)s] %(message)s"
 
