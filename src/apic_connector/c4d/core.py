@@ -1,5 +1,5 @@
-from apic_studio.messaging import Message, MessageRouter
-from apic_studio.network import Connection
+from shared.messaging import Message, MessageRouter
+from shared.network import Connection
 
 core_router = MessageRouter("core.")
 

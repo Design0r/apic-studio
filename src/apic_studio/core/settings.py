@@ -98,6 +98,14 @@ class WindowSettings(Settings):
         self.socket_addr = "localhost"
         self.socket_port = 65432
 
+
+@register
+class CoreSettings(Settings):
+    def __init__(self) -> None:
+        super().__init__()
+        self.socket_addr = "localhost"
+        self.socket_port = 65432
+
     @property
     def address(self) -> tuple[str, int]:
         return (self.socket_addr, self.socket_port)
@@ -106,6 +114,7 @@ class WindowSettings(Settings):
 class SettingsManager:
     _instance = None
 
+    CoreSettings: CoreSettings
     WindowSettings: WindowSettings
     MaterialSettings: MaterialSettings
     ModelSettings: ModelSettings

@@ -89,7 +89,7 @@ class MainWindow(QWidget):
         self.ctx.on_connect(lambda: s.conn_btn.setText("C"))
         self.ctx.on_disconnect(lambda: s.conn_btn.setText("D"))
         s.conn_btn.clicked.connect(
-            lambda: self.ctx.connect(self.settings.WindowSettings.address)
+            lambda: self.ctx.connect(self.settings.CoreSettings.address)
         )
 
         for t in self.toolbar.multibars.values():

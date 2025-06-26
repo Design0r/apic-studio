@@ -7,7 +7,11 @@ requires-python = ">=3.13"
 dependencies = ["pyside6>=6.8.2.1"]
 
 [dependency-groups]
-dev = ["pyinstaller>=6.13.0", "pyside6-stubs>=6.7.3.0"]
+dev = [
+    "pyinstaller>=6.13.0",
+ "pyside6-stubs>=6.7.3.0",
+ "ruff>=0.12.0",
+]
 
 [tool.pyrefly]
 python_version = "3.13"

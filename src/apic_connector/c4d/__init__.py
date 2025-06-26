@@ -1,2 +1,2 @@
-from .core import *
-from .models import *
+from core import core_router
+from models import models_router

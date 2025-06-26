@@ -15,6 +15,7 @@ class Application:
         self.settings = SettingsManager()
         self.app = QApplication(sys.argv)
         self.connection = Connection.client_connection()
+        self.window: MainWindow
 
         self.init()
 
@@ -44,7 +45,7 @@ class Application:
     def run(self):
         Logger.info("starting Apic Studio...")
 
-        self.connection.connect(self.settings.WindowSettings.address)
+        self.connection.connect(self.settings.CoreSettings.address)
         self.window.show()
         self.app.exec()
 

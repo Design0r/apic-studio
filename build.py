@@ -95,7 +95,7 @@ def main():
         b.add_ext_copy(src, dst)
 
     b.set_namespace("apic_connector_plugin")
-    b.add_ressource(CWD / "src" / "apic_connector.py", rename="apic_connector.pyp")
+    b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector.pyp")
     b.add_ressource(CWD / "src" / "shared")
     b.add_ressource(CWD / "src" / "apic_connector")
     b.build()

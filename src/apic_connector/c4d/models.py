@@ -1,7 +1,8 @@
-from apic_studio.core import Logger
-from apic_studio.messaging import Message, MessageRouter
-from apic_studio.network import Connection
-from apic_studio.services import models
+from shared.logger import Logger
+from shared.messaging import Message, MessageRouter
+from shared.network import Connection
+
+from .services import models
 
 models_router = MessageRouter("models.")
 
