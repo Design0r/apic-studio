@@ -90,7 +90,7 @@ def main():
     b = Builder(CWD / "dist")
 
     if sys.platform == "win32":
-        src = CWD / "src" / "apic_connector.py"
+        src = CWD / "src" / "run_connector.py"
         dst = r"W:\Pipeline\Apic_Cinema_Pipeline\Plugins\apic_studio\apic_connector.pyp"
         b.add_ext_copy(src, dst)
 

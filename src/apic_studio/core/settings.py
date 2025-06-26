@@ -23,7 +23,6 @@ class Settings(ABC):
 
     def __init__(self):
         self.pools = {}
-        self.current_pool = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -58,6 +57,7 @@ def register(settings: type[T]) -> type[T]:
 class MaterialSettings(Settings):
     def __init__(self):
         super().__init__()
+        self.current_pool = ""
         self.renderer = Renderer.VRAY.value
         self.render_scene = "Path/to/render/scene"
         self.render_object = "shaderball_object"
@@ -70,6 +70,7 @@ class MaterialSettings(Settings):
 class ModelSettings(Settings):
     def __init__(self):
         super().__init__()
+        self.current_pool = ""
         self.screenshot_opacity = 0.30
 
 
@@ -77,6 +78,7 @@ class ModelSettings(Settings):
 class HdriSettings(Settings):
     def __init__(self):
         super().__init__()
+        self.current_pool = ""
         self.hdri_renderer = Renderer.VRAY.value
         self.auto_generate_thumbnails = True
 
@@ -85,6 +87,7 @@ class HdriSettings(Settings):
 class LightsetSettings(Settings):
     def __init__(self):
         super().__init__()
+        self.current_pool = ""
 
 
 @register
@@ -95,8 +98,6 @@ class WindowSettings(Settings):
         self.current_viewport = 0
         self.asset_button_size = 350
         self.ui_scale = 1
-        self.socket_addr = "localhost"
-        self.socket_port = 65432
 
 
 @register
