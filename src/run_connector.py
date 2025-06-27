@@ -1,11 +1,13 @@
 import importlib
 import sys
+from pathlib import Path
 from queue import Empty, Queue
 
 import c4d
 from c4d.threading import C4DThread
 
-# sys.path.append(r"C:\Users\TheApic\GitHub\apic-studio")
+sys.path.append(str(Path(__file__).parent / "apic_connector"))
+sys.path.append(str(Path(__file__).parent / "shared"))
 from apic_connector import c4d as routers
 from shared.logger import Logger
 from shared.messaging import Message, MessageRouter
@@ -65,7 +67,7 @@ def PluginMessage(id: int, _) -> bool:
 
         importlib.reload(apic_studio)
         for name, mod in list(sys.modules.items()):
-            if name.startswith("apic_studio."):
+            if name.startswith("apic_connector.") or name.startswith("shared."):
                 importlib.reload(mod)
 
         main()

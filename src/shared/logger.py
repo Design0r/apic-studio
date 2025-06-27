@@ -4,15 +4,13 @@ import sys
 from pathlib import Path
 from typing import Callable
 
-from apic_studio import __version__
-
 LoggerCallback = Callable[[str, str], None]
 
 
 class Logger:
     LOGGER_NAME = "apic_studio"
 
-    FORMAT_DEFAULT = f"[%(name)s][{__version__}][%(levelname)s] %(message)s"
+    FORMAT_DEFAULT = "[%(name)s][%(levelname)s] %(message)s"
 
     LEVEL_DEFAULT = logging.DEBUG
     PROPAGATE_DEFAULT = True
@@ -122,7 +120,7 @@ class Logger:
         hostname = socket.gethostname()
 
         fmt = logging.Formatter(
-            fmt=f"[%(asctime)s][{hostname}][{__version__}][%(levelname)s] %(message)s",
+            fmt=f"[%(asctime)s][{hostname}][%(levelname)s] %(message)s",
             datefmt="%Y-%m-%d %H:%M",
         )
         file_handler.setFormatter(fmt)

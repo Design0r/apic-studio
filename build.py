@@ -2,8 +2,6 @@ import shutil
 import sys
 from pathlib import Path
 
-import PyInstaller.__main__
-
 
 class Builder:
     def __init__(self, build_dir: Path):
@@ -75,7 +73,8 @@ class Builder:
 
 def main():
     CWD = Path(__file__).parent
-    PyInstaller.__main__.run(
+    """     
+        PyInstaller.__main__.run(
         [
             "src/apic_studio.py",
             "--onefile",
@@ -83,21 +82,22 @@ def main():
             "Apic Studio",
             "--noconsole",
             "--icon",
-            r".\src\apic_studio\resources\icons\apic_logo.ico",
+            ".\\src\\apic_studio\\resources\\icons\\apic_logo.ico",
         ]
-    )
+    ) """
 
     b = Builder(CWD / "dist")
 
-    if sys.platform == "win32":
-        src = CWD / "src" / "run_connector.py"
-        dst = r"W:\Pipeline\Apic_Cinema_Pipeline\Plugins\apic_studio\apic_connector.pyp"
-        b.add_ext_copy(src, dst)
-
     b.set_namespace("apic_connector_plugin")
-    b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector.pyp")
-    b.add_ressource(CWD / "src" / "shared")
-    b.add_ressource(CWD / "src" / "apic_connector")
+    b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector_main.pyp")
+
+    if sys.platform == "win32":
+        deps = Path("W:\\Pipeline\\Apic_Cinema_Pipeline\\Dependencies")
+        plugins = Path("W:\\Pipeline\\Apic_Cinema_Pipeline\\Plugins\\apic_connector")
+        b.add_ext_copy(CWD / "src" / "run_connector.py", plugins / "apic_connector.pyp")
+        b.add_ext_copy(CWD / "src" / "shared", deps / "shared")
+        b.add_ext_copy(CWD / "src" / "apic_connector", deps / "apic_connector")
+
     b.build()
 
 

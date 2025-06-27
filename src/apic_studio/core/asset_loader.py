@@ -8,7 +8,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 
 IMG_EXT = (".jpg", ".png")
-CG_EXT = ("c4d",)
+CG_EXT = (".c4d",)
 
 
 class Asset:
@@ -50,14 +50,20 @@ class AssetLoaderWorker(QObject):
                 continue
 
             asset = self.load_asset(path)
-            self.asset_loaded.emit(asset)
+            if asset:
+                self.asset_loaded.emit(asset)
 
-    def load_asset(self, path: Path) -> Asset:
+    def load_asset(self, path: Path) -> Optional[Asset]:
         if path in self._cache:
             return self._cache[path]
 
         icon = self._create_icon(self._search_thumbnail(path))
-        asset = Asset(path, icon)
+        model = self._search_3d_model(path)
+        print(f"Loading asset from {model}...")
+        if not model:
+            return
+
+        asset = Asset(model, icon)
         self._cache[path] = asset
 
         return asset
@@ -88,6 +94,20 @@ class AssetLoaderWorker(QObject):
                 return str(path / p.name)
 
         return self._default_icon
+
+    def _search_3d_model(self, path: Path) -> Optional[Path]:
+        if not path.is_dir() and path.suffix.lower() in CG_EXT:
+            return path
+
+        if not path.is_dir():
+            return None
+
+        for p in path.iterdir():
+            print(p)
+            if p.suffix.lower() in CG_EXT:
+                return path / p.name
+
+        return None
 
 
 class AssetLoader(QObject):

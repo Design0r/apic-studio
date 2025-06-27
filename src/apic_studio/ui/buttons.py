@@ -114,6 +114,7 @@ class ViewportButton(QWidget):
         self.name = file.stem
         self.suffix = file.suffix
         self.checkable = checkable
+        self.file = file
 
         self.setMinimumSize(*button_size)
         self.setToolTip(file.stem)

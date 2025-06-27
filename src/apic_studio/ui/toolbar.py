@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from apic_studio.services.pools import PoolManager
-from apic_studio.ui.dialogs import CreatePoolDialog, DeletePoolDialog
+from apic_studio.ui.dialogs import CreatePoolDialog, DeletePoolDialog, ExportModelDialog
 from apic_studio.ui.lines import VLine
 from shared.logger import Logger
 
@@ -354,7 +354,7 @@ class AssetToolbar(LabledToolbar):
         self.open_folder.clicked.connect(lambda: self.open.emit())
         self.add_folder.clicked.connect(self.open_add_dialog)
         self.remove_folder.clicked.connect(self.open_delete_dialog)
-        self.open_folder.clicked.connect(self.pool.open_dir)
+        self.open_folder.clicked.connect(lambda: self.pool.open_dir(self.current_pool))
         self.dropdown.currentTextChanged.connect(
             lambda: self.pool_changed.emit(self.current_pool)
         )
@@ -450,15 +450,47 @@ class ModelToolbar(AssetToolbar):
     @override
     def init_widgets(self):
         super().init_widgets()
+        self.export_btn = IconButton((30, 30))
+        self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
+        self.export_btn.set_tooltip("Export Model")
 
     @override
     def init_layouts(self):
         super().init_layouts()
-        self.add_widgets([], stretch=True)
+
+        self.add_widgets([self.export_btn], stretch=True)
 
     @override
     def init_signals(self):
         super().init_signals()
+        self.export_btn.clicked.connect(self.export_dialog)
+
+    def export_dialog(self):
+        dialog = ExportModelDialog()
+        dialog.finished.connect(self.on_export_dialog_finished)
+        dialog.exec()
+
+    def on_export_dialog_finished(self, data: ExportModelDialog.Data):
+        if not self.current_pool:
+            Logger.error("No current pool selected for export.")
+            return
+
+        name = data["name"]
+        ext = data["ext"]
+        export_type = data["export_type"]
+        copy_textures = data["copy_textures"]
+
+        file_dir = self.current_pool / name
+        file_dir.mkdir(parents=True, exist_ok=True)
+        file_path = file_dir / f"{name}.{ext}"
+
+        if export_type == ExportModelDialog.ExportType.SAVE:
+            self.pool.save(file_path)
+        elif export_type == ExportModelDialog.ExportType.EXPORT:
+            self.pool.export(file_path)
+
+        if copy_textures:
+            self.pool.copy_textures(file_path)
 
 
 class MaterialToolbar(AssetToolbar):

@@ -21,6 +21,10 @@ class Message(NamedTuple):
         message = self._asdict()
         return json.dumps(message).encode(encoding)
 
+    @staticmethod
+    def from_dict(data: dict[str, Any]) -> Message:
+        return Message(message=data["message"], data=data.get("data"))
+
 
 MsgHandlerFunc = Callable[["Connection", Message], None]
 

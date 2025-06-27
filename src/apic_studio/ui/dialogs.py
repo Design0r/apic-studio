@@ -1,8 +1,11 @@
+from enum import StrEnum
 from pathlib import Path
-from typing import Optional
+from typing import Literal, Optional, TypedDict
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
     QFileDialog,
@@ -114,3 +117,69 @@ class DeletePoolDialog(QDialog):
     def accept(self) -> None:
         self.pool_deleted.emit()
         super().accept()
+
+
+class ExportModelDialog(QDialog):
+    class ExportType(StrEnum):
+        SAVE = "Save current Scene"
+        EXPORT = "Export selected"
+
+    class Data(TypedDict):
+        name: str
+        ext: str
+        export_type: Literal["Save current Scene", "Export selected"]
+        copy_textures: bool
+
+    finished = Signal(Data)
+
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Export")
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.name_edit = QLineEdit("")
+        self.name_edit.setFixedHeight(30)
+
+        self.export_options = QComboBox()
+        self.export_options.addItems([self.ExportType.EXPORT, self.ExportType.SAVE])
+
+        self.copy_textues_check = QCheckBox("")
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+
+        self.form_layout.addRow("Name", self.name_edit)
+        self.form_layout.addRow("Export Options", self.export_options)
+        self.form_layout.addRow("Copy Textures and Repath", self.copy_textues_check)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+    def accept(self) -> None:
+        super().accept()
+        opt = self.export_options.currentText()
+        name, ext = (self.name_edit.text(), "c4d")
+
+        data = {
+            "name": name,
+            "ext": ext,
+            "export_type": self.ExportType(opt).value,
+            "copy_textures": self.copy_textues_check.isChecked(),
+        }
+
+        self.finished.emit(data)

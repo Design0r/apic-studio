@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import shutil
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QHBoxLayout, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QAction
+from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QVBoxLayout, QWidget
 
 from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.core.settings import SettingsManager
@@ -24,11 +27,11 @@ class Viewport(QWidget):
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
-        self._widgets: dict[Path, ViewportButton] = {}
+        self._widgets: dict[str, ViewportButton] = {}
         self.loader = loader
         self.settings = settings
         self.ctx = ctx
-        self.cache: dict[str, dict[Path, Asset]] = {
+        self.cache: dict[str, dict[str, Asset]] = {
             "models": {},
             "materials": {},
             "hdris": {},
@@ -61,10 +64,12 @@ class Viewport(QWidget):
         self.loader.asset_loaded.connect(self.on_asset_load)
 
     def on_asset_load(self, asset: Asset):
-        w = self._widgets[asset.path]
+        w = self._widgets[asset.path.stem]
         w.set_thumbnail(asset.icon, 200)
         w.set_filesize(asset.size)
         w.set_filetype(asset.suffix)
+        w.file = asset.path
+        self.flow_layout.addWidget(w)
 
     def send_msg(self, msg: Message):
         self.ctx.send_recv(msg)
@@ -82,13 +87,14 @@ class Viewport(QWidget):
             return
 
         for x in path.iterdir():
-            if cached_widget := self._widgets.get(x):
+            if cached_widget := self._widgets.get(x.stem):
                 self.flow_layout.addWidget(cached_widget)
                 continue
 
             b = ViewportButton(x, (200, 200))
-            self._widgets[x] = b
-            self.flow_layout.addWidget(b)
+            b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
+            self._widgets[x.stem] = b
             self.loader.load_asset(x)
 
     def set_current(self, view: str):
@@ -97,3 +103,29 @@ class Viewport(QWidget):
 
         self.curr_view = view
         self._clear_layout()
+
+    def on_context_menu(self, btn: ViewportButton, point: QPoint):
+        import_act = QAction("Import")
+        import_act.triggered.connect(
+            lambda: self.send_msg(Message("models.import", {"path": str(btn.file)}))
+        )
+        delete_act = QAction("Delete")
+        delete_act.triggered.connect(lambda: self.delete_widget(btn))
+
+        menu = QMenu()
+        menu.addAction(import_act)
+        menu.addSeparator()
+        menu.addAction(delete_act)
+
+        menu.exec_(btn.mapToGlobal(point))
+
+    def delete_widget(self, btn: ViewportButton):
+        if btn.file.is_dir():
+            shutil.rmtree(btn.file, ignore_errors=True)
+        else:
+            btn.file.unlink(missing_ok=True)
+
+        if btn.file.stem in self._widgets:
+            del self._widgets[btn.file.stem]
+        btn.setParent(None)
+        btn.deleteLater()

@@ -27,9 +27,11 @@ class ConnectionHandler:
         Logger.info(f"client: {self.client_ip} connected")
 
     def handle_message(self, message: Message) -> None:
-        self.router.serve(self.connection, message)
         if self.msg_queue:
             self.msg_queue.put((self.connection, message))
+            return
+
+        self.router.serve(self.connection, message)
 
     def run(self) -> None:
         while self._is_running:
@@ -52,7 +54,7 @@ class Server:
     def __init__(
         self,
         addr: str = "localhost",
-        port: int = 65432,
+        port: int = 1337,
         router: MessageRouter = MessageRouter(),
         msg_queue: Optional[Queue[tuple[Connection, Message]]] = None,
     ) -> None:

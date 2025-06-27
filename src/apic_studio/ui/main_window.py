@@ -57,8 +57,8 @@ class MainWindow(QWidget):
         self.sidebar = Sidebar(40)
         self.sidebar.highlight_modes(1)
 
-        self.model_tb = ModelToolbar(pools.ModelPoolManager())
-        self.material_tb = MaterialToolbar(pools.MaterialPoolManager())
+        self.model_tb = ModelToolbar(pools.ModelPoolManager(self.ctx))
+        self.material_tb = MaterialToolbar(pools.MaterialPoolManager(self.ctx))
 
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
