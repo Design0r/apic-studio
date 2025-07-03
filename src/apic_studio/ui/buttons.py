@@ -172,12 +172,11 @@ class ViewportButton(QWidget):
 
         return filesize
 
-    def set_filesize(self, size: int):
+    def set_file(self, file: Path, size: int, filetype: str):
         filesize = self._format_filesize(size)
         self.file_size.setText(f"Size: {filesize}")
-
-    def set_filetype(self, filetype: str):
         self.file_type.setText(f"Type: {filetype}")
+        self.file = file
 
     def set_thumbnail(self, icon: QIcon, size: int):
         self.icon.setIcon(icon)

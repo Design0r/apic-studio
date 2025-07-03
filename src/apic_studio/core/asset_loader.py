@@ -12,17 +12,18 @@ CG_EXT = (".c4d",)
 
 
 class Asset:
-    __slots__ = ("path", "name", "suffix", "size", "icon")
+    __slots__ = ("path", "name", "suffix", "size", "icon", "file")
 
-    def __init__(self, path: Path, icon: QIcon) -> None:
-        self.path = path
-        self.name = path.stem
-        self.suffix = path.suffix
-        self.size = path.stat().st_size
+    def __init__(self, file: Path, icon: QIcon) -> None:
+        self.file = file
+        self.path = file.parent
+        self.name = file.stem
+        self.size = file.stat().st_size
         self.icon = icon
+        self.suffix = file.suffix
 
     def __repr__(self) -> str:
-        return f"Asset(path={self.path}, icon={self.icon})"
+        return f"Asset(path={self.file}, icon={self.icon})"
 
 
 class AssetLoaderWorker(QObject):
@@ -122,6 +123,12 @@ class AssetLoader(QObject):
         self.t.started.connect(self.worker.run)
         self.worker.asset_loaded.connect(self.on_asset_loaded)
         self.t.start()
+
+    def is_asset(self, path: Path) -> bool:
+        if path.is_dir():
+            return True
+
+        return path.suffix in CG_EXT
 
     def load_asset(self, path: Path):
         self.worker.add_task(path)

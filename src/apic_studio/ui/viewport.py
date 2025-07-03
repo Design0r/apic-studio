@@ -66,9 +66,8 @@ class Viewport(QWidget):
     def on_asset_load(self, asset: Asset):
         w = self._widgets[asset.path.stem]
         w.set_thumbnail(asset.icon, 200)
-        w.set_filesize(asset.size)
-        w.set_filetype(asset.suffix)
-        w.file = asset.path
+        w.set_file(asset.file, asset.size, asset.suffix)
+        w.file = asset.file
         self.flow_layout.addWidget(w)
 
     def send_msg(self, msg: Message):
@@ -87,6 +86,9 @@ class Viewport(QWidget):
             return
 
         for x in path.iterdir():
+            if not self.loader.is_asset(x):
+                continue
+
             if cached_widget := self._widgets.get(x.stem):
                 self.flow_layout.addWidget(cached_widget)
                 continue
