@@ -11,9 +11,9 @@ def export_selected(file_path: str):
     flags = c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST | c4d.SAVEDOCUMENTFLAGS_0
     result = c4d.documents.SaveDocument(doc, file_path, flags, c4d.FORMAT_C4DEXPORT)
     if result:
-        c4d.gui.MessageDialog(f"Export succeeded:\n{file_path}")
+        print(f"Export succeeded:\n{file_path}")
     else:
-        c4d.gui.MessageDialog("Export failed. Check console for errors.")
+        print("Export failed. Check console for errors.")
 
 
 def import_file(file_path: str):

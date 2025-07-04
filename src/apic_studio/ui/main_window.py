@@ -20,7 +20,6 @@ from apic_studio.ui.toolbar import (
     ToolbarDirection,
 )
 from apic_studio.ui.viewport import Viewport
-from shared.messaging.message import Message
 from shared.network import Connection
 
 
@@ -65,9 +64,6 @@ class MainWindow(QWidget):
             {"materials": self.material_tb, "models": self.model_tb},
         )
         self.viewport = Viewport(self.ctx, self.settings, self.loader)
-        self.model_tb.add_folder.clicked.connect(
-            lambda: self.viewport.send_msg(Message("models.export.selected"))
-        )
 
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
@@ -94,6 +90,7 @@ class MainWindow(QWidget):
 
         for t in self.toolbar.multibars.values():
             t.pool_changed.connect(self.viewport.draw)
+            t.asset_changed.connect(self.viewport.loader.load_asset)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [

@@ -1,5 +1,6 @@
+import shutil
 from pathlib import Path
-from typing import Optional
+from typing import Optional, override
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QIcon
@@ -181,3 +182,11 @@ class ViewportButton(QWidget):
     def set_thumbnail(self, icon: QIcon, size: int):
         self.icon.setIcon(icon)
         self.icon.setIconSize(QSize(size, size))
+
+    @override
+    def deleteLater(self):
+        if self.file.is_dir():
+            shutil.rmtree(self.file, ignore_errors=True)
+        else:
+            self.file.unlink(missing_ok=True)
+        super().deleteLater()

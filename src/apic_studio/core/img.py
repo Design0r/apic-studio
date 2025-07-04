@@ -6,7 +6,7 @@ from shared.logger import Logger
 
 
 def take_screenshot(path: Path, geometry: tuple[int, int, int, int]) -> None:
-    import mss.tools
+    import mss
     from PIL import Image
 
     x, y, w, h = geometry
@@ -18,6 +18,7 @@ def take_screenshot(path: Path, geometry: tuple[int, int, int, int]) -> None:
             "width": w,
             "height": h,
         }
+        print(monitor)
 
         sct_img = sct.grab(monitor)
         img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")

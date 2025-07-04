@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from apic_studio.core import db, fs
 from shared.logger import Logger
@@ -12,8 +12,8 @@ class PoolManager(Protocol):
     def delete(self, path: Path) -> None: ...
     def open_dir(self, path: Path) -> None: ...
     def get(self) -> dict[str, Path]: ...
-    def save(self, path: Path) -> None: ...
-    def export(self, path: Path) -> None: ...
+    def save(self, path: Path) -> dict[str, Any]: ...
+    def export(self, path: Path) -> dict[str, Any]: ...
     def copy_textures(self, path: Path) -> None: ...
 
 
@@ -48,7 +48,7 @@ class _AssetPoolManager:
     def open_dir(self, path: Path):
         fs.open_dir(path)
 
-    def export(self, path: Path):
+    def export(self, path: Path) -> dict[str, Any]:
         res = self.ctx.send_recv(
             Message(f"{self.POOL_TYPE}.export.selected", {"path": str(path)})
         )
@@ -57,19 +57,21 @@ class _AssetPoolManager:
             Logger.error(
                 f"failed to export {self.POOL_TYPE} asset: {path.name} to {path}: {msg.message} {msg.data}"
             )
-            return
+            return {}
 
         Logger.info(f"exported {self.POOL_TYPE} asset: {path.name} to {path}")
+        return res
 
-    def save(self, path: Path):
+    def save(self, path: Path) -> dict[str, Any]:
         res = self.ctx.send_recv(Message(f"{self.POOL_TYPE}.save", {"path": str(path)}))
         msg = Message.from_dict(res)
         if msg.message != "success":
             Logger.error(
                 f"failed to save {self.POOL_TYPE} asset: {path.name} to {path}: {msg.message} {msg.data}"
             )
-            return
+            return {}
         Logger.info(f"saved {self.POOL_TYPE} asset: {path.name} to {path}")
+        return res
 
     def copy_textures(self, path: Path):
         Logger.info(f"Copying textures for {path.name} to {path}")

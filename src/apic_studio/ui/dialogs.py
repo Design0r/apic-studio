@@ -1,8 +1,9 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal, Optional, TypedDict
+from typing import Literal, NamedTuple, Optional, TypedDict
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtGui import QCursor, QMouseEvent
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -183,3 +184,91 @@ class ExportModelDialog(QDialog):
         }
 
         self.finished.emit(data)
+
+
+class ScreenshotResult(NamedTuple):
+    geometry: tuple[int, int, int, int]
+    folder: Path
+    asset_name: str
+
+
+class ScreenshotDialog(QDialog):
+    take_screenshot = Signal(ScreenshotResult)
+
+    def __init__(self, model_path: Path, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setStyleSheet("border: 2px solid black;")
+        self.setWindowOpacity(0.3)
+        self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
+
+        self.resize(300, 300)
+
+        self.model_path = model_path
+
+        self._dragPos = QPoint()
+
+        self._resize = False
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_group = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.setAlignment(Qt.AlignmentFlag.AlignRight)
+        self.main_layout.addStretch()
+        self.main_layout.addWidget(self.button_group)
+
+    def init_signals(self):
+        self.button_group.accepted.connect(self.accept)
+        self.button_group.rejected.connect(self.reject)
+
+    def accept(self):
+        self.take_screenshot.emit(
+            ScreenshotResult(
+                (self.x(), self.y(), self.width(), self.height()),
+                self.model_path.parent,
+                self.model_path.stem,
+            )
+        )
+
+        super().accept()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        # Enable resizing if the mouse is at the border of the window
+        if (abs(event.x() - self.width()) < 10) or (
+            abs(event.y() - self.height()) < 10
+        ):
+            self._resize = True
+        else:
+            self._dragPos = event.globalPos()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if (abs(event.x() - self.width()) < 10) or (
+            abs(event.y() - self.height()) < 10
+        ):
+            self.setCursor(QCursor(Qt.CursorShape.SizeFDiagCursor))
+
+        else:
+            self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
+
+        if event.buttons() == Qt.MouseButton.LeftButton:
+            if self._resize:
+                self.resize(event.x(), event.x())
+
+            else:
+                diff = event.globalPos() - self._dragPos
+                new_pos = self.pos() + diff
+                self.move(new_pos)
+                self._dragPos = event.globalPos()
+
+    def mouseReleaseEvent(self, event: QMouseEvent):
+        self._resize = False
+        self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))

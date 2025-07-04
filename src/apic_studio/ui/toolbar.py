@@ -309,6 +309,7 @@ class AssetToolbar(LabledToolbar):
     remove = Signal()
     open = Signal()
     pool_changed = Signal(Path)
+    asset_changed = Signal(Path)
 
     def __init__(
         self,
@@ -488,6 +489,7 @@ class ModelToolbar(AssetToolbar):
             self.pool.save(file_path)
         elif export_type == ExportModelDialog.ExportType.EXPORT:
             self.pool.export(file_path)
+            self.pool_changed.emit(self.current_pool)
 
         if copy_textures:
             self.pool.copy_textures(file_path)

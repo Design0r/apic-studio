@@ -1,6 +1,9 @@
 import logging
+import os
 import sys
 
+from PySide6.QtCore import QCoreApplication, Qt
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 from apic_studio.core import db
@@ -8,6 +11,25 @@ from apic_studio.core.settings import SettingsManager
 from apic_studio.ui.main_window import MainWindow
 from shared.logger import Logger
 from shared.network import Connection
+
+os.environ["QT_AUTO_SCREEN_SCALE_FACTOR"] = "1"
+os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+QCoreApplication.setAttribute(
+    Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True
+)  # scale UI to match DPI :contentReference[oaicite:0]{index=0}
+QCoreApplication.setAttribute(
+    Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True
+)  # load @2x icons when available
+
+# 2) Don’t let Qt round 1.5 up to 2.0 — pass it straight through:
+#    must be called before creating the QGuiApplication/QApplication instance
+QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+    Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+)
+if sys.platform == "win32":
+    import ctypes
+
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
 
 class Application:

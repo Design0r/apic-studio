@@ -55,9 +55,6 @@ class AssetLoaderWorker(QObject):
                 self.asset_loaded.emit(asset)
 
     def load_asset(self, path: Path) -> Optional[Asset]:
-        if path in self._cache:
-            return self._cache[path]
-
         icon = self._create_icon(self._search_thumbnail(path))
         model = self._search_3d_model(path)
         print(f"Loading asset from {model}...")
@@ -92,6 +89,7 @@ class AssetLoaderWorker(QObject):
 
         for p in path.iterdir():
             if p.suffix.lower() in IMG_EXT:
+                print(f"found thumbnail: {path / p.name}")
                 return str(path / p.name)
 
         return self._default_icon
