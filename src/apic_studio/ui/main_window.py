@@ -8,9 +8,8 @@ from PySide6.QtGui import QCloseEvent, QIcon
 from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from apic_studio import __version__
-from apic_studio.core.asset_loader import AssetLoader
 from apic_studio.core.settings import SettingsManager
-from apic_studio.services import pools
+from apic_studio.services import AssetLoader, Screenshot, pools
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
     MaterialToolbar,
@@ -36,6 +35,7 @@ class MainWindow(QWidget):
         self._widgets: dict[Path, ViewportButton] = {}
         self.settings = settings
         self.loader = AssetLoader()
+        self.screenshot = Screenshot()
         self.ctx = ctx
 
         self.setWindowTitle(f"Apic Studio - {__version__}")
@@ -63,7 +63,7 @@ class MainWindow(QWidget):
             ToolbarDirection.Horizontal,
             {"materials": self.material_tb, "models": self.model_tb},
         )
-        self.viewport = Viewport(self.ctx, self.settings, self.loader)
+        self.viewport = Viewport(self.ctx, self.settings, self.loader, self.screenshot)
 
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
@@ -90,7 +90,7 @@ class MainWindow(QWidget):
 
         for t in self.toolbar.multibars.values():
             t.pool_changed.connect(self.viewport.draw)
-            t.asset_changed.connect(self.viewport.loader.load_asset)
+            t.asset_changed.connect(self.loader.load_asset)
 
     def closeEvent(self, event: QCloseEvent) -> None:
         self.settings.WindowSettings.window_geometry = [
@@ -103,8 +103,8 @@ class MainWindow(QWidget):
         return super().closeEvent(event)
 
     def set_view(self, view: str):
-        self.toolbar.set_current(view)
-        self.viewport.set_current(view)
+        self.toolbar.set_current_view(view)
+        self.viewport.set_current_view(view)
         self.draw()
 
     def draw(self):

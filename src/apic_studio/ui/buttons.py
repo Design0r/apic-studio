@@ -188,5 +188,5 @@ class ViewportButton(QWidget):
         if self.file.is_dir():
             shutil.rmtree(self.file, ignore_errors=True)
         else:
-            self.file.unlink(missing_ok=True)
+            shutil.rmtree(self.file.parent, ignore_errors=True)
         super().deleteLater()

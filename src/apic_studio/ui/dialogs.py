@@ -193,7 +193,7 @@ class ScreenshotResult(NamedTuple):
 
 
 class ScreenshotDialog(QDialog):
-    take_screenshot = Signal(ScreenshotResult)
+    accepted = Signal(ScreenshotResult)
 
     def __init__(self, model_path: Path, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -231,7 +231,7 @@ class ScreenshotDialog(QDialog):
         self.button_group.rejected.connect(self.reject)
 
     def accept(self):
-        self.take_screenshot.emit(
+        self.accepted.emit(
             ScreenshotResult(
                 (self.x(), self.y(), self.width(), self.height()),
                 self.model_path.parent,

@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import time
 from functools import partial
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QCoreApplication, QPoint, Qt
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QVBoxLayout, QWidget
 
-from apic_studio.core import img
-from apic_studio.core.asset_loader import Asset, AssetLoader
 from apic_studio.core.settings import SettingsManager
+from apic_studio.services import Asset, AssetLoader, Screenshot
 from apic_studio.ui.buttons import ViewportButton
-from apic_studio.ui.dialogs import ScreenshotDialog, ScreenshotResult
 from apic_studio.ui.flow_layout import FlowLayout
 from shared.logger import Logger
 from shared.messaging import Message
@@ -26,11 +23,13 @@ class Viewport(QWidget):
         ctx: Connection,
         settings: SettingsManager,
         loader: AssetLoader,
+        screenshot: Screenshot,
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
         self.loader = loader
         self.settings = settings
+        self.screenshot = screenshot
         self.ctx = ctx
         self._widgets: dict[str, dict[str, ViewportButton]] = {
             "models": {},
@@ -65,9 +64,14 @@ class Viewport(QWidget):
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
+        self.screenshot.created.connect(self.loader.load_asset)
+
+    @property
+    def widgets(self) -> dict[str, ViewportButton]:
+        return self._widgets[self.curr_view]
 
     def on_asset_load(self, asset: Asset):
-        w = self._widgets[self.curr_view][asset.path.stem]
+        w = self.widgets[asset.path.stem]
         w.set_thumbnail(asset.icon, 185)
         w.set_file(asset.file, asset.size, asset.suffix)
         w.file = asset.file
@@ -78,8 +82,10 @@ class Viewport(QWidget):
 
     def _clear_layout(self):
         while self.flow_layout.count():
-            w = self.flow_layout.takeAt(0).widget()
-            w.setParent(None)
+            item = self.flow_layout.takeAt(0)
+            if not item:
+                continue
+            item.widget().setParent(None)
 
     def draw(self, path: Path):
         self._clear_layout()
@@ -94,17 +100,17 @@ class Viewport(QWidget):
             if not self.loader.is_asset(x):
                 continue
 
-            if cached_widget := self._widgets[self.curr_view].get(x.stem):
+            if cached_widget := self.widgets.get(x.stem):
                 self.flow_layout.addWidget(cached_widget)
                 continue
 
             b = ViewportButton(x, (200, 200))
             b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
-            self._widgets[self.curr_view][x.stem] = b
+            self.widgets[x.stem] = b
             self.loader.load_asset(x)
 
-    def set_current(self, view: str):
+    def set_current_view(self, view: str):
         if view not in self._widgets:
             return
 
@@ -116,38 +122,25 @@ class Viewport(QWidget):
         import_act.triggered.connect(
             lambda: self.send_msg(Message("models.import", {"path": str(btn.file)}))
         )
+
+        screenshot_act = QAction("Create Thumbnail")
+        screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))
+
         delete_act = QAction("Delete")
         delete_act.triggered.connect(lambda: self.delete_widget(btn))
 
         menu = QMenu()
         menu.addAction(import_act)
         menu.addSeparator()
-        menu.addAction(delete_act)
         if self.curr_view in ("models", "lightsets"):
-            screenshot_act = QAction("Create Thumbnail")
-            screenshot_act.triggered.connect(
-                lambda: self.show_screenshot_dialog(btn.file)
-            )
             menu.addAction(screenshot_act)
+
+        menu.addSeparator()
+        menu.addAction(delete_act)
 
         menu.exec_(btn.mapToGlobal(point))
 
     def delete_widget(self, btn: ViewportButton):
-        if btn.file.stem in self._widgets:
-            del self._widgets[btn.file.stem]
+        del self.widgets[btn.file.parent.stem]
         btn.setParent(None)
         btn.deleteLater()
-
-    def show_screenshot_dialog(self, path: Path):
-        self.screenshot_frame = ScreenshotDialog(path)
-        self.screenshot_frame.take_screenshot.connect(self.create_screenshot)
-        self.screenshot_frame.exec_()
-
-    def create_screenshot(self, data: ScreenshotResult):
-        self.screenshot_frame.setVisible(False)
-        QCoreApplication.processEvents()
-        time.sleep(0.2)
-
-        screen_path = Path(data.folder, f"{data.asset_name}.jpg")
-        img.take_screenshot(screen_path, data.geometry)
-        self.loader.load_asset(data.folder)

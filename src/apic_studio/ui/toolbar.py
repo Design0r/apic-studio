@@ -408,7 +408,7 @@ class MultiToolbar(QWidget):
         self.init_signals()
 
         if len(multibars) > 0:
-            self.set_current(next(iter(self.multibars)))
+            self.set_current_view(next(iter(self.multibars)))
 
     def init_widgets(self):
         if self.direction == ToolbarDirection.Horizontal:
@@ -428,7 +428,7 @@ class MultiToolbar(QWidget):
             widget = self.main_layout.takeAt(0).widget()
             widget.setParent(None)
 
-    def set_current(self, toolbar_id: str) -> Optional[Toolbar]:
+    def set_current_view(self, toolbar_id: str) -> Optional[Toolbar]:
         if toolbar_id not in self.multibars.keys():
             return None
 
