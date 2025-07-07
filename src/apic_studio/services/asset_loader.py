@@ -7,23 +7,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 
-IMG_EXT = (".jpg", ".png")
-CG_EXT = (".c4d",)
-
-
-class Asset:
-    __slots__ = ("path", "name", "suffix", "size", "icon", "file")
-
-    def __init__(self, file: Path, icon: QIcon) -> None:
-        self.file = file
-        self.path = file.parent
-        self.name = file.stem
-        self.size = file.stat().st_size
-        self.icon = icon
-        self.suffix = file.suffix
-
-    def __repr__(self) -> str:
-        return f"Asset(path={self.file}, icon={self.icon})"
+from apic_studio.core import Asset
 
 
 class AssetLoaderWorker(QObject):
@@ -88,14 +72,14 @@ class AssetLoaderWorker(QObject):
             return self._default_icon
 
         for p in path.iterdir():
-            if p.suffix.lower() in IMG_EXT:
+            if p.suffix.lower() in Asset.IMG_EXT:
                 print(f"found thumbnail: {path / p.name}")
                 return str(path / p.name)
 
         return self._default_icon
 
     def _search_3d_model(self, path: Path) -> Optional[Path]:
-        if not path.is_dir() and path.suffix.lower() in CG_EXT:
+        if not path.is_dir() and path.suffix.lower() in Asset.CG_EXT:
             return path
 
         if not path.is_dir():
@@ -103,7 +87,7 @@ class AssetLoaderWorker(QObject):
 
         for p in path.iterdir():
             print(p)
-            if p.suffix.lower() in CG_EXT:
+            if p.suffix.lower() in Asset.CG_EXT:
                 return path / p.name
 
         return None
@@ -126,7 +110,7 @@ class AssetLoader(QObject):
         if path.is_dir():
             return True
 
-        return path.suffix in CG_EXT
+        return path.suffix in Asset.CG_EXT
 
     def load_asset(self, path: Path):
         self.worker.add_task(path)
