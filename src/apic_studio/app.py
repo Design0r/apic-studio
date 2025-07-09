@@ -8,6 +8,7 @@ from PySide6.QtWidgets import QApplication
 
 from apic_studio.core import db
 from apic_studio.core.settings import SettingsManager
+from apic_studio.services import DCCBridge
 from apic_studio.ui.main_window import MainWindow
 from shared.logger import Logger
 from shared.network import Connection
@@ -37,6 +38,7 @@ class Application:
         self.settings = SettingsManager()
         self.app = QApplication(sys.argv)
         self.connection = Connection.client_connection()
+        self.dcc = DCCBridge(self.connection)
         self.window: MainWindow
 
         self.init()
@@ -51,7 +53,7 @@ class Application:
         db.init_db()
 
         self.app.setStyle("Fusion")
-        self.window = MainWindow(self.connection, self.settings)
+        self.window = MainWindow(self.dcc, self.settings)
 
     def shutdown(self):
         Logger.info("shutting down Apic Studio...")

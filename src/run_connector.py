@@ -84,6 +84,7 @@ def main():
     router = MessageRouter()
     router.include_router(routers.core_router)
     router.include_router(routers.models_router)
+    router.include_router(routers.material_router)
     queue: Queue[tuple[Connection, Message]] = Queue()
 
     if not c4d.plugins.FindPlugin(PLUGIN_ID):

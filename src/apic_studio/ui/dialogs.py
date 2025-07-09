@@ -1,6 +1,6 @@
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal, NamedTuple, Optional, TypedDict
+from typing import Literal, NamedTuple, Optional
 
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QCursor, QMouseEvent
@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -125,7 +127,7 @@ class ExportModelDialog(QDialog):
         SAVE = "Save current Scene"
         EXPORT = "Export selected"
 
-    class Data(TypedDict):
+    class Data(NamedTuple):
         name: str
         ext: str
         export_type: Literal["Save current Scene", "Export selected"]
@@ -176,13 +178,108 @@ class ExportModelDialog(QDialog):
         opt = self.export_options.currentText()
         name, ext = (self.name_edit.text(), "c4d")
 
-        data = {
-            "name": name,
-            "ext": ext,
-            "export_type": self.ExportType(opt).value,
-            "copy_textures": self.copy_textues_check.isChecked(),
-        }
+        data = self.Data(
+            name,
+            ext,
+            self.ExportType(opt).value,
+            self.copy_textues_check.isChecked(),
+        )
 
+        self.finished.emit(data)
+
+
+class ExportMaterialDialog(QDialog):
+    class Data(NamedTuple):
+        ext: str
+        copy_textures: bool
+        materials: list[str]
+
+    finished = Signal(Data)
+
+    def __init__(self, materials: list[str], parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.materials = materials
+        self._widgets: list[tuple[QCheckBox, QLabel]] = []
+
+        self.setWindowTitle("Export")
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.copy_textues_check = QCheckBox("Copy Textures and Repath")
+
+        self.select_all = QPushButton("Select All")
+        self.deselect_all = QPushButton("Deselect All")
+
+        self.scroll_widget = QWidget()
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidget(self.scroll_widget)
+        self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.scroll_area.setWidgetResizable(True)
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.select_layout = QHBoxLayout()
+        self.scroll_layout = QVBoxLayout(self.scroll_widget)
+
+        for mtl in self.materials:
+            layout = self.add_material_row(mtl)
+            self.scroll_layout.addLayout(layout)
+        self.scroll_layout.addStretch()
+
+        self.select_layout.addStretch()
+        self.select_layout.addWidget(self.select_all)
+        self.select_layout.addWidget(self.deselect_all)
+
+        self.main_layout.addWidget(self.scroll_area)
+        self.main_layout.addWidget(
+            self.copy_textues_check, alignment=Qt.AlignmentFlag.AlignRight
+        )
+        self.main_layout.addLayout(self.select_layout)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        self.select_all.clicked.connect(self.select_all_materials)
+        self.deselect_all.clicked.connect(self.deselect_all_materials)
+
+    def add_material_row(self, name: str):
+        layout = QHBoxLayout()
+        checkbox = QCheckBox("")
+        label = QLabel(name)
+
+        layout.setSpacing(10)
+        layout.addWidget(checkbox)
+        layout.addWidget(label, 0, Qt.AlignmentFlag.AlignLeft)
+        layout.addStretch()
+
+        self._widgets.append((checkbox, label))
+        return layout
+
+    def get_selected_materials(self) -> list[str]:
+        return [label.text() for check, label in self._widgets if check.isChecked()]
+
+    def select_all_materials(self):
+        for check, _ in self._widgets:
+            check.setChecked(True)
+
+    def deselect_all_materials(self):
+        for check, _ in self._widgets:
+            check.setChecked(False)
+
+    def accept(self) -> None:
+        super().accept()
+        data = self.Data(
+            "c4d", self.copy_textues_check.isChecked(), self.get_selected_materials()
+        )
         self.finished.emit(data)
 
 

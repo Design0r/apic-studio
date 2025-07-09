@@ -32,12 +32,12 @@ class Connection:
 
         return self
 
-    def send_recv(self, data: bytes | Message) -> dict[Any, Any]:
+    def send_recv(self, data: bytes | Message) -> dict[str, Any]:
         self.send(data)
         response = self.recv()
         return response
 
-    def recv(self) -> dict[Any, Any]:
+    def recv(self) -> dict[str, Any]:
         try:
             header = self.socket.recv(4)
             body_size = int.from_bytes(header, "big")

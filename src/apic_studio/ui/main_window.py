@@ -9,7 +9,7 @@ from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from apic_studio import __version__
 from apic_studio.core.settings import SettingsManager
-from apic_studio.services import AssetLoader, Screenshot, pools
+from apic_studio.services import AssetLoader, DCCBridge, Screenshot, pools
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
     MaterialToolbar,
@@ -19,7 +19,6 @@ from apic_studio.ui.toolbar import (
     ToolbarDirection,
 )
 from apic_studio.ui.viewport import Viewport
-from shared.network import Connection
 
 
 class MainWindow(QWidget):
@@ -27,7 +26,7 @@ class MainWindow(QWidget):
 
     def __init__(
         self,
-        ctx: Connection,
+        dcc: DCCBridge,
         settings: SettingsManager,
         parent: Optional[QWidget] = None,
     ):
@@ -36,7 +35,7 @@ class MainWindow(QWidget):
         self.settings = settings
         self.loader = AssetLoader()
         self.screenshot = Screenshot()
-        self.ctx = ctx
+        self.dcc = dcc
 
         self.setWindowTitle(f"Apic Studio - {__version__}")
         self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
@@ -56,14 +55,14 @@ class MainWindow(QWidget):
         self.sidebar = Sidebar(40)
         self.sidebar.highlight_modes(1)
 
-        self.model_tb = ModelToolbar(pools.ModelPoolManager(self.ctx))
-        self.material_tb = MaterialToolbar(pools.MaterialPoolManager(self.ctx))
+        self.model_tb = ModelToolbar(pools.ModelPoolManager(), self.dcc)
+        self.material_tb = MaterialToolbar(pools.MaterialPoolManager(), self.dcc)
 
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
             {"materials": self.material_tb, "models": self.model_tb},
         )
-        self.viewport = Viewport(self.ctx, self.settings, self.loader, self.screenshot)
+        self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
 
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
@@ -82,10 +81,10 @@ class MainWindow(QWidget):
         s = self.sidebar
         s.models.clicked.connect(lambda: self.set_view("models"))
         s.materials.clicked.connect(lambda: self.set_view("materials"))
-        self.ctx.on_connect(lambda: s.conn_btn.setText("C"))
-        self.ctx.on_disconnect(lambda: s.conn_btn.setText("D"))
+        self.dcc.on_connect(lambda: s.conn_btn.setText("C"))
+        self.dcc.on_disconnect(lambda: s.conn_btn.setText("D"))
         s.conn_btn.clicked.connect(
-            lambda: self.ctx.connect(self.settings.CoreSettings.address)
+            lambda: self.dcc.connect(self.settings.CoreSettings.address)
         )
 
         for t in self.toolbar.multibars.values():

@@ -9,18 +9,16 @@ from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QVBoxLayout, QWidget
 
 from apic_studio.core.settings import SettingsManager
-from apic_studio.services import Asset, AssetLoader, Screenshot
+from apic_studio.services import Asset, AssetLoader, DCCBridge, Screenshot
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.flow_layout import FlowLayout
 from shared.logger import Logger
-from shared.messaging import Message
-from shared.network import Connection
 
 
 class Viewport(QWidget):
     def __init__(
         self,
-        ctx: Connection,
+        dcc: DCCBridge,
         settings: SettingsManager,
         loader: AssetLoader,
         screenshot: Screenshot,
@@ -30,7 +28,7 @@ class Viewport(QWidget):
         self.loader = loader
         self.settings = settings
         self.screenshot = screenshot
-        self.ctx = ctx
+        self.dcc = dcc
         self._widgets: dict[str, dict[str, ViewportButton]] = {
             "models": {},
             "materials": {},
@@ -77,9 +75,6 @@ class Viewport(QWidget):
         w.file = asset.file
         self.flow_layout.addWidget(w)
 
-    def send_msg(self, msg: Message):
-        return self.ctx.send_recv(msg)
-
     def _clear_layout(self):
         while self.flow_layout.count():
             item = self.flow_layout.takeAt(0)
@@ -119,9 +114,7 @@ class Viewport(QWidget):
 
     def on_context_menu(self, btn: ViewportButton, point: QPoint):
         import_act = QAction("Import")
-        import_act.triggered.connect(
-            lambda: self.send_msg(Message("models.import", {"path": str(btn.file)}))
-        )
+        import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
 
         screenshot_act = QAction("Create Thumbnail")
         screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))

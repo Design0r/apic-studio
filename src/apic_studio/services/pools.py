@@ -1,10 +1,8 @@
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol
 
 from apic_studio.core import db, fs
 from shared.logger import Logger
-from shared.messaging import Message
-from shared.network import Connection
 
 
 class PoolManager(Protocol):
@@ -12,16 +10,10 @@ class PoolManager(Protocol):
     def delete(self, path: Path) -> None: ...
     def open_dir(self, path: Path) -> None: ...
     def get(self) -> dict[str, Path]: ...
-    def save(self, path: Path) -> dict[str, Any]: ...
-    def export(self, path: Path) -> dict[str, Any]: ...
-    def copy_textures(self, path: Path) -> None: ...
 
 
 class _AssetPoolManager:
     POOL_TYPE = ""
-
-    def __init__(self, ctx: Connection):
-        self.ctx = ctx
 
     def new(self, name: str, path: Path) -> tuple[str, Path]:
         full_path = path / name / self.POOL_TYPE
@@ -47,35 +39,6 @@ class _AssetPoolManager:
 
     def open_dir(self, path: Path):
         fs.open_dir(path)
-
-    def export(self, path: Path) -> dict[str, Any]:
-        res = self.ctx.send_recv(
-            Message(f"{self.POOL_TYPE}.export.selected", {"path": str(path)})
-        )
-        msg = Message.from_dict(res)
-        if msg.message != "success":
-            Logger.error(
-                f"failed to export {self.POOL_TYPE} asset: {path.name} to {path}: {msg.message} {msg.data}"
-            )
-            return {}
-
-        Logger.info(f"exported {self.POOL_TYPE} asset: {path.name} to {path}")
-        return res
-
-    def save(self, path: Path) -> dict[str, Any]:
-        res = self.ctx.send_recv(Message(f"{self.POOL_TYPE}.save", {"path": str(path)}))
-        msg = Message.from_dict(res)
-        if msg.message != "success":
-            Logger.error(
-                f"failed to save {self.POOL_TYPE} asset: {path.name} to {path}: {msg.message} {msg.data}"
-            )
-            return {}
-        Logger.info(f"saved {self.POOL_TYPE} asset: {path.name} to {path}")
-        return res
-
-    def copy_textures(self, path: Path):
-        Logger.info(f"Copying textures for {path.name} to {path}")
-        pass
 
 
 class ModelPoolManager(_AssetPoolManager):

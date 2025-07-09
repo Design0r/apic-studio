@@ -13,8 +13,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from apic_studio.services.pools import PoolManager
-from apic_studio.ui.dialogs import CreatePoolDialog, DeletePoolDialog, ExportModelDialog
+from apic_studio.services import DCCBridge, PoolManager
+from apic_studio.ui.dialogs import (
+    CreatePoolDialog,
+    DeletePoolDialog,
+    ExportMaterialDialog,
+    ExportModelDialog,
+)
 from apic_studio.ui.lines import VLine
 from shared.logger import Logger
 
@@ -315,11 +320,13 @@ class AssetToolbar(LabledToolbar):
         self,
         label: str,
         pool: PoolManager,
+        dcc: DCCBridge,
         thickness: int = 30,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
         self.pool = pool
+        self.dcc = dcc
         super().__init__(label, thickness, direction, parent)
 
     @override
@@ -361,9 +368,9 @@ class AssetToolbar(LabledToolbar):
         )
 
     @property
-    def current_pool(self) -> Optional[Path]:
+    def current_pool(self) -> Path:
         text = self.dropdown.currentText()
-        return self._pools.get(text)
+        return self._pools.get(text, Path())
 
     def open_add_dialog(self):
         create_dialog = CreatePoolDialog()
@@ -441,12 +448,13 @@ class ModelToolbar(AssetToolbar):
     def __init__(
         self,
         pool: PoolManager,
+        dcc: DCCBridge,
         label: str = "Model",
         thickness: int = 40,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
-        super().__init__(label, pool, thickness, direction, parent)
+        super().__init__(label, pool, dcc, thickness, direction, parent)
 
     @override
     def init_widgets(self):
@@ -476,45 +484,77 @@ class ModelToolbar(AssetToolbar):
             Logger.error("No current pool selected for export.")
             return
 
-        name = data["name"]
-        ext = data["ext"]
-        export_type = data["export_type"]
-        copy_textures = data["copy_textures"]
+        name = data.name
+        ext = data.ext
+        export_type = data.export_type
+        copy_textures = data.copy_textures
 
         file_dir = self.current_pool / name
         file_dir.mkdir(parents=True, exist_ok=True)
         file_path = file_dir / f"{name}.{ext}"
 
         if export_type == ExportModelDialog.ExportType.SAVE:
-            self.pool.save(file_path)
+            self.dcc.save_as(file_path)
         elif export_type == ExportModelDialog.ExportType.EXPORT:
-            self.pool.export(file_path)
+            self.dcc.models_export_selected(file_path)
             self.pool_changed.emit(self.current_pool)
 
         if copy_textures:
-            self.pool.copy_textures(file_path)
+            self.dcc.copy_textures(file_path)
 
 
 class MaterialToolbar(AssetToolbar):
     def __init__(
         self,
         pool: PoolManager,
+        dcc: DCCBridge,
         label: str = "Materials",
         thickness: int = 40,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
     ):
-        super().__init__(label, pool, thickness, direction, parent)
+        super().__init__(label, pool, dcc, thickness, direction, parent)
 
     @override
     def init_widgets(self):
         super().init_widgets()
+        self.export_btn = IconButton((30, 30))
+        self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
+        self.export_btn.set_tooltip("Export Model")
 
     @override
     def init_layouts(self):
         super().init_layouts()
-        self.add_widgets([], stretch=True)
+
+        self.add_widgets([self.export_btn], stretch=True)
 
     @override
     def init_signals(self):
         super().init_signals()
+        self.export_btn.clicked.connect(self.export_dialog)
+
+    def export_dialog(self):
+        res = self.dcc.materials_list()
+        if res.message == "error" or not res.data:
+            Logger.error("Failed to get materials.list")
+            return
+
+        dialog = ExportMaterialDialog(res.data.get("materials", []))
+        dialog.finished.connect(self.on_export_dialog_finished)
+        dialog.exec()
+
+    def on_export_dialog_finished(self, data: ExportMaterialDialog.Data):
+        if not self.current_pool:
+            Logger.error("No current pool selected for export.")
+            return
+
+        print(data.materials)
+        for mtl in data.materials:
+            file_dir = self.current_pool / mtl
+            file_dir.mkdir(parents=True, exist_ok=True)
+            file_path = file_dir / f"{mtl}.{data.ext}"
+
+            if data.copy_textures:
+                self.dcc.copy_textures(file_path)
+
+        self.pool_changed.emit(self.current_pool)
