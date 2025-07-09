@@ -15,3 +15,4 @@ db
 logs
 settings
 *.spec
+*.html

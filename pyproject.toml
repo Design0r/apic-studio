@@ -12,9 +12,11 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "graphviz>=0.21",
     "pyinstaller>=6.13.0",
- "pyside6-stubs>=6.7.3.0",
- "ruff>=0.12.0",
+    "pylint>=3.3.7",
+    "pyside6-stubs>=6.7.3.0",
+    "ruff>=0.12.0",
 ]
 
 [tool.pyrefly]
