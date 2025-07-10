@@ -1,4 +1,5 @@
 import c4d
+from shared.logger import Logger
 
 
 def export_selected(file_path: str):
@@ -11,16 +12,6 @@ def export_selected(file_path: str):
     flags = c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST | c4d.SAVEDOCUMENTFLAGS_0
     result = c4d.documents.SaveDocument(doc, file_path, flags, c4d.FORMAT_C4DEXPORT)
     if result:
-        print(f"Export succeeded:\n{file_path}")
+        Logger.debug(f"export succeeded: {file_path}")
     else:
-        print("Export failed. Check console for errors.")
-
-
-def import_file(file_path: str):
-    result = c4d.documents.MergeDocument(
-        c4d.documents.GetActiveDocument(),
-        file_path,
-        c4d.SCENEFILTER_OBJECTS | c4d.SCENEFILTER_MATERIALS,
-    )
-
-    print(f"Import result: {result}")
+        Logger.error(f"export failed: {file_path}")

@@ -37,7 +37,7 @@ class Application:
     def __init__(self) -> None:
         self.settings = SettingsManager()
         self.app = QApplication(sys.argv)
-        self.connection = Connection.client_connection()
+        self.connection = Connection.client_connection(timeout=3)
         self.dcc = DCCBridge(self.connection)
         self.window: MainWindow
 

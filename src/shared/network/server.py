@@ -57,10 +57,12 @@ class Server:
         port: int = 1337,
         router: MessageRouter = MessageRouter(),
         msg_queue: Optional[Queue[tuple[Connection, Message]]] = None,
+        socket_timeout: Optional[float] = None,
     ) -> None:
         self.addr = addr
         self.port = port
         self.router = router
+        self.timeout = socket_timeout
         self._running = False
         self.msg_queue = msg_queue
         self.handlers: list[ConnectionHandler] = []
@@ -70,7 +72,7 @@ class Server:
         self._running = True
 
         server_address = (self.addr, self.port)
-        self.socket = Connection.server_connection(server_address)
+        self.socket = Connection.server_connection(server_address, self.timeout)
         if not self.socket:
             Logger.error("oops")
             return

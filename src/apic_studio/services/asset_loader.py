@@ -8,6 +8,7 @@ from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 
 from apic_studio.core import Asset
+from shared.logger import Logger
 
 
 class AssetLoaderWorker(QObject):
@@ -41,10 +42,10 @@ class AssetLoaderWorker(QObject):
     def load_asset(self, path: Path) -> Optional[Asset]:
         icon = self._create_icon(self._search_thumbnail(path))
         model = self._search_3d_model(path)
-        print(f"Loading asset from {model}...")
         if not model:
             return
 
+        Logger.debug(f"loaded asset from {model}")
         asset = Asset(model, icon)
         self._cache[path] = asset
 
@@ -73,7 +74,7 @@ class AssetLoaderWorker(QObject):
 
         for p in path.iterdir():
             if p.suffix.lower() in Asset.IMG_EXT:
-                print(f"found thumbnail: {path / p.name}")
+                Logger.debug(f"found thumbnail: {path / p.name}")
                 return str(path / p.name)
 
         return self._default_icon
@@ -86,7 +87,6 @@ class AssetLoaderWorker(QObject):
             return None
 
         for p in path.iterdir():
-            print(p)
             if p.suffix.lower() in Asset.CG_EXT:
                 return path / p.name
 

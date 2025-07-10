@@ -114,7 +114,10 @@ class Viewport(QWidget):
 
     def on_context_menu(self, btn: ViewportButton, point: QPoint):
         import_act = QAction("Import")
-        import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
+        if self.curr_view == "models":
+            import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
+        elif self.curr_view == "materials":
+            import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
 
         screenshot_act = QAction("Create Thumbnail")
         screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))
@@ -134,6 +137,6 @@ class Viewport(QWidget):
         menu.exec_(btn.mapToGlobal(point))
 
     def delete_widget(self, btn: ViewportButton):
-        del self.widgets[btn.file.parent.stem]
+        del self.widgets[btn.file.stem]
         btn.setParent(None)
         btn.deleteLater()

@@ -22,6 +22,7 @@ from apic_studio.ui.dialogs import (
 )
 from apic_studio.ui.lines import VLine
 from shared.logger import Logger
+from shared.utils import sanitize_string
 
 from .buttons import IconButton, SidebarButton
 
@@ -535,7 +536,7 @@ class MaterialToolbar(AssetToolbar):
 
     def export_dialog(self):
         res = self.dcc.materials_list()
-        if res.message == "error" or not res.data:
+        if self.dcc.is_err(res) or not res.data:
             Logger.error("Failed to get materials.list")
             return
 
@@ -548,8 +549,8 @@ class MaterialToolbar(AssetToolbar):
             Logger.error("No current pool selected for export.")
             return
 
-        print(data.materials)
         for mtl in data.materials:
+            mtl = sanitize_string(mtl)
             file_dir = self.current_pool / mtl
             file_dir.mkdir(parents=True, exist_ok=True)
             file_path = file_dir / f"{mtl}.{data.ext}"
@@ -557,4 +558,5 @@ class MaterialToolbar(AssetToolbar):
             if data.copy_textures:
                 self.dcc.copy_textures(file_path)
 
+        self.dcc.materials_export(data.materials, self.current_pool)
         self.pool_changed.emit(self.current_pool)

@@ -12,9 +12,9 @@ class DCCBridge:
 
     def is_err(self, msg: Message) -> bool:
         if msg.message == "error":
-            return False
+            return True
 
-        return True
+        return False
 
     def call(self, message: str, data: Optional[Any] = None) -> Message:
         msg = Message(message, data=data)
@@ -33,41 +33,49 @@ class DCCBridge:
     def models_export_selected(self, path: Path) -> Message:
         res = self.call("models.export.selected", {"path": str(path)})
         if self.is_err(res):
-            Logger.error(
-                f"failed to export asset: {path.name} to {path}: {res.message} {res.data}"
-            )
+            Logger.error(f"failed to export asset: {path.name} to {path}: {res}")
         return res
 
     def models_import(self, path: Path) -> Message:
         res = self.call("models.import", {"path": str(path)})
         if self.is_err(res):
-            Logger.error(
-                f"failed to import asset: {path.name} to {path}: {res.message} {res.data}"
-            )
+            Logger.error(f"failed to import asset: {path.name} to {path}: {res}")
 
         return res
 
     def save_as(self, path: Path) -> Message:
         res = self.call("core.save.as", {"path": str(path)})
         if self.is_err(res):
-            Logger.error(
-                f"failed to save as: {path.name} to {path}: {res.message} {res.data}"
-            )
+            Logger.error(f"failed to save as: {path.name} to {path}: {res}")
 
         return res
 
     def copy_textures(self, path: Path) -> Message:
         res = self.call("textures.export", {"path": str(path)})
         if self.is_err(res):
-            Logger.error(
-                f"failed to export textures: {path.name} to {path}: {res.message} {res.data}"
-            )
+            Logger.error(f"failed to export textures: {path.name} to {path}: {res}")
 
         return res
 
     def materials_list(self) -> Message:
         res = self.call("materials.list")
         if self.is_err(res):
-            Logger.error(f"failed to list materials: {res.message} {res.data}")
+            Logger.error(f"failed to list materials: {res}")
+
+        return res
+
+    def materials_export(self, materials: list[str], path: Path) -> Message:
+        res = self.call(
+            "materials.export", data={"materials": materials, "path": str(path)}
+        )
+        if self.is_err(res):
+            Logger.error(f"failed to export materials: {res}")
+
+        return res
+
+    def materials_import(self, path: Path) -> Message:
+        res = self.call("materials.import", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to import asset: {path.name} to {path}: {res}")
 
         return res

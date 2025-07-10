@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import select
 import socket
 from typing import Any, Callable, Optional, Self
 
@@ -9,8 +10,10 @@ from shared.messaging.message import Message
 
 
 class Connection:
-    def __init__(self, socket: socket.socket) -> None:
+    def __init__(self, socket: socket.socket, timeout: Optional[float] = None) -> None:
         self.socket = socket
+
+        self.timeout = timeout
         self._on_connect: list[Callable[[], None]] = []
         self._on_disconnect: list[Callable[[], None]] = []
         self.is_connected = False
@@ -38,18 +41,23 @@ class Connection:
         return response
 
     def recv(self) -> dict[str, Any]:
-        try:
-            header = self.socket.recv(4)
-            body_size = int.from_bytes(header, "big")
-            response = self.socket.recv(body_size).decode("utf-8")
-        except ConnectionAbortedError as e:
-            raise e
+        ready, _, _ = select.select([self.socket], [], [], self.timeout)
+        if not ready:
+            Logger.warning(f"recv() timed out after {self.timeout}s")
+            raise TimeoutError(f"no data in {self.timeout}s")
+
+        header = self.socket.recv(4)
+        body_size = int.from_bytes(header, "big")
+        response = self.socket.recv(body_size).decode("utf-8")
 
         try:
             rjson = json.loads(response)
         except json.JSONDecodeError as e:
             Logger.error("failed to decode message")
             raise e
+        except TimeoutError:
+            Logger.error("message timed out")
+            return {}
 
         Logger.debug(f"receiving message: {rjson.get('message')}")
         return rjson
@@ -113,12 +121,14 @@ class Connection:
         self._on_disconnect.append(fn)
 
     @classmethod
-    def client_connection(cls) -> Connection:
+    def client_connection(cls, timeout: Optional[float] = None) -> Connection:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        return Connection(client_socket)
+        return Connection(client_socket, timeout)
 
     @classmethod
-    def server_connection(cls, adress: tuple[str, int]) -> Optional[Connection]:
+    def server_connection(
+        cls, adress: tuple[str, int], timeout: Optional[float] = None
+    ) -> Optional[Connection]:
         try:
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -130,7 +140,7 @@ class Connection:
 
         server_socket.listen(1)
         server_socket.settimeout(1.0)
-        return Connection(server_socket)
+        return Connection(server_socket, timeout=timeout)
 
     def accept(self) -> socket.socket:
         socket, _ = self.socket.accept()
