@@ -1,3 +1,4 @@
+import c4d
 from shared.logger import Logger
 from shared.messaging import Message, MessageRouter
 from shared.network import Connection
@@ -34,7 +35,7 @@ def import_file(conn: Connection, msg: Message):
         return
 
     Logger.debug(f"importing materials from {path}")
-    core.import_file(path)
+    core.import_file(c4d.documents.GetActiveDocument(), path)
 
     conn.send(Message("success"))
 
@@ -50,8 +51,6 @@ def render_preview(conn: Connection, msg: Message):
         return
 
     mtls = materials.get_materials(msg.data["materials"])
-    print(mtls)
-    print(msg.data)
     materials.save_material_previews(mtls, path)
 
     conn.send(Message("success"))

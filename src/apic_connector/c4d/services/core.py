@@ -2,9 +2,9 @@ import c4d
 from shared.logger import Logger
 
 
-def import_file(file_path: str) -> bool:
+def import_file(doc: c4d.BaseDocument, file_path: str) -> bool:
     result = c4d.documents.MergeDocument(
-        c4d.documents.GetActiveDocument(),
+        doc,
         file_path,
         c4d.SCENEFILTER_OBJECTS | c4d.SCENEFILTER_MATERIALS,
     )
