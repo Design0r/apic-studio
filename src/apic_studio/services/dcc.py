@@ -76,6 +76,15 @@ class DCCBridge:
     def materials_import(self, path: Path) -> Message:
         res = self.call("materials.import", {"path": str(path)})
         if self.is_err(res):
-            Logger.error(f"failed to import asset: {path.name} to {path}: {res}")
+            Logger.error(f"failed to import asset: {path.name}: {res}")
+
+        return res
+
+    def materials_preview_create(self, materials: list[str], path: Path) -> Message:
+        res = self.call(
+            "materials.preview.create", {"materials": materials, "path": str(path)}
+        )
+        if self.is_err(res):
+            Logger.error(f"failed to create preview: {res}")
 
         return res

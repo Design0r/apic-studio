@@ -119,7 +119,10 @@ class Viewport(QWidget):
         elif self.curr_view == "materials":
             import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
 
-        screenshot_act = QAction("Create Thumbnail")
+        render_act = QAction("Render Preview")
+        render_act.triggered.connect(lambda: self.on_render(btn))
+
+        screenshot_act = QAction("Create Screenshot")
         screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))
 
         delete_act = QAction("Delete")
@@ -130,11 +133,18 @@ class Viewport(QWidget):
         menu.addSeparator()
         if self.curr_view in ("models", "lightsets"):
             menu.addAction(screenshot_act)
+        if self.curr_view == "materials":
+            menu.addAction(render_act)
 
         menu.addSeparator()
         menu.addAction(delete_act)
 
         menu.exec_(btn.mapToGlobal(point))
+
+    def on_render(self, btn: ViewportButton):
+        self.dcc.materials_import(btn.file)
+        self.dcc.materials_preview_create([btn.file.stem], btn.file.parent.parent)
+        self.loader.load_asset(btn.file.parent.parent, refresh=True)
 
     def delete_widget(self, btn: ViewportButton):
         del self.widgets[btn.file.stem]

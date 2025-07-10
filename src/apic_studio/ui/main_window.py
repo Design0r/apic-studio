@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, override
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QIcon
@@ -46,8 +46,6 @@ class MainWindow(QWidget):
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
-
-        self.draw()
 
     def init_widgets(self):
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
@@ -111,3 +109,8 @@ class MainWindow(QWidget):
         if not curr_pool:
             return
         self.viewport.draw(curr_pool)
+
+    @override
+    def show(self):
+        super().show()
+        self.draw()

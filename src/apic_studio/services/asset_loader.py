@@ -22,6 +22,9 @@ class AssetLoaderWorker(QObject):
         self._running = True
         self._default_icon = ":icons/tabler-icon-photo.png"
 
+    def clear_cache(self):
+        self._cache = {}
+
     def add_task(self, path: Path) -> None:
         self.task_queue.put(path)
 
@@ -112,7 +115,9 @@ class AssetLoader(QObject):
 
         return path.suffix in Asset.CG_EXT
 
-    def load_asset(self, path: Path):
+    def load_asset(self, path: Path, refresh: bool = False):
+        if refresh:
+            self.worker.clear_cache()
         self.worker.add_task(path)
 
     def on_asset_loaded(self, asset: Asset):

@@ -27,6 +27,16 @@ def get_material_names() -> list[str]:
     return [m.GetName() for m in materials]
 
 
+def get_materials(name_filter: Optional[list[str]]) -> list[c4d.BaseMaterial]:
+    doc = c4d.documents.GetActiveDocument()
+    materials = doc.GetMaterials()
+    if name_filter:
+        filter_set = set(name_filter)
+        return [m for m in materials if m.GetName() in filter_set]
+
+    return [m for m in materials]
+
+
 def export_materials(names: Optional[list[str]], path: str) -> bool:
     doc = c4d.documents.GetActiveDocument()
     mats = doc.GetMaterials()
@@ -51,3 +61,34 @@ def export_materials(names: Optional[list[str]], path: str) -> bool:
             success = False
 
     return success
+
+
+def save_material_preview(
+    mat: c4d.BaseMaterial, filepath: str, fmt: int = c4d.FILTER_PNG
+) -> bool:
+    c4d.StopAllThreads()
+    mat.SetParameter(
+        c4d.MATERIAL_PREVIEWSIZE,
+        c4d.MATERIAL_PREVIEWSIZE_512,
+        c4d.DESCFLAGS_SET_0,
+    )
+    mat[c4d.MATERIAL_PREVIEWSIZE] = c4d.MATERIAL_PREVIEWSIZE_512
+    mat.Update(True, True)
+    c4d.EventAdd()
+    bmp = mat.GetPreview()
+    if bmp is None:
+        Logger.error(f"no preview available for material {mat.GetName()}")
+        return False
+
+    if not bmp.Save(filepath, fmt):
+        Logger.error(f"Failed to save preview to {filepath}")
+        return False
+
+    return True
+
+
+def save_material_previews(materials: list[c4d.BaseMaterial], path: str):
+    for mat in materials:
+        name = sanitize_string(mat.GetName())
+        full_path = Path(path, name, f"{name}.png")
+        save_material_preview(mat, str(full_path))
