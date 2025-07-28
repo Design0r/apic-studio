@@ -1,4 +1,3 @@
-import c4d
 from shared.logger import Logger
 from shared.messaging import Message, MessageRouter
 from shared.network import Connection
@@ -35,7 +34,7 @@ def import_file(conn: Connection, msg: Message):
         return
 
     Logger.debug(f"importing materials from {path}")
-    core.import_file(c4d.documents.GetActiveDocument(), path)
+    core.import_file(path)
 
     conn.send(Message("success"))
 

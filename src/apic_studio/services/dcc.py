@@ -1,9 +1,79 @@
+import subprocess
+import sys
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Protocol
 
+from apic_studio.core.settings import SettingsManager
 from shared.logger import Logger
 from shared.messaging import Message
 from shared.network import Connection
+
+
+class CmdBuilder:
+    def __init__(self) -> None:
+        self._cmd: list[str] = []
+
+    def add_positional(self, value: str):
+        self._cmd.append(value)
+
+    def add_flag(self, flag: str, value: Any):
+        self._cmd.append(flag)
+        self._cmd.append(str(value))
+
+    def build(self) -> str:
+        return " ".join(self._cmd)
+
+    def build_list(self) -> list[str]:
+        return self._cmd
+
+
+class DCC(Protocol):
+    def get_exe(self) -> Path: ...
+    def get_py(self) -> Path: ...
+    def version(self) -> str: ...
+    def run_exe(self, args: list[str]): ...
+    def run_py(self, args: list[str]): ...
+
+
+class Cinema4D:
+    def __init__(self, install_location: Optional[Path] = None) -> None:
+        self.default_locations = {
+            "darwin": Path(""),
+            "win32": Path("C:\\Program Files\\"),
+        }
+        self.platform = sys.platform
+
+    @property
+    def default_location(self) -> Path:
+        return self.default_locations[self.platform]
+
+    def _get_base(self) -> Path:
+        loc = self.default_location
+        res = list(loc.glob("Maxon Cinema 4D*"))
+        latest = res[-1]
+        return latest
+
+    def get_exe(self, version: Optional[str]) -> Path:
+        return self._get_base() / "Cinema 4D.exe"
+
+    def get_batch(self, version: Optional[str] = None) -> Path:
+        return self._get_base() / "Commandline.exe"
+
+    def get_py(self) -> Path:
+        return self._get_base() / "c4dpy.exe"
+
+    def run_exe(self, args: list[str]): ...
+    def run_py(self, args: list[str]):
+        cmd = f"{self.get_py()} {' '.join(args)}"
+        print(cmd)
+        subprocess.run(cmd)
+
+    def run_batch(self, args: list[str]):
+        cmd = f"{self.get_batch()} {' '.join(args)}"
+
+        subprocess.run(cmd)
+
+    def version(self) -> str: ...
 
 
 class DCCBridge:
@@ -80,11 +150,25 @@ class DCCBridge:
 
         return res
 
-    def materials_preview_create(self, materials: list[str], path: Path) -> Message:
-        res = self.call(
-            "materials.preview.create", {"materials": materials, "path": str(path)}
-        )
-        if self.is_err(res):
-            Logger.error(f"failed to create preview: {res}")
+    def materials_preview_create(self, path: Path):
+        render_material(path, path.parent / f"{path.stem}.png")
 
-        return res
+
+def render_material(material: Path, output: Path):
+    builder = CmdBuilder()
+    s = SettingsManager().MaterialSettings
+    builder.add_positional(
+        str(Path(__file__).parent.parent / "scripts" / "render_material.py")
+    )
+    builder.add_flag("--scene", Path(s.render_scene))
+    builder.add_flag("--object", s.render_object)
+    builder.add_flag("--camera", s.render_cam)
+    builder.add_flag("--width", s.render_res_x)
+    builder.add_flag("--height", s.render_res_y)
+    builder.add_flag("--material_path", material)
+    builder.add_flag("--material_name", material.stem)
+    builder.add_flag("--output", output)
+
+    cmd = builder.build_list()
+    c4d = Cinema4D()
+    c4d.run_py(cmd)

@@ -35,7 +35,7 @@ class Viewport(QWidget):
             "hdris": {},
             "lightsets": {},
         }
-        self.curr_view = "models"
+        self.curr_view = "materials"
         self.curr_pool: Path
 
         self.init_widgets()
@@ -142,9 +142,8 @@ class Viewport(QWidget):
         menu.exec_(btn.mapToGlobal(point))
 
     def on_render(self, btn: ViewportButton):
-        self.dcc.materials_import(btn.file)
-        self.dcc.materials_preview_create([btn.file.stem], btn.file.parent.parent)
-        self.loader.load_asset(btn.file.parent.parent, refresh=True)
+        self.dcc.materials_preview_create(btn.file)
+        self.loader.load_asset(btn.file.parent, refresh=True)
 
     def delete_widget(self, btn: ViewportButton):
         del self.widgets[btn.file.stem]
