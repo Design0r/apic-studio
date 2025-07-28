@@ -86,9 +86,14 @@ class IconButton(QPushButton):
 class SidebarButton(QPushButton):
     activated = Signal(tuple)
 
-    def __init__(self, size: tuple[int, int], parent: Optional[QWidget] = None):
+    def __init__(
+        self,
+        size: tuple[int, int],
+        parent: Optional[QWidget] = None,
+        checkable: bool = True,
+    ):
         super().__init__(parent)
-        self.setCheckable(True)
+        self.setCheckable(checkable)
         self.setFixedSize(*size)
         self.clicked.connect(lambda: self.activated.emit(self))
 

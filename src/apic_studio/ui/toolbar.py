@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import Callable, Optional, Union, override
+from typing import Optional, Union, override
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -19,6 +19,7 @@ from apic_studio.ui.dialogs import (
     DeletePoolDialog,
     ExportMaterialDialog,
     ExportModelDialog,
+    SettingsDialog,
 )
 from apic_studio.ui.lines import VLine
 from shared.logger import Logger
@@ -166,32 +167,23 @@ class Sidebar(Toolbar):
         self.utilities.set_tooltip("Utilities")
         self.utilities.activated.connect(self.highlight_modes)
 
-        self.help = SidebarButton(btn_size)
+        self.help = SidebarButton(btn_size, checkable=False)
         self.help.set_icon(":icons/tabler-icon-help.png", icon_size)
         self.help.set_tooltip("Help")
-        self.help.activated.connect(self.highlight_modes)
 
-        self.about = SidebarButton(btn_size)
+        self.about = SidebarButton(btn_size, checkable=False)
         self.about.set_icon(":icons/tabler-icon-info-circle.png", icon_size)
         self.about.set_tooltip("About Render Vault")
-        self.about.activated.connect(self.highlight_modes)
 
-        self.settings_btn = SidebarButton(btn_size)
+        self.settings_btn = SidebarButton(btn_size, checkable=False)
         self.settings_btn.set_icon(":icons/tabler-icon-settings.png", icon_size)
         self.settings_btn.set_tooltip("Settings")
-        self.settings_btn.activated.connect(self.highlight_modes)
+        self.settings_btn.clicked.connect(self.open_settings)
 
         self.conn_btn = QPushButton("D")
 
-    def _add_button(
-        self,
-        size: tuple[int, int],
-        icon: str,
-        icon_size: tuple[int, int],
-        tooltip: str,
-        activated_fn: Callable[..., None],
-    ):
-        pass
+    def open_settings(self):
+        SettingsDialog().exec()
 
     @override
     def init_layouts(self) -> None:
