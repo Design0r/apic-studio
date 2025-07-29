@@ -167,6 +167,13 @@ class DCCBridge:
 
         return res
 
+    def file_open(self, path: Path) -> Message:
+        res = self.call("core.file.open", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to open file: {path.name}: {res}")
+
+        return res
+
 
 def render_material(material: Path, output: Path):
     builder = CmdBuilder()

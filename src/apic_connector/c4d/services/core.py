@@ -14,3 +14,7 @@ def import_file(file_path: str) -> bool:
         Logger.error(f"import failed: {file_path}")
 
     return result
+
+
+def open_file(file_path: str):
+    c4d.documents.LoadFile(file_path)

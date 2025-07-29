@@ -332,10 +332,13 @@ class AssetToolbar(LabledToolbar):
         size = (30, 30)
         self.add_folder = IconButton(size)
         self.add_folder.set_icon(":icons/tabler-icon-folder-plus.png")
+        self.add_folder.set_tooltip("Create new pool")
         self.remove_folder = IconButton(size)
         self.remove_folder.set_icon(":icons/tabler-icon-folder-minus.png")
+        self.remove_folder.set_tooltip("Delete current pool")
         self.open_folder = IconButton(size)
         self.open_folder.set_icon(":icons/tabler-icon-folder-open.png")
+        self.open_folder.set_tooltip("Open pool in explorer")
 
         self._load_pools()
 
@@ -455,18 +458,25 @@ class ModelToolbar(AssetToolbar):
         super().init_widgets()
         self.export_btn = IconButton((30, 30))
         self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
-        self.export_btn.set_tooltip("Export Model")
+        self.export_btn.set_tooltip("Export model")
+
+        self.refresh_btn = IconButton((30, 30))
+        self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
+        self.refresh_btn.set_tooltip("Refresh pool")
 
     @override
     def init_layouts(self):
         super().init_layouts()
 
-        self.add_widgets([self.export_btn], stretch=True)
+        self.add_widgets([self.export_btn, VLine(), self.refresh_btn], stretch=True)
 
     @override
     def init_signals(self):
         super().init_signals()
         self.export_btn.clicked.connect(self.export_dialog)
+        self.refresh_btn.clicked.connect(
+            lambda: self.pool_changed.emit(self.current_pool)
+        )
 
     def export_dialog(self):
         dialog = ExportModelDialog()
@@ -516,16 +526,23 @@ class MaterialToolbar(AssetToolbar):
         self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
         self.export_btn.set_tooltip("Export Model")
 
+        self.refresh_btn = IconButton((30, 30))
+        self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
+        self.refresh_btn.set_tooltip("Refresh pool")
+
     @override
     def init_layouts(self):
         super().init_layouts()
 
-        self.add_widgets([self.export_btn], stretch=True)
+        self.add_widgets([self.export_btn, VLine(), self.refresh_btn], stretch=True)
 
     @override
     def init_signals(self):
         super().init_signals()
         self.export_btn.clicked.connect(self.export_dialog)
+        self.refresh_btn.clicked.connect(
+            lambda: self.pool_changed.emit(self.current_pool)
+        )
 
     def export_dialog(self):
         res = self.dcc.materials_list()
@@ -574,15 +591,22 @@ class HdriToolbar(AssetToolbar):
         self.import_btn.set_icon(":icons/tabler-icon-file-import.png")
         self.import_btn.set_tooltip("Import HDRIs")
 
+        self.refresh_btn = IconButton((30, 30))
+        self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
+        self.refresh_btn.set_tooltip("Refresh pool")
+
     @override
     def init_layouts(self):
         super().init_layouts()
-        self.add_widgets([self.import_btn], stretch=True)
+        self.add_widgets([self.import_btn, VLine(), self.refresh_btn], stretch=True)
 
     @override
     def init_signals(self):
         super().init_signals()
         self.import_btn.clicked.connect(self.on_import)
+        self.refresh_btn.clicked.connect(
+            lambda: self.pool_changed.emit(self.current_pool)
+        )
 
     def on_import(self):
         files, _ = files_dialog()

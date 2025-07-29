@@ -4,7 +4,7 @@ from functools import partial
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QVBoxLayout, QWidget
 
@@ -16,6 +16,8 @@ from shared.logger import Logger
 
 
 class Viewport(QWidget):
+    asset_clicked = Signal(Asset)
+
     def __init__(
         self,
         dcc: DCCBridge,
@@ -74,6 +76,7 @@ class Viewport(QWidget):
         w.set_file(asset.file, asset.size, asset.suffix)
         w.file = asset.file
         self.flow_layout.addWidget(w)
+        w.clicked.connect(lambda: self.asset_clicked.emit(asset))
 
     def _clear_layout(self):
         while self.flow_layout.count():
@@ -113,7 +116,13 @@ class Viewport(QWidget):
         self._clear_layout()
 
     def on_context_menu(self, btn: ViewportButton, point: QPoint):
+        open_act = QAction("Open")
+        open_act.triggered.connect(lambda: self.dcc.file_open(btn.file))
+
         import_act = QAction("Import")
+        import_as_area = QAction("Import as Arealight")
+        import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(btn.file))
+
         if self.curr_view == "models":
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
         elif self.curr_view == "materials":
@@ -121,10 +130,6 @@ class Viewport(QWidget):
         elif self.curr_view == "hdris":
             import_act.setText("Import as Domelight")
             import_act.triggered.connect(lambda: self.dcc.hdri_import_as_dome(btn.file))
-            import_as_area = QAction("Import as Arealight")
-            import_as_area.triggered.connect(
-                lambda: self.dcc.hdri_import_as_area(btn.file)
-            )
 
         render_act = QAction("Render Preview")
         render_act.triggered.connect(lambda: self.on_render(btn))
@@ -136,12 +141,20 @@ class Viewport(QWidget):
         delete_act.triggered.connect(lambda: self.delete_widget(btn))
 
         menu = QMenu()
+
+        if self.curr_view not in ("hdris", "utils"):
+            menu.addAction(open_act)
+
         menu.addAction(import_act)
+
         if self.curr_view == "hdris":
             menu.addAction(import_as_area)
+
         menu.addSeparator()
+
         if self.curr_view in ("models", "lightsets"):
             menu.addAction(screenshot_act)
+
         if self.curr_view == "materials":
             menu.addAction(render_act)
 

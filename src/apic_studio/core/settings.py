@@ -79,8 +79,6 @@ class HdriSettings(Settings):
     def __init__(self):
         super().__init__()
         self.current_pool = ""
-        self.hdri_renderer = Renderer.VRAY.value
-        self.auto_generate_thumbnails = True
 
 
 @register

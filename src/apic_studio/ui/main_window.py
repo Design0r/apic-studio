@@ -5,11 +5,12 @@ from typing import Optional, override
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QIcon
-from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QSplitter, QVBoxLayout, QWidget
 
 from apic_studio import __version__
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, DCCBridge, Screenshot, pools
+from apic_studio.ui.attribute_editor import AttributeEditor
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
     HdriToolbar,
@@ -71,6 +72,12 @@ class MainWindow(QWidget):
             },
         )
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
+        self.attrib_editor = AttributeEditor()
+
+        self.splitter = QSplitter(Qt.Orientation.Horizontal, handleWidth=10)
+        self.splitter.setOpaqueResize(True)
+        self.splitter.addWidget(self.viewport)
+        self.splitter.addWidget(self.attrib_editor)
 
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
@@ -83,7 +90,8 @@ class MainWindow(QWidget):
         self.main_layout.setSpacing(0)
 
         self.main_layout.addWidget(self.sidebar)
-        self.main_layout.addLayout(self.vp_layout)
+        self.main_layout.addWidget(self.splitter)
+        self.splitter.setSizes([1, 0])
 
     def init_signals(self):
         s = self.sidebar
@@ -96,6 +104,7 @@ class MainWindow(QWidget):
         s.conn_btn.clicked.connect(
             lambda: self.dcc.connect(self.settings.CoreSettings.address)
         )
+        self.viewport.asset_clicked.connect(self.attrib_editor.load.emit)
 
         for t in self.toolbar.multibars.values():
             t.pool_changed.connect(self.viewport.draw)

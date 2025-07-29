@@ -57,7 +57,7 @@ class AssetLoaderWorker(QObject):
         icon = self._create_icon(thumb)
 
         Logger.debug(f"loaded asset from {model}")
-        asset = Asset(model, icon)
+        asset = Asset(model, icon, Path(thumb))
         self._cache[path] = asset
 
         return asset

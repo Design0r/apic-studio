@@ -437,9 +437,6 @@ class SettingsDialog(QDialog):
         self.screenshot_opacity.setRange(0, 1)
 
         self.hdri_settings = QGroupBox("HDRI Settings")
-        self.hdri_renderer = QComboBox()
-        self.hdri_renderer.addItems(("Default", "V-Ray", "Arnold", "Redshift"))
-        self.auto_generate_thumb = QCheckBox()
 
         self.save = QPushButton("Save")
 
@@ -481,10 +478,6 @@ class SettingsDialog(QDialog):
         )
 
         self.hdri_settings_layout = QFormLayout(self.hdri_settings)
-        self.hdri_settings_layout.addRow(QLabel("Renderer"), self.hdri_renderer)
-        self.hdri_settings_layout.addRow(
-            QLabel("Auto Generate Thumbnails"), self.auto_generate_thumb
-        )
 
         self.save_layout = QHBoxLayout()
         self.save_layout.addStretch()
@@ -531,15 +524,12 @@ class SettingsDialog(QDialog):
         self.render_resolution_y.setValue(mat.render_res_y)
 
         self.screenshot_opacity.setValue(mod.screenshot_opacity)
-        self.hdri_renderer.setCurrentIndex(hdri.hdri_renderer)
-        self.auto_generate_thumb.setChecked(hdri.auto_generate_thumbnails)
 
     def store(self):
         core = self.settings.CoreSettings
         mat = self.settings.MaterialSettings
         win = self.settings.WindowSettings
         mod = self.settings.ModelSettings
-        hdri = self.settings.HdriSettings
 
         core.socket_port = self.socket_port.value()
         core.socket_addr = self.addr.text()
@@ -554,9 +544,6 @@ class SettingsDialog(QDialog):
         mat.render_cam = self.render_cam.text()
 
         mod.screenshot_opacity = self.screenshot_opacity.value()
-
-        hdri.hdri_renderer = self.hdri_renderer.currentIndex()
-        hdri.auto_generate_thumbnails = self.auto_generate_thumb.isChecked()
 
 
 def files_dialog():

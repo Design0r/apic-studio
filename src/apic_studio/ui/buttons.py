@@ -108,6 +108,8 @@ class SidebarButton(QPushButton):
 
 
 class ViewportButton(QWidget):
+    clicked = Signal()
+
     def __init__(
         self,
         file: Path,
@@ -165,7 +167,7 @@ class ViewportButton(QWidget):
         self.main_layout.addLayout(self.info_layout)
 
     def init_signals(self):
-        pass
+        self.icon.clicked.connect(self.clicked.emit)
 
     @staticmethod
     def _format_filesize(size: int) -> str:
