@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 from queue import Empty, Queue
 from typing import Optional
@@ -7,7 +8,7 @@ from typing import Optional
 from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtGui import QIcon
 
-from apic_studio.core import Asset
+from apic_studio.core import Asset, img, settings
 from shared.logger import Logger
 
 
@@ -43,10 +44,17 @@ class AssetLoaderWorker(QObject):
                 self.asset_loaded.emit(asset)
 
     def load_asset(self, path: Path) -> Optional[Asset]:
-        icon = self._create_icon(self._search_thumbnail(path))
+        thumb = self._search_thumbnail(path)
+
         model = self._search_3d_model(path)
         if not model:
             return
+
+        if thumb == self._default_icon and model.suffix.lower() in {".hdr", ".exr"}:
+            self._create_thumbnail(model)
+            thumb = self._search_thumbnail(path)
+
+        icon = self._create_icon(thumb)
 
         Logger.debug(f"loaded asset from {model}")
         asset = Asset(model, icon)
@@ -95,6 +103,10 @@ class AssetLoaderWorker(QObject):
 
         return None
 
+    def _create_thumbnail(self, path: Path) -> Optional[Path]:
+        size = settings.SettingsManager().WindowSettings.asset_button_size
+        img.create_sdr_preview(path, path.parent / f"{path.stem}.jpg", size)
+
 
 class AssetLoader(QObject):
     asset_loaded = Signal(Asset)
@@ -127,3 +139,23 @@ class AssetLoader(QObject):
         self.worker.stop()
         self.t.quit()
         self.t.wait()
+
+
+class AssetConverter:
+    def __init__(self, root_path: Path = Path()) -> None:
+        self.root = root_path
+
+    def set_root(self, path: Path):
+        self.root = path
+
+    def create_asset_from_file(self, file: Path) -> Path:
+        asset_dir = self.root / file.stem
+        new_asset_path = asset_dir / file.name
+        if asset_dir.exists():
+            Logger.warning(f"asset directory already exists: {asset_dir}")
+            return new_asset_path
+
+        asset_dir.mkdir()
+        shutil.copy2(file, new_asset_path)
+
+        return new_asset_path

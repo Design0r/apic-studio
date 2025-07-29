@@ -13,13 +13,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from apic_studio.services import DCCBridge, PoolManager
+from apic_studio.services import AssetConverter, DCCBridge, PoolManager
 from apic_studio.ui.dialogs import (
     CreatePoolDialog,
     DeletePoolDialog,
     ExportMaterialDialog,
     ExportModelDialog,
     SettingsDialog,
+    files_dialog,
 )
 from apic_studio.ui.lines import VLine
 from shared.logger import Logger
@@ -569,12 +570,28 @@ class HdriToolbar(AssetToolbar):
     @override
     def init_widgets(self):
         super().init_widgets()
+        self.import_btn = IconButton((30, 30))
+        self.import_btn.set_icon(":icons/tabler-icon-file-import.png")
+        self.import_btn.set_tooltip("Import HDRIs")
 
     @override
     def init_layouts(self):
         super().init_layouts()
-        self.add_widgets([], stretch=True)
+        self.add_widgets([self.import_btn], stretch=True)
 
     @override
     def init_signals(self):
         super().init_signals()
+        self.import_btn.clicked.connect(self.on_import)
+
+    def on_import(self):
+        files, _ = files_dialog()
+        ac = AssetConverter(self.current_pool)
+        new_assets: list[Path] = []
+        for f in files:
+            new = ac.create_asset_from_file(Path(f))
+            new_assets.append(new)
+
+        self.pool_changed.emit(self.current_pool)
+        for a in new_assets:
+            self.asset_changed.emit(a)

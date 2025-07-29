@@ -557,3 +557,8 @@ class SettingsDialog(QDialog):
 
         hdri.hdri_renderer = self.hdri_renderer.currentIndex()
         hdri.auto_generate_thumbnails = self.auto_generate_thumb.isChecked()
+
+
+def files_dialog():
+    folder = QFileDialog.getOpenFileNames(caption="Select Pool Folder")
+    return folder
