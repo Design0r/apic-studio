@@ -134,6 +134,13 @@ class Sidebar(Toolbar):
             self.about,
             self.settings_btn,
         )
+        self.mode = {
+            "materials": self.materials,
+            "models": self.models,
+            "lightsets": self.lightsets,
+            "hdris": self.hdris,
+            "utilities": self.utilities,
+        }
 
     @override
     def init_widgets(self):
@@ -202,14 +209,14 @@ class Sidebar(Toolbar):
         self.main_layout.addWidget(self.settings_btn)
         self.main_layout.addWidget(self.conn_btn)
 
-    def highlight_modes(self, button: Union[SidebarButton, int]):
+    def highlight_modes(self, button: Union[SidebarButton, str]):
         for btn in self.buttons:
             btn.setChecked(False)
 
         if isinstance(button, SidebarButton):
             button.setChecked(True)
         else:
-            self.buttons[button - 1].setChecked(True)
+            self.mode[button].setChecked(True)
 
 
 class Status:
@@ -390,6 +397,9 @@ class AssetToolbar(LabledToolbar):
         items = self.pool.get()
         self.dropdown.addItems(tuple(items.keys()))
         self._pools = items
+
+    def set_current_pool(self, pool: str):
+        self.dropdown.setCurrentText(pool)
 
 
 class MultiToolbar(QWidget):

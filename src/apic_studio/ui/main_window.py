@@ -49,18 +49,24 @@ class MainWindow(QWidget):
         self.init_layouts()
         self.init_signals()
 
+        self.set_view(self.settings.WindowSettings.current_viewport)
+
     def init_widgets(self):
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
 
         self.sidebar = Sidebar(40)
-        self.sidebar.highlight_modes(1)
+        self.sidebar.highlight_modes(self.settings.WindowSettings.current_viewport)
 
         self.model_tb = ModelToolbar(pools.ModelPoolManager(), self.dcc)
+        self.model_tb.set_current_pool(self.settings.ModelSettings.current_pool)
         self.material_tb = MaterialToolbar(pools.MaterialPoolManager(), self.dcc)
+        self.material_tb.set_current_pool(self.settings.MaterialSettings.current_pool)
         self.lightset_tb = ModelToolbar(
             pools.LightsetPoolManager(), self.dcc, label="Lightsets"
         )
+        self.lightset_tb.set_current_pool(self.settings.LightsetSettings.current_pool)
         self.hdri_tb = HdriToolbar(pools.HdriPoolManager(), self.dcc)
+        self.hdri_tb.set_current_pool(self.settings.HdriSettings.current_pool)
 
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
@@ -74,7 +80,7 @@ class MainWindow(QWidget):
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
         self.attrib_editor = AttributeEditor()
 
-        self.splitter = QSplitter(Qt.Orientation.Horizontal, handleWidth=10)
+        self.splitter = QSplitter(Qt.Orientation.Horizontal)
         self.splitter.setOpaqueResize(True)
         self.splitter.addWidget(self.viewport)
         self.splitter.addWidget(self.attrib_editor)
@@ -83,15 +89,17 @@ class MainWindow(QWidget):
         self.vp_layout = QVBoxLayout()
         self.vp_layout.setContentsMargins(0, 0, 0, 0)
         self.vp_layout.addWidget(self.toolbar)
-        self.vp_layout.addWidget(self.viewport)
+        self.vp_layout.addWidget(self.splitter)
 
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.setSpacing(0)
 
         self.main_layout.addWidget(self.sidebar)
-        self.main_layout.addWidget(self.splitter)
-        self.splitter.setSizes([1, 0])
+        self.main_layout.addLayout(self.vp_layout)
+        # self.splitter.setSizes([0, 1])
+        self.splitter.setStretchFactor(0, 1)
+        self.splitter.setStretchFactor(1, 0)
 
     def init_signals(self):
         s = self.sidebar
@@ -107,7 +115,7 @@ class MainWindow(QWidget):
         self.viewport.asset_clicked.connect(self.attrib_editor.load.emit)
 
         for t in self.toolbar.multibars.values():
-            t.pool_changed.connect(self.viewport.draw)
+            t.pool_changed.connect(self.draw)
             t.asset_changed.connect(self.loader.load_asset)
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -118,6 +126,7 @@ class MainWindow(QWidget):
             self.height(),
         ]
         self.loader.stop()
+        self.settings.WindowSettings.current_viewport = self.viewport.curr_view
         return super().closeEvent(event)
 
     def set_view(self, view: str):
@@ -125,11 +134,22 @@ class MainWindow(QWidget):
         self.viewport.set_current_view(view)
         self.draw()
 
-    def draw(self):
-        curr_pool = self.toolbar.current.current_pool
-        if not curr_pool:
-            return
-        self.viewport.draw(curr_pool)
+    def draw(self, curr_pool: Optional[Path] = None):
+        if curr_pool:
+            self.viewport.draw(curr_pool)
+        else:
+            curr_pool = self.toolbar.current.current_pool
+            if not curr_pool:
+                return
+            self.viewport.draw(curr_pool)
+
+        vp_map = {
+            "materials": self.settings.MaterialSettings,
+            "models": self.settings.ModelSettings,
+            "lightsets": self.settings.LightsetSettings,
+            "hdris": self.settings.HdriSettings,
+        }
+        vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem
 
     @override
     def show(self):

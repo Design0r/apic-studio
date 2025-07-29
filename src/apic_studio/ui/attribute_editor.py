@@ -6,7 +6,6 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
-    QLabel,
     QLineEdit,
     QPushButton,
     QScrollArea,
@@ -37,19 +36,13 @@ class AttributeEditor(QWidget):
         self.scroll_area = QScrollArea()
         self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOn
-        )
+        # self.scroll_area.setVerticalScrollBarPolicy(
+        #    Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+        # )
+        self.setStyleSheet("background-color: #333;")
         self.scroll_area.setWidget(self.scroll_widget)
 
         self.banner = QWidget()
-
-        self.label = QLabel("Metadata")
-        self.label.setFixedHeight(25)
-        self.label.setStyleSheet(
-            "background-color: rgb(50,50,50); font-size: 16pt; color: white;"
-        )
-        self.label.setContentsMargins(10, 0, 0, 0)
 
         icon_size = (350, 350)
         self.icon = IconButton(icon_size)
@@ -75,8 +68,6 @@ class AttributeEditor(QWidget):
         self.main_layout = QVBoxLayout()
         self.form_layout = QFormLayout()
 
-        self.banner_layout.addWidget(self.label)
-
         self.form_layout.addRow("Name", self.asset_name)
         self.form_layout.addRow("Extension", self.asset_ext)
         self.form_layout.addRow("Size", self.asset_size)
@@ -91,7 +82,7 @@ class AttributeEditor(QWidget):
         self.button_layout.setContentsMargins(20, 0, 10, 0)
 
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
+        self.main_layout.setContentsMargins(5, 5, 5, 5)
 
         self.main_layout.addLayout(self.banner_layout)
         self.main_layout.addWidget(self.icon, alignment=Qt.AlignmentFlag.AlignCenter)
