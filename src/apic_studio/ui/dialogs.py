@@ -24,6 +24,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from apic_studio.core.settings import SettingsManager
+
 from .buttons import IconButton
 
 
@@ -379,16 +381,25 @@ class SettingsDialog(QDialog):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
+        self.settings = SettingsManager()
 
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
 
+        self.load()
+
     def init_widgets(self):
         self.label = QLabel("Settings")
         self.label.setContentsMargins(10, 0, 0, 0)
 
-        self.general_settings = QGroupBox("General Settings")
+        self.core_settings = QGroupBox("Core Settings")
+        self.socket_port = QSpinBox()
+        self.socket_port.setRange(0, 2**16)
+        self.socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.addr = QLineEdit("localhost")
+
+        self.window_settings = QGroupBox("Window Settings")
         self.button_resolution = QSpinBox()
         self.button_resolution.setRange(0, 5000)
         self.button_resolution.setButtonSymbols(
@@ -435,7 +446,11 @@ class SettingsDialog(QDialog):
     def init_layouts(self):
         self.settings_groups_layout = QVBoxLayout(self)
 
-        self.general_settings_layout = QFormLayout(self.general_settings)
+        self.core_settings_layout = QFormLayout(self.core_settings)
+        self.core_settings_layout.addRow("Cinema 4D socket address", self.addr)
+        self.core_settings_layout.addRow("Cinema 4D socket port", self.socket_port)
+
+        self.general_settings_layout = QFormLayout(self.window_settings)
         self.general_settings_layout.addRow(
             "Asset Button Size (px)", self.button_resolution
         )
@@ -475,7 +490,8 @@ class SettingsDialog(QDialog):
         self.save_layout.addStretch()
         self.save_layout.addWidget(self.save)
 
-        self.settings_groups_layout.addWidget(self.general_settings)
+        self.settings_groups_layout.addWidget(self.core_settings)
+        self.settings_groups_layout.addWidget(self.window_settings)
         self.settings_groups_layout.addWidget(self.material_settings)
         self.settings_groups_layout.addWidget(self.model_settings)
         self.settings_groups_layout.addWidget(self.hdri_settings)
@@ -484,6 +500,7 @@ class SettingsDialog(QDialog):
 
     def init_signals(self):
         self.browse_render_scene.clicked.connect(self.open_render_scene)
+        self.save.clicked.connect(self.store)
 
     def open_render_scene(self):
         file, _ = QFileDialog().getOpenFileName(
@@ -494,53 +511,49 @@ class SettingsDialog(QDialog):
 
         self.render_scene.setText(file)
 
-    def read_from_settings_manager(self):
-        self.button_resolution.setValue(self.settings.window_settings.asset_button_size)
-        self.ui_scale.setValue(self.settings.window_settings.ui_scale)
+    def load(self):
+        core = self.settings.CoreSettings
+        mat = self.settings.MaterialSettings
+        win = self.settings.WindowSettings
+        mod = self.settings.ModelSettings
+        hdri = self.settings.HdriSettings
 
-        self.material_renderer.setCurrentIndex(
-            self.settings.material_settings.material_renderer
-        )
-        self.render_scene.setText(self.settings.material_settings.render_scene)
-        self.render_object.setText(self.settings.material_settings.render_object)
-        self.render_cam.setText(self.settings.material_settings.render_cam)
-        self.render_resolution_x.setValue(
-            self.settings.material_settings.render_resolution_x
-        )
-        self.render_resolution_y.setValue(
-            self.settings.material_settings.render_resolution_y
-        )
+        self.socket_port.setValue(core.socket_port)
+        self.addr.setText(core.socket_addr)
 
-        self.screenshot_opacity.setValue(
-            self.settings.model_settings.screenshot_opacity
-        )
-        self.hdri_renderer.setCurrentIndex(self.settings.hdri_settings.hdri_renderer)
-        self.auto_generate_thumb.setChecked(
-            self.settings.hdri_settings.auto_generate_thumbnails
-        )
+        self.button_resolution.setValue(win.asset_button_size)
+        self.ui_scale.setValue(win.ui_scale)
 
-    def write_to_settings_manager(self):
-        self.settings.window_settings.asset_button_size = self.button_resolution.value()
-        self.settings.window_settings.ui_scale = self.ui_scale.value()
+        self.render_scene.setText(mat.render_scene)
+        self.render_object.setText(mat.render_object)
+        self.render_cam.setText(mat.render_cam)
+        self.render_resolution_x.setValue(mat.render_res_x)
+        self.render_resolution_y.setValue(mat.render_res_y)
 
-        self.settings.material_settings.render_resolution_x = (
-            self.render_resolution_x.value()
-        )
-        self.settings.material_settings.render_resolution_y = (
-            self.render_resolution_y.value()
-        )
-        self.settings.material_settings.render_object = self.render_object.text()
-        self.settings.material_settings.render_scene = self.render_scene.text()
-        self.settings.material_settings.render_cam = self.render_cam.text()
-        self.settings.material_settings.material_renderer = (
-            self.material_renderer.currentIndex()
-        )
+        self.screenshot_opacity.setValue(mod.screenshot_opacity)
+        self.hdri_renderer.setCurrentIndex(hdri.hdri_renderer)
+        self.auto_generate_thumb.setChecked(hdri.auto_generate_thumbnails)
 
-        self.settings.model_settings.screenshot_opacity = (
-            self.screenshot_opacity.value()
-        )
+    def store(self):
+        core = self.settings.CoreSettings
+        mat = self.settings.MaterialSettings
+        win = self.settings.WindowSettings
+        mod = self.settings.ModelSettings
+        hdri = self.settings.HdriSettings
 
-        self.settings.hdri_settings.hdri_renderer = self.hdri_renderer.currentIndex()
-        self.settings.hdri_settings.auto_generate_thumbnails = (
-            self.auto_generate_thumb.isChecked()
-        )
+        core.socket_port = self.socket_port.value()
+        core.socket_addr = self.addr.text()
+
+        win.asset_button_size = self.button_resolution.value()
+        win.ui_scale = self.ui_scale.value()
+
+        mat.render_res_x = self.render_resolution_x.value()
+        mat.render_res_y = self.render_resolution_y.value()
+        mat.render_object = self.render_object.text()
+        mat.render_scene = self.render_scene.text()
+        mat.render_cam = self.render_cam.text()
+
+        mod.screenshot_opacity = self.screenshot_opacity.value()
+
+        hdri.hdri_renderer = self.hdri_renderer.currentIndex()
+        hdri.auto_generate_thumbnails = self.auto_generate_thumb.isChecked()

@@ -118,6 +118,13 @@ class Viewport(QWidget):
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
         elif self.curr_view == "materials":
             import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
+        elif self.curr_view == "hdris":
+            import_act.setText("Import as Domelight")
+            import_act.triggered.connect(lambda: self.dcc.hdri_import_as_dome(btn.file))
+            import_as_area = QAction("Import as Arealight")
+            import_as_area.triggered.connect(
+                lambda: self.dcc.hdri_import_as_area(btn.file)
+            )
 
         render_act = QAction("Render Preview")
         render_act.triggered.connect(lambda: self.on_render(btn))
@@ -130,6 +137,8 @@ class Viewport(QWidget):
 
         menu = QMenu()
         menu.addAction(import_act)
+        if self.curr_view == "hdris":
+            menu.addAction(import_as_area)
         menu.addSeparator()
         if self.curr_view in ("models", "lightsets"):
             menu.addAction(screenshot_act)

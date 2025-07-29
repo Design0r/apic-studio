@@ -153,6 +153,20 @@ class DCCBridge:
     def materials_preview_create(self, path: Path):
         render_material(path, path.parent / f"{path.stem}.png")
 
+    def hdri_import_as_dome(self, path: Path) -> Message:
+        res = self.call("hdris.import.domelight", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to import hdri: {path.name}: {res}")
+
+        return res
+
+    def hdri_import_as_area(self, path: Path) -> Message:
+        res = self.call("hdris.import.arealight", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to import hdri: {path.name}: {res}")
+
+        return res
+
 
 def render_material(material: Path, output: Path):
     builder = CmdBuilder()

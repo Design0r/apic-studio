@@ -12,6 +12,7 @@ from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, DCCBridge, Screenshot, pools
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
+    HdriToolbar,
     MaterialToolbar,
     ModelToolbar,
     MultiToolbar,
@@ -55,10 +56,19 @@ class MainWindow(QWidget):
 
         self.model_tb = ModelToolbar(pools.ModelPoolManager(), self.dcc)
         self.material_tb = MaterialToolbar(pools.MaterialPoolManager(), self.dcc)
+        self.lightset_tb = ModelToolbar(
+            pools.LightsetPoolManager(), self.dcc, label="Lightsets"
+        )
+        self.hdri_tb = HdriToolbar(pools.HdriPoolManager(), self.dcc)
 
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
-            {"materials": self.material_tb, "models": self.model_tb},
+            {
+                "materials": self.material_tb,
+                "models": self.model_tb,
+                "lightsets": self.lightset_tb,
+                "hdris": self.hdri_tb,
+            },
         )
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
 
@@ -79,6 +89,8 @@ class MainWindow(QWidget):
         s = self.sidebar
         s.models.clicked.connect(lambda: self.set_view("models"))
         s.materials.clicked.connect(lambda: self.set_view("materials"))
+        s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
+        s.hdris.clicked.connect(lambda: self.set_view("hdris"))
         self.dcc.on_connect(lambda: s.conn_btn.setText("C"))
         self.dcc.on_disconnect(lambda: s.conn_btn.setText("D"))
         s.conn_btn.clicked.connect(

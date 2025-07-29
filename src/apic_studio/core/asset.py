@@ -7,7 +7,7 @@ from PySide6.QtGui import QIcon
 
 class Asset:
     IMG_EXT = (".jpg", ".png")
-    CG_EXT = (".c4d",)
+    CG_EXT = (".c4d", ".hdr", ".exr")
     __slots__ = ("path", "name", "suffix", "size", "icon", "file")
 
     def __init__(self, file: Path, icon: QIcon) -> None:

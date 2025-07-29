@@ -97,7 +97,7 @@ class WindowSettings(Settings):
         self.window_geometry = [100, 100, 1000, 700]
         self.current_viewport = 0
         self.asset_button_size = 350
-        self.ui_scale = 1
+        self.ui_scale = 1.0
 
 
 @register

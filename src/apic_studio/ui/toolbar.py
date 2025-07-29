@@ -442,7 +442,7 @@ class ModelToolbar(AssetToolbar):
         self,
         pool: PoolManager,
         dcc: DCCBridge,
-        label: str = "Model",
+        label: str = "Models",
         thickness: int = 40,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
         parent: QWidget | None = None,
@@ -552,3 +552,29 @@ class MaterialToolbar(AssetToolbar):
 
         self.dcc.materials_export(data.materials, self.current_pool)
         self.pool_changed.emit(self.current_pool)
+
+
+class HdriToolbar(AssetToolbar):
+    def __init__(
+        self,
+        pool: PoolManager,
+        dcc: DCCBridge,
+        label: str = "Hdris",
+        thickness: int = 40,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, pool, dcc, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+        self.add_widgets([], stretch=True)
+
+    @override
+    def init_signals(self):
+        super().init_signals()
