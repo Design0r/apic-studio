@@ -58,9 +58,9 @@ class AttributeEditor(QWidget):
         self.asset_path.setReadOnly(True)
         self.asset_renderer = QLineEdit("Redshift")
         self.asset_notes = QTextEdit("notes about asset...")
+        self.asset_notes.setStyleSheet(" border: 1px solid #222;")
 
         self.save_btn = QPushButton("Save")
-        self.save_btn.setFixedWidth(icon_size[1] // 2)
 
     def init_layouts(self):
         self.another_layout = QVBoxLayout()
@@ -74,15 +74,15 @@ class AttributeEditor(QWidget):
         self.form_layout.addRow("Path", self.asset_path)
         self.form_layout.addRow("Renderer", self.asset_renderer)
         self.form_layout.addRow("Notes", self.asset_notes)
-        self.form_layout.setContentsMargins(20, 0, 10, 0)
+        self.form_layout.setContentsMargins(0, 0, 0, 0)
 
         self.button_layout = QHBoxLayout()
         self.button_layout.addStretch()
         self.button_layout.addWidget(self.save_btn)
-        self.button_layout.setContentsMargins(20, 0, 10, 0)
+        self.button_layout.setContentsMargins(0, 0, 0, 0)
 
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-        self.main_layout.setContentsMargins(5, 5, 5, 5)
+        self.main_layout.setContentsMargins(10, 10, 10, 10)
 
         self.main_layout.addLayout(self.banner_layout)
         self.main_layout.addWidget(self.icon, alignment=Qt.AlignmentFlag.AlignCenter)

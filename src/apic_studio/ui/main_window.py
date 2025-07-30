@@ -113,9 +113,10 @@ class MainWindow(QWidget):
             lambda: self.dcc.connect(self.settings.CoreSettings.address)
         )
         self.viewport.asset_clicked.connect(self.attrib_editor.load.emit)
+        self.material_tb.render_previews.connect(self.render_previews)
 
         for t in self.toolbar.multibars.values():
-            t.pool_changed.connect(self.draw)
+            t.pool_changed.connect(lambda: self.draw(force=True))
             t.asset_changed.connect(self.loader.load_asset)
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -134,14 +135,14 @@ class MainWindow(QWidget):
         self.viewport.set_current_view(view)
         self.draw()
 
-    def draw(self, curr_pool: Optional[Path] = None):
+    def draw(self, curr_pool: Optional[Path] = None, force: bool = False):
         if curr_pool:
-            self.viewport.draw(curr_pool)
+            self.viewport.draw(curr_pool, force=force)
         else:
             curr_pool = self.toolbar.current.current_pool
             if not curr_pool:
                 return
-            self.viewport.draw(curr_pool)
+            self.viewport.draw(curr_pool, force=force)
 
         vp_map = {
             "materials": self.settings.MaterialSettings,
@@ -155,3 +156,9 @@ class MainWindow(QWidget):
     def show(self):
         super().show()
         self.draw()
+
+    def render_previews(self):
+        materials = [m for w in self.viewport.widgets.values() if (m := w.file)]
+        self.dcc.materials_preview_create_all(
+            materials, callback=lambda: self.draw(force=True)
+        )

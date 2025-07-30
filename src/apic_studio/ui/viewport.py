@@ -75,7 +75,6 @@ class Viewport(QWidget):
         w.set_thumbnail(asset.icon, 185)
         w.set_file(asset.file, asset.size, asset.suffix)
         w.file = asset.file
-        self.flow_layout.addWidget(w)
         w.clicked.connect(lambda: self.asset_clicked.emit(asset))
 
     def _clear_layout(self):
@@ -85,7 +84,7 @@ class Viewport(QWidget):
                 continue
             item.widget().setParent(None)
 
-    def draw(self, path: Path):
+    def draw(self, path: Path, force: bool = False):
         self._clear_layout()
 
         Logger.debug(f"drawing called: {path}")
@@ -98,7 +97,7 @@ class Viewport(QWidget):
             if not self.loader.is_asset(x):
                 continue
 
-            if cached_widget := self.widgets.get(x.stem):
+            if not force and (cached_widget := self.widgets.get(x.stem)):
                 self.flow_layout.addWidget(cached_widget)
                 continue
 
@@ -106,6 +105,7 @@ class Viewport(QWidget):
             b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
             self.widgets[x.stem] = b
+            self.flow_layout.addWidget(b)
             self.loader.load_asset(x)
 
     def set_current_view(self, view: str):
@@ -134,6 +134,9 @@ class Viewport(QWidget):
         render_act = QAction("Render Preview")
         render_act.triggered.connect(lambda: self.on_render(btn))
 
+        delete_preview_act = QAction("Delete Preview")
+        delete_preview_act.triggered.connect(lambda: self.on_del_preview(btn))
+
         screenshot_act = QAction("Create Screenshot")
         screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))
 
@@ -157,6 +160,7 @@ class Viewport(QWidget):
 
         if self.curr_view == "materials":
             menu.addAction(render_act)
+            menu.addAction(delete_preview_act)
 
         menu.addSeparator()
         menu.addAction(delete_act)
@@ -164,8 +168,17 @@ class Viewport(QWidget):
         menu.exec_(btn.mapToGlobal(point))
 
     def on_render(self, btn: ViewportButton):
-        self.dcc.materials_preview_create(btn.file)
-        self.loader.load_asset(btn.file.parent, refresh=True)
+        self.dcc.materials_preview_create(
+            btn.file,
+            callback=lambda: self.loader.load_asset(btn.file.parent, refresh=True),
+        )
+
+    def on_del_preview(self, btn: ViewportButton):
+        file_dir = btn.file.parent
+        for f in file_dir.glob("*.png"):
+            Logger.debug(f"Deleting preview: {f}")
+            f.unlink()
+        self.loader.load_asset(file_dir, refresh=True)
 
     def delete_widget(self, btn: ViewportButton):
         del self.widgets[btn.file.stem]

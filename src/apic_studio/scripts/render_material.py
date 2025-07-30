@@ -1,7 +1,10 @@
 import sys
 from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
 import c4d
+import cv2
+import numpy as np
 
 from apic_connector.c4d.services import core
 
@@ -12,23 +15,18 @@ def parse_args() -> Namespace:
         "--scene", "-s", type=str, help="c4d render scene path", required=True
     )
     p.add_argument(
-        "--material_path",
-        "-mp",
+        "--materials",
+        "-m",
         type=str,
-        help="c4d material scene path",
-        required=True,
-    )
-    p.add_argument(
-        "--material_name",
-        "-mn",
-        type=str,
-        help="c4d material scene path",
+        help="c4d material scene paths as a list",
         required=True,
     )
     p.add_argument(
         "--object", "-obj", type=str, help="render object name", required=True
     )
-    p.add_argument("--output", "-o", type=str, help="render output path", required=True)
+    p.add_argument(
+        "--extension", "-e", type=str, help="output file extension", default=".png"
+    )
     p.add_argument("--camera", "-c", type=str, help="render object name")
     p.add_argument(
         "--width", "-rx", type=float, help="render resolution width", default=350.0
@@ -40,6 +38,30 @@ def parse_args() -> Namespace:
     return p.parse_args(sys.argv[1:])
 
 
+def bake_linear_to_srgb(bmp: c4d.bitmaps.MultipassBitmap):
+    w, h = bmp.GetSize()
+    for y in range(h):
+        for x in range(w):
+            # read raw 0–255 floats as a Vector
+            vec = bmp.GetPixelDirect(x, y)
+            # normalize to [0,1]
+            lin = c4d.Vector(vec.x / 255.0, vec.y / 255.0, vec.z / 255.0)
+
+            # apply standard Rec.709→sRGB transfer
+            srgb = c4d.utils.TransformColor(
+                lin, c4d.COLORSPACETRANSFORMATION_LINEAR_TO_SRGB
+            )
+
+            # clamp back to [0,255] ints and write
+            bmp.SetPixel(
+                x,
+                y,
+                int(max(0, min(255, srgb.x * 255))),
+                int(max(0, min(255, srgb.y * 255))),
+                int(max(0, min(255, srgb.z * 255))),
+            )
+
+
 def render_document_to_file(doc: "c4d.BaseDocument"):
     rd = doc.GetActiveRenderData()
     bc = rd.GetDataInstance()
@@ -47,7 +69,7 @@ def render_document_to_file(doc: "c4d.BaseDocument"):
     bmp = c4d.bitmaps.MultipassBitmap(
         int(bc[c4d.RDATA_XRES]), int(bc[c4d.RDATA_YRES]), c4d.COLORMODE_RGB
     )
-    bmp.AddChannel(True, True)
+    # bmp.AddChannel(True, True)
 
     result = c4d.documents.RenderDocument(
         doc,
@@ -64,7 +86,7 @@ def render_document_to_file(doc: "c4d.BaseDocument"):
     if not bmp.Save(out_path, c4d.FILTER_PNG):
         raise RuntimeError(f"Failed to save render to: {out_path}")
 
-    print(f"✅ Saved render to {out_path}")
+    print(f"Saved render to {out_path}")
 
 
 def set_camera(doc: "c4d.BaseDocument", name: str):
@@ -84,6 +106,7 @@ def set_render_settings(doc: "c4d.BaseDocument", path: str, res: tuple[float, fl
 
     data[c4d.RDATA_RENDERENGINE] = c4d.VPrsrenderer
     rd.SetData(data)
+
     c4d.EventAdd()
 
 
@@ -93,23 +116,50 @@ def apply_material(obj: c4d.BaseObject, mtl: c4d.BaseMaterial):
     obj.InsertTag(ttag)
 
 
+def reinhard_tonemap(img: cv2.Mat, exposure: float = 1.0, white: float = 1.0):
+    return img * (1.0 + (img / (white**2))) / (exposure + img)
+
+
+def apply_gamma(file: str):
+    img = cv2.imread(file, cv2.IMREAD_UNCHANGED)
+    if img is None:
+        raise ValueError(f"Failed to load image: {file}")
+    img_f = img.astype(np.float32) / 255.0
+    corrected = np.power(img_f, 1.0 / 2.2)
+    out = np.clip(corrected * 255.0, 0, 255).round().astype(np.uint8)
+
+    if not cv2.imwrite(file, out):
+        raise RuntimeError(f"Failed to save image to: {file}")
+    print(f"Saved gamma‑corrected image to {file}")
+
+
 def main():
     args = parse_args()
-    print(args)
 
-    doc = c4d.documents.GetActiveDocument()
-    if not core.import_file(args.scene):
+    doc = c4d.documents.LoadDocument(
+        args.scene, c4d.SCENEFILTER_MATERIALS | c4d.SCENEFILTER_OBJECTS
+    )
+    if not doc:
         raise RuntimeError(f"Failed to load base scene file: {args.scene}")
 
-    if not core.import_file(args.material_path):
-        raise RuntimeError(f"Failed to load material file: {args.material_path}")
+    c4d.documents.InsertBaseDocument(doc)
 
-    set_camera(doc, args.camera)
-    set_render_settings(doc, args.output, (args.width, args.height))
-    apply_material(
-        doc.SearchObject(args.object), doc.SearchMaterial(args.material_name)
-    )
-    render_document_to_file(doc)
+    for mat in args.materials.split(","):
+        mat_path = Path(mat)
+        mat_name = mat_path.stem
+        output_path = str(Path(mat_path).parent / f"{mat_name}{args.extension}")
+        if not core.import_file(mat):
+            raise RuntimeError(f"Failed to load material file: {mat}")
+
+        set_camera(doc, args.camera)
+        set_render_settings(doc, output_path, (args.width, args.height))
+        obj = doc.SearchObject(args.object)
+        if not obj:
+            continue
+        apply_material(obj, doc.SearchMaterial(mat_name))
+        render_document_to_file(doc)
+        apply_gamma(output_path)
+        obj.KillTag(c4d.TAG_TEXTURE, 0)
 
 
 if __name__ == "__main__":

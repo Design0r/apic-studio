@@ -518,6 +518,8 @@ class ModelToolbar(AssetToolbar):
 
 
 class MaterialToolbar(AssetToolbar):
+    render_previews = Signal()
+
     def __init__(
         self,
         pool: PoolManager,
@@ -534,7 +536,11 @@ class MaterialToolbar(AssetToolbar):
         super().init_widgets()
         self.export_btn = IconButton((30, 30))
         self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
-        self.export_btn.set_tooltip("Export Model")
+        self.export_btn.set_tooltip("Export model")
+
+        self.render_btn = IconButton((30, 30))
+        self.render_btn.set_icon(":icons/tabler-icon-photo.png")
+        self.render_btn.set_tooltip("Render previews")
 
         self.refresh_btn = IconButton((30, 30))
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
@@ -544,7 +550,9 @@ class MaterialToolbar(AssetToolbar):
     def init_layouts(self):
         super().init_layouts()
 
-        self.add_widgets([self.export_btn, VLine(), self.refresh_btn], stretch=True)
+        self.add_widgets(
+            [self.export_btn, self.render_btn, VLine(), self.refresh_btn], stretch=True
+        )
 
     @override
     def init_signals(self):
@@ -553,6 +561,7 @@ class MaterialToolbar(AssetToolbar):
         self.refresh_btn.clicked.connect(
             lambda: self.pool_changed.emit(self.current_pool)
         )
+        self.render_btn.clicked.connect(self.render_previews.emit)
 
     def export_dialog(self):
         res = self.dcc.materials_list()

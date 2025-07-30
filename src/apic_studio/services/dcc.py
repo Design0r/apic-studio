@@ -1,7 +1,10 @@
 import subprocess
 import sys
 from pathlib import Path
+from subprocess import PIPE, Popen
 from typing import Any, Callable, Optional, Protocol
+
+from PySide6.QtCore import QObject, QThread
 
 from apic_studio.core.settings import SettingsManager
 from shared.logger import Logger
@@ -42,6 +45,7 @@ class Cinema4D:
             "win32": Path("C:\\Program Files\\"),
         }
         self.platform = sys.platform
+        self._renders: list[RenderThread] = []
 
     @property
     def default_location(self) -> Path:
@@ -63,10 +67,21 @@ class Cinema4D:
         return self._get_base() / "c4dpy.exe"
 
     def run_exe(self, args: list[str]): ...
-    def run_py(self, args: list[str]):
+    def run_py(self, args: list[str], callback: Optional[Callable[[], None]] = None):
         cmd = f"{self.get_py()} {' '.join(args)}"
-        print(cmd)
-        subprocess.run(cmd)
+        rt = RenderThread(cmd)
+        self._renders.append(rt)
+
+        def on_finished():
+            if callback:
+                Logger.debug("Finished c4dpy process")
+                callback()
+            self._renders = []
+            rt.deleteLater()
+
+        rt.finished.connect(on_finished)
+        Logger.debug(f"Starting c4dpy with cmd: {cmd}")
+        rt.start()
 
     def run_batch(self, args: list[str]):
         cmd = f"{self.get_batch()} {' '.join(args)}"
@@ -74,6 +89,23 @@ class Cinema4D:
         subprocess.run(cmd)
 
     def version(self) -> str: ...
+
+
+class RenderThread(QThread):
+    def __init__(
+        self,
+        cmd: str,
+        parent: QObject | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.cmd = cmd
+
+    def run(self):
+        with Popen(self.cmd, stdout=PIPE, stderr=PIPE) as p:
+            # out, err = p.communicate()
+            # Logger.info(out.decode(errors="ignore"))
+            # Logger.error(err.decode(errors="ignore"))
+            p.wait()
 
 
 class DCCBridge:
@@ -150,8 +182,15 @@ class DCCBridge:
 
         return res
 
-    def materials_preview_create(self, path: Path):
-        render_material(path, path.parent / f"{path.stem}.png")
+    def materials_preview_create(
+        self, path: Path, callback: Optional[Callable[[], None]] = None
+    ):
+        render_material([path], callback=callback)
+
+    def materials_preview_create_all(
+        self, path: list[Path], callback: Optional[Callable[[], None]] = None
+    ):
+        render_material(path, callback=callback)
 
     def hdri_import_as_dome(self, path: Path) -> Message:
         res = self.call("hdris.import.domelight", {"path": str(path)})
@@ -175,7 +214,9 @@ class DCCBridge:
         return res
 
 
-def render_material(material: Path, output: Path):
+def render_material(
+    materials: list[Path], callback: Optional[Callable[..., None]] = None
+):
     builder = CmdBuilder()
     s = SettingsManager().MaterialSettings
     builder.add_positional(
@@ -186,10 +227,8 @@ def render_material(material: Path, output: Path):
     builder.add_flag("--camera", s.render_cam)
     builder.add_flag("--width", s.render_res_x)
     builder.add_flag("--height", s.render_res_y)
-    builder.add_flag("--material_path", material)
-    builder.add_flag("--material_name", material.stem)
-    builder.add_flag("--output", output)
+    builder.add_flag("--materials", ",".join((str(m) for m in materials)))
 
     cmd = builder.build_list()
     c4d = Cinema4D()
-    c4d.run_py(cmd)
+    c4d.run_py(cmd, callback=callback)
