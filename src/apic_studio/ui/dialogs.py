@@ -497,7 +497,7 @@ class SettingsDialog(QDialog):
 
     def open_render_scene(self):
         file, _ = QFileDialog().getOpenFileName(
-            self, "Browse Render Scene", filter="Maya Files (*.ma *.mb)"
+            self, "Browse Render Scene", filter="Cinema 4D Files (*.c4d)"
         )
         if not file:
             return

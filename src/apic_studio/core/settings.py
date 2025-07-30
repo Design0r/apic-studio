@@ -103,7 +103,7 @@ class CoreSettings(Settings):
     def __init__(self) -> None:
         super().__init__()
         self.socket_addr = "localhost"
-        self.socket_port = 65432
+        self.socket_port = 1337
 
     @property
     def address(self) -> tuple[str, int]:

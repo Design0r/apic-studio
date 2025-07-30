@@ -2,6 +2,8 @@ import shutil
 import sys
 from pathlib import Path
 
+import PyInstaller.__main__
+
 
 class Builder:
     def __init__(self, build_dir: Path):
@@ -73,18 +75,17 @@ class Builder:
 
 def main():
     CWD = Path(__file__).parent
-    """     
-        PyInstaller.__main__.run(
+    PyInstaller.__main__.run(
         [
             "src/apic_studio.py",
-            "--onefile",
+            # "--onefile",
             "--name",
             "Apic Studio",
-            "--noconsole",
+            # "--noconsole",
             "--icon",
             ".\\src\\apic_studio\\resources\\icons\\apic_logo.ico",
         ]
-    ) """
+    )
 
     b = Builder(CWD / "dist")
 
@@ -101,6 +102,10 @@ def main():
     b.add_ext_copy(CWD / "src" / "run_connector.py", plugins / "apic_connector.pyp")
     b.add_ext_copy(CWD / "src" / "shared", deps / "shared")
     b.add_ext_copy(CWD / "src" / "apic_connector", deps / "apic_connector")
+    b.add_ext_copy(
+        CWD / "dist" / "Apic Studio",
+        deps.parent.parent / "Apic Studio",
+    )
 
     b.build()
 
