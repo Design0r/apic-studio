@@ -3,7 +3,6 @@
     <file>icons/tabler-icon-archive.png</file>
     <file>icons/tabler-icon-script.png</file>
     <file>icons/tabler-icon-lamp.png</file>
-    <file>icons/tabler-icon-packages.png</file>
     <file>icons/tabler-icon-live-photo.png</file>
     <file>icons/tabler-icon-live-photo-off.png</file>
     <file>icons/tabler-icon-photo.png</file>
@@ -23,5 +22,8 @@
     <file>icons/tabler-icon-box.png</file>
     <file>icons/tabler-icon-reload.png</file>
     <file>icons/tabler-icon-route.png</file>
+    <file>icons/icon-power-on.png</file>
+    <file>icons/icon-power-off.png</file>
+    <file>icons/apic_logo.png</file>
   </qresource>
 </RCC>

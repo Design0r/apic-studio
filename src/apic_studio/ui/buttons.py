@@ -197,3 +197,23 @@ class ViewportButton(QWidget):
         else:
             shutil.rmtree(self.file.parent, ignore_errors=True)
         super().deleteLater()
+
+
+class ConnectionButton(QPushButton):
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setFixedWidth(30)
+        self.setFixedHeight(30)
+        self.setIconSize(QSize(28, 28))
+
+    def set_connected(self):
+        self.setStyleSheet(
+            "ConnectionButton{background-color: #2cd376;} ConnectionButton::hover{background-color: #156337}"
+        )
+        self.setIcon(QIcon(":icons/icon-power-on.png"))
+
+    def set_disconnected(self):
+        self.setStyleSheet(
+            "ConnectionButton{background-color: #c53a3e;} ConnectionButton::hover{background-color: #722224}"
+        )
+        self.setIcon(QIcon(":icons/icon-power-off.png"))

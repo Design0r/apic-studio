@@ -40,7 +40,7 @@ class MainWindow(QWidget):
         self.dcc = dcc
 
         self.setWindowTitle(f"Apic Studio - {__version__}")
-        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setWindowFlag(Qt.WindowType.Window)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet("QWidget {background-color: #444}")
@@ -107,8 +107,8 @@ class MainWindow(QWidget):
         s.materials.clicked.connect(lambda: self.set_view("materials"))
         s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
         s.hdris.clicked.connect(lambda: self.set_view("hdris"))
-        self.dcc.on_connect(lambda: s.conn_btn.setText("C"))
-        self.dcc.on_disconnect(lambda: s.conn_btn.setText("D"))
+        self.dcc.on_connect(s.conn_btn.set_connected)
+        self.dcc.on_disconnect(s.conn_btn.set_disconnected)
         s.conn_btn.clicked.connect(
             lambda: self.dcc.connect(self.settings.CoreSettings.address)
         )

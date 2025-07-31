@@ -35,7 +35,7 @@ class CreatePoolDialog(QDialog):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle("Create new Pool")
-        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -96,7 +96,7 @@ class DeletePoolDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Delete current Pool")
-        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -146,7 +146,7 @@ class ExportModelDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Export")
-        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -210,7 +210,7 @@ class ExportMaterialDialog(QDialog):
         self._widgets: list[tuple[QCheckBox, QLabel]] = []
 
         self.setWindowTitle("Export")
-        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -389,7 +389,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
-        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.settings = SettingsManager()
 
         self.init_widgets()
@@ -430,11 +430,10 @@ class SettingsDialog(QDialog):
 
         self.model_settings = QGroupBox("Model Settings")
         self.screenshot_opacity = QDoubleSpinBox()
-        self.screenshot_opacity.setRange(0, 5000)
+        self.screenshot_opacity.setRange(0, 1)
         self.screenshot_opacity.setButtonSymbols(
             QAbstractSpinBox.ButtonSymbols.NoButtons
         )
-        self.screenshot_opacity.setRange(0, 1)
 
         self.hdri_settings = QGroupBox("HDRI Settings")
 

@@ -26,7 +26,8 @@ from apic_studio.ui.lines import VLine
 from shared.logger import Logger
 from shared.utils import sanitize_string
 
-from .buttons import IconButton, SidebarButton
+from .buttons import ConnectionButton, IconButton, SidebarButton
+from .lines import HLine
 
 SIDEBAR_STYLE = """
 QWidget{
@@ -188,7 +189,8 @@ class Sidebar(Toolbar):
         self.settings_btn.set_tooltip("Settings")
         self.settings_btn.clicked.connect(self.open_settings)
 
-        self.conn_btn = QPushButton("D")
+        # self.conn_btn = QPushButton("D")
+        self.conn_btn = ConnectionButton()
 
     def open_settings(self):
         SettingsDialog().exec()
@@ -207,6 +209,7 @@ class Sidebar(Toolbar):
         self.main_layout.addWidget(self.help)
         self.main_layout.addWidget(self.about)
         self.main_layout.addWidget(self.settings_btn)
+        self.main_layout.addWidget(HLine())
         self.main_layout.addWidget(self.conn_btn)
 
     def highlight_modes(self, button: Union[SidebarButton, str]):
