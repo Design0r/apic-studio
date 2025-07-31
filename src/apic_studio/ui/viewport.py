@@ -71,10 +71,13 @@ class Viewport(QWidget):
         return self._widgets[self.curr_view]
 
     def on_asset_load(self, asset: Asset):
-        w = self.widgets[asset.path.stem]
+        w = self.widgets.get(asset.path.stem)
+        if not w:
+            Logger.error(f"Failed to find widget by asset name: {asset.path.stem}")
+            return
+
         w.set_thumbnail(asset.icon, 185)
         w.set_file(asset.file, asset.size, asset.suffix)
-        w.file = asset.file
         w.clicked.connect(lambda: self.asset_clicked.emit(asset))
 
     def _clear_layout(self):
@@ -106,7 +109,7 @@ class Viewport(QWidget):
             b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
             self.widgets[x.stem] = b
             self.flow_layout.addWidget(b)
-            self.loader.load_asset(x)
+            self.loader.load_asset(x, refresh=force)
 
     def set_current_view(self, view: str):
         if view not in self._widgets:

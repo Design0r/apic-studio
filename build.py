@@ -81,7 +81,8 @@ def main():
             # "--onefile",
             "--name",
             "Apic Studio",
-            # "--noconsole",
+            "--noconsole",
+            "--noconfirm",
             "--icon",
             ".\\src\\apic_studio\\resources\\icons\\apic_logo.ico",
         ]

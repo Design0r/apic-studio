@@ -23,8 +23,11 @@ class AssetLoaderWorker(QObject):
         self._running = True
         self._default_icon = ":icons/tabler-icon-photo.png"
 
-    def clear_cache(self):
-        self._cache = {}
+    def remove_from_cache(self, path: Path):
+        try:
+            self._cache.pop(path)
+        except KeyError:
+            pass
 
     def add_task(self, path: Path) -> None:
         self.task_queue.put(path)
@@ -44,6 +47,9 @@ class AssetLoaderWorker(QObject):
                 self.asset_loaded.emit(asset)
 
     def load_asset(self, path: Path) -> Optional[Asset]:
+        if cached := self._cache.get(path):
+            return cached
+
         thumb = self._search_thumbnail(path)
 
         model = self._search_3d_model(path)
@@ -122,14 +128,11 @@ class AssetLoader(QObject):
         self.t.start()
 
     def is_asset(self, path: Path) -> bool:
-        if path.is_dir():
-            return True
-
-        return path.suffix in Asset.CG_EXT
+        return self.worker._search_3d_model(path) is not None
 
     def load_asset(self, path: Path, refresh: bool = False):
         if refresh:
-            self.worker.clear_cache()
+            self.worker.remove_from_cache(path)
         self.worker.add_task(path)
 
     def on_asset_loaded(self, asset: Asset):
