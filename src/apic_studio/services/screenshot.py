@@ -51,11 +51,6 @@ class Screenshot(QObject):
                 "height": phys_h,
             }
 
-            print("Logical geometry:", geometry)
-            print("Device pixel ratio:", dpr)
-            print("Physical grab monitor:", monitor)
-            print("Available monitors:", sct.monitors)
-
             sct_img = sct.grab(monitor)
             img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
             img.resize((350, 350)).save(path, "JPEG")

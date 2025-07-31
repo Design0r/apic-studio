@@ -119,9 +119,9 @@ class SettingsManager:
     HdriSettings: HdriSettings
 
     ROOT_PATH = Path(__file__).parent.parent.parent
-    CONFIG_PATH = ROOT_PATH / f"configs/config-{gethostname()}.json"
-    DB_PATH = ROOT_PATH / "apic_studio.db"
-    LOGS = ROOT_PATH / "logs"
+    CONFIG_PATH = ROOT_PATH.parent / f"configs/config-{gethostname()}.json"
+    DB_PATH = ROOT_PATH.parent / "apic_studio.db"
+    LOGS = ROOT_PATH.parent / "logs"
     LOGGING_PATH = LOGS / f"{datetime.now().date()}.log"
 
     def __new__(cls):
