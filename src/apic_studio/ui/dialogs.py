@@ -35,17 +35,16 @@ class CreatePoolDialog(QDialog):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle("Create new Pool")
+        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
 
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
 
     def init_widgets(self):
-        self.name_edit = QLineEdit("")
-        self.name_edit.setFixedHeight(30)
+        self.name_edit = QLineEdit()
 
-        self.folder_edit = QLineEdit("")
-        self.folder_edit.setFixedHeight(30)
+        self.folder_edit = QLineEdit()
 
         self.open_file_dialog = IconButton((27, 27))
         self.open_file_dialog.set_icon(":icons/tabler-icon-folder-open.png")
@@ -61,6 +60,7 @@ class CreatePoolDialog(QDialog):
         self.form_layout = QFormLayout()
         self.folder_layout = QHBoxLayout()
         self.folder_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.folder_layout.setContentsMargins(0, 0, 0, 0)
         self.buttons_layout = QHBoxLayout()
 
         self.folder_layout.addWidget(self.folder_edit)
@@ -96,6 +96,7 @@ class DeletePoolDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Delete current Pool")
+        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -145,6 +146,7 @@ class ExportModelDialog(QDialog):
         super().__init__(parent)
 
         self.setWindowTitle("Export")
+        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -208,6 +210,7 @@ class ExportMaterialDialog(QDialog):
         self._widgets: list[tuple[QCheckBox, QLabel]] = []
 
         self.setWindowTitle("Export")
+        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
 
         self.init_widgets()
         self.init_layouts()
@@ -302,7 +305,7 @@ class ScreenshotDialog(QDialog):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("border: 2px solid black;")
-        self.setWindowOpacity(0.3)
+        self.setWindowOpacity(0.7)
         self.setWindowFlag(Qt.WindowType.WindowStaysOnTopHint, True)
 
         self.resize(300, 300)
@@ -336,7 +339,12 @@ class ScreenshotDialog(QDialog):
     def accept(self):
         self.accepted.emit(
             ScreenshotResult(
-                (self.x(), self.y(), self.width(), self.height()),
+                (
+                    self.x(),
+                    self.y(),
+                    self.width(),
+                    self.height(),
+                ),
                 self.model_path.parent,
                 self.model_path.stem,
             )
@@ -381,6 +389,7 @@ class SettingsDialog(QDialog):
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
+        self.setWindowIcon(QIcon(":icons/tabler-icon-packages.png"))
         self.settings = SettingsManager()
 
         self.init_widgets()
@@ -400,15 +409,6 @@ class SettingsDialog(QDialog):
         self.addr = QLineEdit("localhost")
 
         self.window_settings = QGroupBox("Window Settings")
-        self.button_resolution = QSpinBox()
-        self.button_resolution.setRange(0, 5000)
-        self.button_resolution.setButtonSymbols(
-            QAbstractSpinBox.ButtonSymbols.NoButtons
-        )
-
-        self.ui_scale = QDoubleSpinBox()
-        self.ui_scale.setRange(0, 10)
-        self.ui_scale.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
 
         self.material_settings = QGroupBox("Material Settings")
         self.render_scene = QLineEdit("Path/To/Render/Scene")
@@ -448,10 +448,7 @@ class SettingsDialog(QDialog):
         self.core_settings_layout.addRow("Cinema 4D socket port", self.socket_port)
 
         self.general_settings_layout = QFormLayout(self.window_settings)
-        self.general_settings_layout.addRow(
-            "Asset Button Size (px)", self.button_resolution
-        )
-        self.general_settings_layout.addRow("UI Scale", self.ui_scale)
+
         self.render_scene_layout = QHBoxLayout()
         self.render_scene_layout.addWidget(self.render_scene)
         self.render_scene_layout.addWidget(self.browse_render_scene)
@@ -514,9 +511,6 @@ class SettingsDialog(QDialog):
         self.socket_port.setValue(core.socket_port)
         self.addr.setText(core.socket_addr)
 
-        self.button_resolution.setValue(win.asset_button_size)
-        self.ui_scale.setValue(win.ui_scale)
-
         self.render_scene.setText(mat.render_scene)
         self.render_object.setText(mat.render_object)
         self.render_cam.setText(mat.render_cam)
@@ -534,9 +528,6 @@ class SettingsDialog(QDialog):
         core.socket_port = self.socket_port.value()
         core.socket_addr = self.addr.text()
 
-        win.asset_button_size = self.button_resolution.value()
-        win.ui_scale = self.ui_scale.value()
-
         mat.render_res_x = self.render_resolution_x.value()
         mat.render_res_y = self.render_resolution_y.value()
         mat.render_object = self.render_object.text()
@@ -546,6 +537,6 @@ class SettingsDialog(QDialog):
         mod.screenshot_opacity = self.screenshot_opacity.value()
 
 
-def files_dialog():
+def files_dialog() -> tuple[list[str], str]:
     folder = QFileDialog.getOpenFileNames(caption="Select Pool Folder")
     return folder

@@ -25,7 +25,7 @@ class AssetLoaderWorker(QObject):
 
     def remove_from_cache(self, path: Path):
         try:
-            self._cache.pop(path)
+            del self._cache[path]
         except KeyError:
             pass
 
@@ -113,6 +113,9 @@ class AssetLoaderWorker(QObject):
         size = settings.SettingsManager().WindowSettings.asset_button_size
         img.create_sdr_preview(path, path.parent / f"{path.stem}.jpg", size)
 
+    def is_asset(self, path: Path) -> bool:
+        return self._search_3d_model(path) is not None
+
 
 class AssetLoader(QObject):
     asset_loaded = Signal(Asset)
@@ -128,7 +131,7 @@ class AssetLoader(QObject):
         self.t.start()
 
     def is_asset(self, path: Path) -> bool:
-        return self.worker._search_3d_model(path) is not None
+        return self.worker.is_asset(path)
 
     def load_asset(self, path: Path, refresh: bool = False):
         if refresh:

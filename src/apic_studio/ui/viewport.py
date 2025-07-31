@@ -6,7 +6,7 @@ from typing import Optional
 
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
 
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import Asset, AssetLoader, DCCBridge, Screenshot
@@ -56,7 +56,6 @@ class Viewport(QWidget):
 
     def init_layouts(self):
         self.flow_layout = FlowLayout(self.grid_widget)
-        self.vp_layout = QVBoxLayout()
 
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(5, 5, 0, 0)
@@ -64,7 +63,9 @@ class Viewport(QWidget):
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
-        self.screenshot.created.connect(self.loader.load_asset)
+        self.screenshot.created.connect(
+            lambda x: self.loader.load_asset(x, refresh=True)
+        )
 
     @property
     def widgets(self) -> dict[str, ViewportButton]:
