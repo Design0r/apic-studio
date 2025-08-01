@@ -34,7 +34,7 @@ class LogHighlighter(QSyntaxHighlighter):
 
     def __init__(self, parent: QPlainTextEdit):
         super().__init__(parent.document())
-        self.rules = []
+        self.rules: list[tuple[QRegularExpression, QTextCharFormat]] = []
 
         def make_fmt(color_name: str, bold: bool = False, italic: bool = False):
             fmt = QTextCharFormat()
