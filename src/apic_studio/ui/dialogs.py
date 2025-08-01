@@ -673,6 +673,6 @@ class CreateBackupDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
 
 
-def files_dialog() -> tuple[list[str], str]:
-    folder = QFileDialog.getOpenFileNames(caption="Select Pool Folder")
+def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
+    folder = QFileDialog.getOpenFileNames(caption=title)
     return folder

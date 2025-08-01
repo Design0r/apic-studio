@@ -120,11 +120,12 @@ class MainWindow(QWidget):
             t.asset_changed.connect(self.loader.load_asset)
 
     def closeEvent(self, event: QCloseEvent) -> None:
+        geo = self.geometry()
         self.settings.WindowSettings.window_geometry = [
-            self.x(),
-            self.y(),
-            self.width(),
-            self.height(),
+            geo.x(),
+            geo.y(),
+            geo.width(),
+            geo.height(),
         ]
         self.loader.stop()
         self.settings.WindowSettings.current_viewport = self.viewport.curr_view

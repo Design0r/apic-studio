@@ -665,7 +665,7 @@ class HdriToolbar(AssetToolbar):
         )
 
     def on_import(self):
-        files, _ = files_dialog()
+        files, _ = files_dialog("Select HDRIs to import")
         ac = AssetConverter(self.current_pool)
         new_assets: list[Path] = []
         for f in files:
