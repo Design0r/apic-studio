@@ -18,6 +18,7 @@ from apic_studio.ui.toolbar import (
     ModelToolbar,
     MultiToolbar,
     Sidebar,
+    Statusbar,
     ToolbarDirection,
 )
 from apic_studio.ui.viewport import Viewport
@@ -85,11 +86,14 @@ class MainWindow(QWidget):
         self.splitter.addWidget(self.viewport)
         self.splitter.addWidget(self.attrib_editor)
 
+        self.status = Statusbar(30)
+
     def init_layouts(self):
         self.vp_layout = QVBoxLayout()
         self.vp_layout.setContentsMargins(0, 0, 0, 0)
         self.vp_layout.addWidget(self.toolbar)
         self.vp_layout.addWidget(self.splitter)
+        self.vp_layout.addWidget(self.status)
 
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(0, 0, 0, 0)

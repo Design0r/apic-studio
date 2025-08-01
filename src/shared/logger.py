@@ -99,6 +99,7 @@ class Logger:
     def exception(cls, msg: Exception):
         lg = cls.logger_obj()
         lg.exception(msg)
+        cls.exec_callbacks("Exception", str(msg))
 
     @classmethod
     def write_to_file(cls, path: Path, level: int = logging.INFO):

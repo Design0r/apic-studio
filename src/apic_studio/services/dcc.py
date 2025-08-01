@@ -103,8 +103,11 @@ class RenderThread(QThread):
     def run(self):
         with Popen(self.cmd, stdout=PIPE, stderr=PIPE) as p:
             out, err = p.communicate()
-            Logger.info(out.decode(errors="ignore"))
-            Logger.error(err.decode(errors="ignore"))
+            try:
+                Logger.info(out.decode(errors="ignore"))
+                Logger.error(err.decode(errors="ignore"))
+            except UnicodeEncodeError:
+                pass
             p.wait()
 
 

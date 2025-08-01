@@ -24,6 +24,7 @@ from apic_studio.ui.dialogs import (
     files_dialog,
 )
 from apic_studio.ui.lines import VLine
+from apic_studio.ui.log_viewer import LogViewer
 from shared.logger import Logger
 from shared.utils import sanitize_string
 
@@ -239,6 +240,7 @@ class Statusbar(Toolbar):
         super().__init__(direction, thickness, parent)
         self.thickness = thickness
         self.setStyleSheet(STATUSBAR_STYLE)
+        self.logs = LogViewer()
 
     @override
     def init_widgets(self):
@@ -249,11 +251,10 @@ class Statusbar(Toolbar):
         self.info.setCursorPosition(0)
         self.info.setMinimumWidth(20)
 
+        self.logs_btn = QPushButton("Logs")
+
         self.clear_btn = QPushButton("x")
-        self.clear_btn.setFixedWidth(15)
-        self.clear_btn.setStyleSheet(
-            "QPushButton{border: none;}QPushButton::hover{background-color: rgb(100,100,100);}"
-        )
+        self.clear_btn.setFixedWidth(20)
 
     @override
     def init_layouts(self) -> None:
@@ -263,12 +264,14 @@ class Statusbar(Toolbar):
 
         self.main_layout.addWidget(self.info)
         self.main_layout.addWidget(self.clear_btn)
+        self.main_layout.addWidget(self.logs_btn)
 
     @override
     def init_signals(self) -> None:
         super().init_signals()
         Logger.register_callback(self.update_info)
         self.clear_btn.clicked.connect(lambda: self.update_info("Clear", ""))
+        self.logs_btn.clicked.connect(self.show_logs)
 
     def update_info(self, level: str, text: str) -> None:
         self.info.setText(text)
@@ -277,7 +280,7 @@ class Statusbar(Toolbar):
             self.info.setStyleSheet("background-color: rgb(50,100,50)")
         elif level == "Warning":
             self.info.setStyleSheet("background-color: rgb(100,100,50)")
-        elif level == "Error":
+        elif level in ("Error", "Exception", "Critical Error"):
             self.info.setStyleSheet("background-color: rgb(100,50,50)")
         elif level == "Clear":
             self.info.setStyleSheet("background-color: rgb(50,50,50)")
@@ -286,6 +289,9 @@ class Statusbar(Toolbar):
 
     def update_status(self, status: Status):
         pass
+
+    def show_logs(self):
+        self.logs.show()
 
 
 class LabledToolbar(Toolbar):
