@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from apic_studio.services import AssetConverter, DCCBridge, PoolManager
 from apic_studio.ui.dialogs import (
+    BackupDialog,
     CreatePoolDialog,
     DeletePoolDialog,
     ExportMaterialDialog,
@@ -473,6 +474,10 @@ class ModelToolbar(AssetToolbar):
         self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
         self.export_btn.set_tooltip("Export model")
 
+        self.backup_btn = IconButton((30, 30))
+        self.backup_btn.set_icon(":icons/tabler-icon-archive.png")
+        self.backup_btn.set_tooltip("Show archive")
+
         self.refresh_btn = IconButton((30, 30))
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
@@ -481,7 +486,9 @@ class ModelToolbar(AssetToolbar):
     def init_layouts(self):
         super().init_layouts()
 
-        self.add_widgets([self.export_btn, VLine(), self.refresh_btn], stretch=True)
+        self.add_widgets(
+            [self.export_btn, self.backup_btn, VLine(), self.refresh_btn], stretch=True
+        )
 
     @override
     def init_signals(self):
@@ -490,6 +497,14 @@ class ModelToolbar(AssetToolbar):
         self.refresh_btn.clicked.connect(
             lambda: self.pool_changed.emit(self.current_pool)
         )
+        self.backup_btn.clicked.connect(self.backup_dialog)
+
+    def backup_dialog(self):
+        dialog = BackupDialog(self.current_pool)
+        dialog.imported.connect(lambda x: self.dcc.models_import(x))  # type: ignore
+        dialog.opened.connect(lambda x: self.dcc.file_open(x))  # type: ignore
+        # dialog.referenced.connect(lambda x: self.dcc.file_open(x))  # type: ignore
+        dialog.exec()
 
     def export_dialog(self):
         dialog = ExportModelDialog()
@@ -545,6 +560,10 @@ class MaterialToolbar(AssetToolbar):
         self.render_btn.set_icon(":icons/tabler-icon-photo.png")
         self.render_btn.set_tooltip("Render previews")
 
+        self.backup_btn = IconButton((30, 30))
+        self.backup_btn.set_icon(":icons/tabler-icon-archive.png")
+        self.backup_btn.set_tooltip("Show archive")
+
         self.refresh_btn = IconButton((30, 30))
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
@@ -554,7 +573,14 @@ class MaterialToolbar(AssetToolbar):
         super().init_layouts()
 
         self.add_widgets(
-            [self.export_btn, self.render_btn, VLine(), self.refresh_btn], stretch=True
+            [
+                self.export_btn,
+                self.render_btn,
+                self.backup_btn,
+                VLine(),
+                self.refresh_btn,
+            ],
+            stretch=True,
         )
 
     @override
@@ -565,6 +591,7 @@ class MaterialToolbar(AssetToolbar):
             lambda: self.pool_changed.emit(self.current_pool)
         )
         self.render_btn.clicked.connect(self.render_previews.emit)
+        self.backup_btn.clicked.connect(self.backup_dialog)
 
     def export_dialog(self):
         res = self.dcc.materials_list()
@@ -574,6 +601,13 @@ class MaterialToolbar(AssetToolbar):
 
         dialog = ExportMaterialDialog(res.data.get("materials", []))
         dialog.finished.connect(self.on_export_dialog_finished)
+        dialog.exec()
+
+    def backup_dialog(self):
+        dialog = BackupDialog(self.current_pool)
+        dialog.imported.connect(lambda x: self.dcc.models_import(x))  # type: ignore
+        dialog.opened.connect(lambda x: self.dcc.file_open(x))  # type: ignore
+        # dialog.referenced.connect(lambda x: self.dcc.file_open(x))  # type: ignore
         dialog.exec()
 
     def on_export_dialog_finished(self, data: ExportMaterialDialog.Data):

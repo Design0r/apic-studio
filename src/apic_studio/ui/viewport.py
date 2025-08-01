@@ -10,7 +10,9 @@ from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
 
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import Asset, AssetLoader, DCCBridge, Screenshot
+from apic_studio.services.backup import BackupManager
 from apic_studio.ui.buttons import ViewportButton
+from apic_studio.ui.dialogs import CreateBackupDialog
 from apic_studio.ui.flow_layout import FlowLayout
 from shared.logger import Logger
 
@@ -39,6 +41,7 @@ class Viewport(QWidget):
         }
         self.curr_view = "materials"
         self.curr_pool: Path
+        self.backup = BackupManager()
 
         self.init_widgets()
         self.init_layouts()
@@ -121,11 +124,14 @@ class Viewport(QWidget):
 
     def on_context_menu(self, btn: ViewportButton, point: QPoint):
         open_act = QAction("Open")
-        open_act.triggered.connect(lambda: self.dcc.file_open(btn.file))
+        open_act.triggered.connect(lambda: self.on_open_dialog(btn.file))
 
         import_act = QAction("Import")
         import_as_area = QAction("Import as Arealight")
         import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(btn.file))
+
+        backup_act = QAction("Create Backup")
+        backup_act.triggered.connect(lambda: self.on_open_dialog(btn.file))
 
         if self.curr_view == "models":
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
@@ -161,10 +167,12 @@ class Viewport(QWidget):
 
         if self.curr_view in ("models", "lightsets"):
             menu.addAction(screenshot_act)
+            menu.addAction(backup_act)
 
         if self.curr_view == "materials":
             menu.addAction(render_act)
             menu.addAction(delete_preview_act)
+            menu.addAction(backup_act)
 
         menu.addSeparator()
         menu.addAction(delete_act)
@@ -176,6 +184,16 @@ class Viewport(QWidget):
             btn.file,
             callback=lambda: self.loader.load_asset(btn.file.parent, refresh=True),
         )
+
+    def on_open_dialog(self, path: Path):
+        def on_backup(path: Path):
+            self.backup.create(path)
+            self.dcc.file_open(path)
+
+        backup = CreateBackupDialog()
+        backup.accepted.connect(lambda: on_backup(path))
+        backup.rejected.connect(lambda: self.dcc.file_open(path))
+        backup.exec()
 
     def on_del_preview(self, btn: ViewportButton):
         file_dir = btn.file.parent

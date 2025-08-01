@@ -5,6 +5,7 @@ from typing import Literal, NamedTuple, Optional
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QCursor, QIcon, QMouseEvent
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QAbstractSpinBox,
     QCheckBox,
     QComboBox,
@@ -20,11 +21,15 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSpinBox,
+    QTreeWidget,
+    QTreeWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
 from apic_studio.core.settings import SettingsManager
+from apic_studio.services.backup import Backup, BackupManager
+from shared.logger import Logger
 
 from .buttons import IconButton
 
@@ -534,6 +539,138 @@ class SettingsDialog(QDialog):
         mat.render_cam = self.render_cam.text()
 
         mod.screenshot_opacity = self.screenshot_opacity.value()
+
+
+class BackupDialog(QDialog):
+    imported = Signal(Path)
+    opened = Signal(Path)
+    referenced = Signal(Path)
+
+    def __init__(
+        self,
+        archive_path: Path,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(parent)
+        self.archive_path = archive_path
+        self.elements: dict[str, tuple[QTreeWidgetItem, Backup]] = {}
+        self.backup = BackupManager()
+
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setWindowTitle("Backup Viewer")
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.open_model = QPushButton("Open")
+        self.import_model = QPushButton("Import")
+        self.reference_model = QPushButton("Reference")
+
+        self.tree_widget = QTreeWidget(self)
+        self.tree_widget.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self.tree_widget.setHeaderLabels(["Backups"])
+
+        for pool_backup in self.backup.load_from_pool(self.archive_path):
+            archive_item = QTreeWidgetItem(
+                self.tree_widget, [pool_backup[0].original_name]
+            )
+            for asset_backup in pool_backup:
+                item = QTreeWidgetItem(archive_item, [asset_backup.name])
+                self.elements[asset_backup.name] = (item, asset_backup)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.select_layout = QHBoxLayout()
+
+        self.select_layout.addStretch()
+        self.select_layout.addWidget(self.open_model)
+        self.select_layout.addWidget(self.import_model)
+        self.select_layout.addWidget(self.reference_model)
+
+        self.main_layout.addWidget(self.tree_widget)
+        self.main_layout.addLayout(self.select_layout)
+
+    def init_signals(self):
+        self.import_model.clicked.connect(lambda: self.import_selection())
+        self.reference_model.clicked.connect(lambda: self.reference_selection())
+        self.open_model.clicked.connect(lambda: self.open_selection())
+
+    def import_selection(self):
+        path = self.get_selected_path()
+        if not path:
+            Logger.error(f"can't import model, path is: {path}")
+            return
+        self.imported.emit(path)
+        self.close()
+
+    def reference_selection(self):
+        path = self.get_selected_path()
+        if not path:
+            Logger.error(f"can't reference model, path is: {path}")
+            return
+        self.referenced.emit(path)
+        self.close()
+
+    def open_selection(self):
+        path = self.get_selected_path()
+        if not path:
+            Logger.error(f"can't open model, path is: {path}")
+            return
+        self.opened.emit(path)
+        self.close()
+
+    def get_item_level(self, item: QTreeWidgetItem):
+        level = 0
+        while i := item.parent():
+            item = i
+            level += 1
+        return level
+
+    def get_selected_path(self) -> Optional[Path]:
+        selected = self.tree_widget.selectedItems()[0]
+        item_name = selected.text(0)
+
+        _, backup = self.elements[item_name]
+
+        if not self.get_item_level(selected) == 1:
+            Logger.error("select an archived version instead of the group")
+            return
+
+        return backup.path
+
+
+class CreateBackupDialog(QDialog):
+    def __init__(self, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Create Backup")
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.label = QLabel("Would you like to create a backup before opening?")
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Yes | QDialogButtonBox.StandardButton.No
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.buttons_layout = QHBoxLayout()
+
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
 
 
 def files_dialog() -> tuple[list[str], str]:
