@@ -21,7 +21,7 @@ class CmdBuilder:
 
     def add_flag(self, flag: str, value: Any):
         self._cmd.append(flag)
-        self._cmd.append(str(value))
+        self._cmd.append(f'"{value}"')
 
     def build(self) -> str:
         return " ".join(self._cmd)
@@ -102,9 +102,9 @@ class RenderThread(QThread):
 
     def run(self):
         with Popen(self.cmd, stdout=PIPE, stderr=PIPE) as p:
-            # out, err = p.communicate()
-            # Logger.info(out.decode(errors="ignore"))
-            # Logger.error(err.decode(errors="ignore"))
+            out, err = p.communicate()
+            Logger.info(out.decode(errors="ignore"))
+            Logger.error(err.decode(errors="ignore"))
             p.wait()
 
 

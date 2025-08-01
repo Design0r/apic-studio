@@ -3,6 +3,9 @@
 Apic Studio is a desktop asset management and preview tool tightly integrated with Maxon Cinema 4D.  
 It provides structured pools for materials, models, HDRIs, and lightsets; supports preview rendering, backups, screenshots, and DCC communication to drive Cinema 4D operations (import/export, material previews, HDRI imports, etc.).
 
+![materials](./docs/apic-studio-materials.jpg)
+![hdris](./docs/apic-studio-hdris.jpg)
+
 ## Key Features
 
 - Pool-based organization for **Materials**, **Models**, **HDRIs**, and **Lightsets**.
@@ -24,9 +27,10 @@ It provides structured pools for materials, models, HDRIs, and lightsets; suppor
 
 ## Installation / Setup
 
-```
+### Prebuild Version
+
 1. Copy "apic_connector_main.pyp" to <Maxon Cinema 4D 20XX>/plugins/apic_connector
-or set the "g_additionalModulePath" Environment variable to the directory that contains the .pyp file.
+   or set the "g_additionalModulePath" Environment variable to the directory that contains the .pyp file.
 
 2. Create a directory and copy the "apic_connector" and "shared" modules over.
 
@@ -34,6 +38,38 @@ or set the "g_additionalModulePath" Environment variable to the directory that c
 
 4. Run "Apic Studio.exe"
 
+---
+
+### Run from source
+
+#### Requirements
+
+- **Python 3.13**
+- **UV Package Manager**
+- **Make** [Optional]
+
+#### Installation
+
+1. Clone repository
+
+2. Run
+
+```bash
+Make run
+
+[or]
+
+uv run src/apic_studio.py
+```
+
+3. Build executable
+
+```bash
+Make build
+
+[or]
+
+uv run build.py
 ```
 
 ## Future Improvements

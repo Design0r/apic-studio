@@ -16,3 +16,5 @@ logs
 settings
 *.spec
 *.html
+
+apic-build.py

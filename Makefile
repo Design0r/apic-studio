@@ -9,7 +9,5 @@ run:
 build:
 	uv run build.py
 
-
-
 plot:
 	uv run pyreverse -S -o html --colorized -f ALL -p apic-studio  ./src/apic_studio
