@@ -1,5 +1,4 @@
 import shutil
-import sys
 from pathlib import Path
 
 import PyInstaller.__main__
@@ -92,21 +91,8 @@ def main():
 
     b.set_namespace("apic_connector_plugin")
     b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector_main.pyp")
-
-    if sys.platform == "win32":
-        deps = Path("W:\\Pipeline\\Apic_Cinema_Pipeline\\Dependencies")
-        plugins = Path("W:\\Pipeline\\Apic_Cinema_Pipeline\\Plugins\\apic_connector")
-    elif sys.platform == "darwin":
-        deps = Path("/Users/alex/GitHub/apic-cinema-pipeline/Dependencies")
-        plugins = Path("/Users/alex/GitHub/apic-cinema-pipeline/Plugins/apic_connector")
-
-    b.add_ext_copy(CWD / "src" / "run_connector.py", plugins / "apic_connector.pyp")
-    b.add_ext_copy(CWD / "src" / "shared", deps / "shared")
-    b.add_ext_copy(CWD / "src" / "apic_connector", deps / "apic_connector")
-    b.add_ext_copy(
-        CWD / "dist" / "Apic Studio",
-        deps.parent.parent / "Apic Studio",
-    )
+    b.add_ressource(CWD / "src" / "shared")
+    b.add_ressource(CWD / "src" / "apic_connector")
 
     b.build()
 
