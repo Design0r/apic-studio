@@ -6,13 +6,14 @@ import numpy as np
 
 from shared.logger import Logger
 
+imageio.plugins.freeimage.download()
+
 
 def create_sdr_preview(hdri_path: Path, thumbnail_path: Path, width_size: int):
     if not hdri_path.is_file() or thumbnail_path.exists():
         return thumbnail_path
 
     if hdri_path.suffix == ".exr":
-        imageio.plugins.freeimage.download()
         image = imageio.imread(str(hdri_path), format="EXR-FI")[:, :, :3]
     elif hdri_path.suffix == ".hdr":
         image = cv2.imread(str(hdri_path), flags=-1)

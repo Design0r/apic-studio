@@ -3,7 +3,7 @@ from pathlib import Path
 
 import mss
 from PIL import Image
-from PySide6.QtCore import QCoreApplication, QObject, QPoint, Signal
+from PySide6.QtCore import QCoreApplication, QObject, QPoint, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 
 from apic_studio.ui.dialogs import ScreenshotDialog, ScreenshotResult
@@ -26,6 +26,9 @@ class Screenshot(QObject):
         QCoreApplication.processEvents()
         time.sleep(0.2)
 
+        QTimer.singleShot(200, lambda: self._continue_screenshot(data))
+
+    def _continue_screenshot(self, data: ScreenshotResult):
         screen_path = Path(data.folder, f"{data.asset_name}.jpg")
         self.create(screen_path, data.geometry)
         self.created.emit(data.folder)

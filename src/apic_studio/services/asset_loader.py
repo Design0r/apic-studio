@@ -29,16 +29,20 @@ class AssetLoaderWorker(QObject):
         except KeyError:
             pass
 
+    def get_asset(self, path: Path) -> Optional[Asset]:
+        return self._cache.get(path)
+
     def add_task(self, path: Path) -> None:
         self.task_queue.put(path)
 
     def stop(self) -> None:
         self._running = False
+        self.task_queue.put(Path())
 
     def run(self) -> None:
         while self._running:
             try:
-                path = self.task_queue.get(timeout=0.2)
+                path = self.task_queue.get()
             except Empty:
                 continue
 
@@ -110,7 +114,7 @@ class AssetLoaderWorker(QObject):
         return None
 
     def _create_thumbnail(self, path: Path) -> Optional[Path]:
-        size = settings.SettingsManager().WindowSettings.asset_button_size
+        size = settings.SettingsManager().MaterialSettings.render_res_x
         img.create_sdr_preview(path, path.parent / f"{path.stem}.jpg", size)
 
     def is_asset(self, path: Path) -> bool:
@@ -132,6 +136,9 @@ class AssetLoader(QObject):
 
     def is_asset(self, path: Path) -> bool:
         return self.worker.is_asset(path)
+
+    def get_asset(self, path: Path) -> Optional[Asset]:
+        return self.worker.get_asset(path)
 
     def load_asset(self, path: Path, refresh: bool = False):
         if refresh:

@@ -66,9 +66,11 @@ class Viewport(QWidget):
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
-        self.screenshot.created.connect(
-            lambda x: self.loader.load_asset(x, refresh=True)
-        )
+
+        def load(x: Path):
+            self.loader.load_asset(x, refresh=True)
+
+        self.screenshot.created.connect(load)
 
     @property
     def widgets(self) -> dict[str, ViewportButton]:
@@ -82,7 +84,6 @@ class Viewport(QWidget):
 
         w.set_thumbnail(asset.icon, 185)
         w.set_file(asset.file, asset.size, asset.suffix)
-        w.clicked.connect(lambda: self.asset_clicked.emit(asset))
 
     def _clear_layout(self):
         while self.flow_layout.count():
@@ -95,7 +96,7 @@ class Viewport(QWidget):
         self._clear_layout()
 
         Logger.debug(f"drawing called: {path}")
-        if not path:
+        if not path or not path.exists():
             return
 
         self.curr_pool = path.parent
@@ -111,6 +112,14 @@ class Viewport(QWidget):
             b = ViewportButton(x, (200, 200))
             b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
+
+            def on_btn_click():
+                asset = self.loader.get_asset(x)
+                if asset:
+                    self.asset_clicked.emit(asset)
+
+            b.clicked.connect(on_btn_click)
+
             self.widgets[x.stem] = b
             self.flow_layout.addWidget(b)
             self.loader.load_asset(x, refresh=force)

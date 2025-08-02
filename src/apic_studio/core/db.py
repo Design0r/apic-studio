@@ -82,7 +82,7 @@ def select(table: Tables) -> dict[str, Path]:
 def delete(table: Tables, data: DBSchema) -> None:
     conn = create_connection()
     try:
-        conn.execute(f"DELETE FROM {table.name} WHERE NAME = '{data.name}';")
+        conn.execute(f"DELETE FROM {table.name} WHERE NAME = ?;", (data.name,))
         conn.commit()
     except Exception as e:
         Logger.exception(e)
