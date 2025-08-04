@@ -27,9 +27,9 @@ class _AssetPoolManager:
         return name, full_path
 
     def delete(self, path: Path):
-        fs.remove_dir(path)
+        fs.remove_dir(path.parent)
 
-        schema = db.DBSchema(path.stem, path)
+        schema = db.DBSchema(path.parent.stem, path)
         db.delete(db.Tables(self.POOL_TYPE), schema)
 
         Logger.info(f"deleted pool: {path.stem} at {path}")

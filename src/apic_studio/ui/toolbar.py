@@ -344,6 +344,7 @@ class AssetToolbar(LabledToolbar):
     def init_widgets(self):
         super().init_widgets()
         self.dropdown = QComboBox()
+        self.dropdown.setLayoutDirection(Qt.LayoutDirection.LayoutDirectionAuto)
         self._pools: dict[str, Path] = {}
 
         size = (30, 30)
@@ -401,12 +402,28 @@ class AssetToolbar(LabledToolbar):
 
     def open_delete_dialog(self):
         dialog = DeletePoolDialog()
-        dialog.pool_deleted.connect(self.pool.delete)
+        dialog.pool_deleted.connect(lambda: self.pool.delete(self.current_pool))
+        dialog.exec()
+
+        self._load_pools()
 
     def _load_pools(self):
+        self.dropdown.clear()
+
         items = self.pool.get()
         self.dropdown.addItems(tuple(items.keys()))
         self._pools = items
+
+        if self.dropdown.count() == 0:
+            return
+
+        max_item_width = max(
+            self.dropdown.fontMetrics().horizontalAdvance(item)
+            for item in [
+                self.dropdown.itemText(i) for i in range(self.dropdown.count())
+            ]
+        )
+        self.dropdown.setMinimumWidth(max_item_width + 50)
 
     def set_current_pool(self, pool: str):
         self.dropdown.setCurrentText(pool)
@@ -535,7 +552,8 @@ class ModelToolbar(AssetToolbar):
             self.dcc.save_as(file_path)
         elif export_type == ExportModelDialog.ExportType.EXPORT:
             self.dcc.models_export_selected(file_path)
-            self.pool_changed.emit(self.current_pool)
+
+        self.pool_changed.emit(self.current_pool)
 
         if copy_textures:
             self.dcc.copy_textures(file_path)
@@ -679,5 +697,3 @@ class HdriToolbar(AssetToolbar):
             new_assets.append(new)
 
         self.pool_changed.emit(self.current_pool)
-        for a in new_assets:
-            self.asset_changed.emit(a)

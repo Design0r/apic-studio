@@ -113,16 +113,16 @@ class Viewport(QWidget):
             b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
             b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
 
-            def on_btn_click():
-                asset = self.loader.get_asset(x)
-                if asset:
-                    self.asset_clicked.emit(asset)
-
-            b.clicked.connect(on_btn_click)
+            b.clicked.connect(partial(self.on_btn_click, x))
 
             self.widgets[x.stem] = b
             self.flow_layout.addWidget(b)
             self.loader.load_asset(x, refresh=force)
+
+    def on_btn_click(self, x: Path):
+        asset = self.loader.get_asset(x)
+        if asset:
+            self.asset_clicked.emit(asset)
 
     def set_current_view(self, view: str):
         if view not in self._widgets:

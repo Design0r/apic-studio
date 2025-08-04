@@ -18,3 +18,16 @@ def import_file(file_path: str) -> bool:
 
 def open_file(file_path: str):
     c4d.documents.LoadFile(file_path)
+
+
+def save_file_as(file_path: str) -> bool:
+    doc = c4d.documents.GetActiveDocument()
+    res = c4d.documents.SaveDocument(
+        doc, file_path, c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST, c4d.FORMAT_C4DEXPORT
+    )
+    if not res:
+        Logger.info(f"saven scene failed: {file_path}")
+        return res
+
+    Logger.info(f"saven scene succeeded: {file_path}")
+    return res

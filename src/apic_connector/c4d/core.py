@@ -24,3 +24,20 @@ def open_file(conn: Connection, msg: Message):
 
     core.open_file(path)
     conn.send(Message("success"))
+
+
+@router.register("file.save_as")
+def save_file_as(conn: Connection, msg: Message):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = core.save_file_as(path)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))

@@ -169,6 +169,10 @@ class AssetConverter:
             return new_asset_path
 
         asset_dir.mkdir()
-        shutil.copy2(file, new_asset_path)
+        try:
+            shutil.copy2(file, new_asset_path)
+        except FileNotFoundError as e:
+            Logger.exception(e)
+            return Path()
 
         return new_asset_path

@@ -57,4 +57,4 @@ class Screenshot(QObject):
             sct_img = sct.grab(monitor)
             img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
             img.resize((350, 350)).save(path, "JPEG")
-            Logger.info(f"saved Screenshot in {path}")
+            Logger.info(f"saved Screenshot to {path}")

@@ -15,6 +15,7 @@ def create_sdr_preview(hdri_path: Path, thumbnail_path: Path, width_size: int):
 
     if hdri_path.suffix == ".exr":
         image = imageio.imread(str(hdri_path), format="EXR-FI")[:, :, :3]
+        image = image[..., ::-1]
     elif hdri_path.suffix == ".hdr":
         image = cv2.imread(str(hdri_path), flags=-1)
         if image is None:
@@ -28,10 +29,9 @@ def create_sdr_preview(hdri_path: Path, thumbnail_path: Path, width_size: int):
     cv2.imwrite(str(thumbnail_path), jpg_image)
 
 
-def reinhard_tonemap(
-    img: cv2.Mat | imageio.core.util.Array, exposure: float = 1.0, white: float = 1.0
-):
-    return img * (1.0 + (img / (white**2))) / (exposure + img)
+def reinhard_tonemap(img, exposure: float = 1.0, white: float = 1.0):
+    img = img * exposure  # apply exposure first
+    return (img * (1 + img / (white * white))) / (1 + img)
 
 
 def process_img(image: cv2.Mat | imageio.core.util.Array, size: tuple[int, int]):

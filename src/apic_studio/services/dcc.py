@@ -149,7 +149,7 @@ class DCCBridge:
         return res
 
     def save_as(self, path: Path) -> Message:
-        res = self.call("core.save.as", {"path": str(path)})
+        res = self.call("core.file.save_as", {"path": str(path)})
         if self.is_err(res):
             Logger.error(f"failed to save as: {path.name} to {path}: {res}")
 
