@@ -116,3 +116,4 @@ class AttributeEditor(QWidget):
         self.asset_size.setText(asset.format_size())
         self.asset_path.setText(str(asset.path))
         self.asset_notes.setText(asset.metadata.notes)
+        asset.metadata.load()

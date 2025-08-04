@@ -1,7 +1,9 @@
 import os
+from typing import override
 
 from PySide6.QtCore import QRegularExpression, Qt, QTimer
 from PySide6.QtGui import (
+    QCloseEvent,
     QColor,
     QFont,
     QIcon,
@@ -156,9 +158,6 @@ class LogViewer(QWidget):
 
         self.highlighter = LogHighlighter(self.text)
 
-        self._load_initial_tail()
-        self._start_polling()
-
     def init_widgets(self):
         self.text = QPlainTextEdit()
         self.text.setReadOnly(True)
@@ -242,6 +241,9 @@ class LogViewer(QWidget):
         self._timer.timeout.connect(self._check_updates)
         self._timer.start()
 
+    def _stop_polling(self):
+        self._timer.stop()
+
     def _check_updates(self):
         path = self.settings.LOGGING_PATH
         try:
@@ -315,3 +317,14 @@ class LogViewer(QWidget):
             )
         except Exception as e:
             self.status_label.setText(f"Filter error: {e}")
+
+    @override
+    def show(self) -> None:
+        self._load_initial_tail()
+        self._start_polling()
+        return super().show()
+
+    @override
+    def closeEvent(self, event: QCloseEvent):
+        self._stop_polling()
+        return super().closeEvent(event)

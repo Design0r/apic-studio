@@ -18,3 +18,4 @@ settings
 *.html
 
 apic-build.py
+*.prof

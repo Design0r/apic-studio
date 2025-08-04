@@ -1,4 +1,4 @@
-.PHONY: build generate run
+.PHONY: build generate run profile
 
 generate:
 	pyside6-rcc ./src/apic_studio/resources/icons.qrc -o ./src/apic_studio/resources/resources.py
@@ -11,3 +11,9 @@ build:
 
 plot:
 	uv run pyreverse -S -o html --colorized -f ALL -p apic-studio  ./src/apic_studio
+
+profile:
+	uv run src/apic_studio_profile.py
+
+snakeviz:
+	uv run snakeviz apic_studio.prof

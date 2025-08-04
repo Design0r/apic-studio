@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, override
+from typing import Any, Optional, override
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QIcon
@@ -50,7 +50,7 @@ class MainWindow(QWidget):
         self.init_layouts()
         self.init_signals()
 
-        self.set_view(self.settings.WindowSettings.current_viewport)
+        self.set_view(self.settings.WindowSettings.current_viewport, draw=False)
 
     def init_widgets(self):
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
@@ -135,10 +135,11 @@ class MainWindow(QWidget):
         self.settings.WindowSettings.current_viewport = self.viewport.curr_view
         return super().closeEvent(event)
 
-    def set_view(self, view: str):
+    def set_view(self, view: str, draw: bool = True):
         self.toolbar.set_current_view(view)
         self.viewport.set_current_view(view)
-        self.draw()
+        if draw:
+            self.draw()
 
     def draw(self, curr_pool: Optional[Path] = None, force: bool = False):
         if curr_pool:
@@ -149,7 +150,7 @@ class MainWindow(QWidget):
                 return
             self.viewport.draw(curr_pool, force=force)
 
-        vp_map = {
+        vp_map: dict[str, Any] = {
             "materials": self.settings.MaterialSettings,
             "models": self.settings.ModelSettings,
             "lightsets": self.settings.LightsetSettings,

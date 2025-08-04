@@ -277,13 +277,13 @@ class Statusbar(Toolbar):
         self.info.setText(text)
 
         if level == "Info":
-            self.info.setStyleSheet("background-color: rgb(50,100,50)")
+            self.info.setStyleSheet("QLineEdit {background-color: rgb(50,100,50);}")
         elif level == "Warning":
-            self.info.setStyleSheet("background-color: rgb(100,100,50)")
+            self.info.setStyleSheet("QLineEdit {background-color: rgb(100,100,50);}")
         elif level in ("Error", "Exception", "Critical Error"):
-            self.info.setStyleSheet("background-color: rgb(100,50,50)")
+            self.info.setStyleSheet("QLineEdit {background-color: rgb(100,50,50);}")
         elif level == "Clear":
-            self.info.setStyleSheet("background-color: rgb(50,50,50)")
+            self.info.setStyleSheet("QLineEdit {background-color: rgb(50,50,50);}")
 
         self.info.setCursorPosition(0)
 

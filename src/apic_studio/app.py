@@ -1,5 +1,6 @@
 import logging
 import sys
+from threading import Thread
 
 from PySide6.QtWidgets import QApplication
 
@@ -47,7 +48,10 @@ class Application:
     def run(self):
         Logger.info("starting Apic Studio...")
 
-        self.connection.connect(self.settings.CoreSettings.address)
+        Thread(
+            target=lambda: self.connection.connect(self.settings.CoreSettings.address),
+            daemon=True,
+        ).start()
         self.window.show()
         self.app.exec()
 

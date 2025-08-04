@@ -31,8 +31,6 @@ class Asset:
         self.suffix = file.suffix
         self.metadata: Metadata = Metadata(self.path / f"{self.name}.json")
 
-        self.metadata.load()
-
     def format_size(self) -> str:
         # bytes
         filesize = f"{self.size / 1_000:.2f}KB"

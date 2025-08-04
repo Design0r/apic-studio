@@ -206,6 +206,8 @@ class ConnectionButton(QPushButton):
         self.setFixedHeight(30)
         self.setIconSize(QSize(28, 28))
 
+        self.set_disconnected()
+
     def set_connected(self):
         self.setStyleSheet(
             "ConnectionButton{background-color: #2cd376;} ConnectionButton::hover{background-color: #156337}"
