@@ -10,8 +10,8 @@ s = SettingsManager()
 
 
 def benchmark(func: Callable[..., Any]) -> Callable[..., Any]:
-    @wraps
-    def wrapper(*args, **kwagrs) -> Any:
+    @wraps(func)
+    def wrapper(*args, **kwargs) -> Any:
         start_time = time.perf_counter()
         res = func(*args, **kwargs)
         end_time = time.perf_counter()

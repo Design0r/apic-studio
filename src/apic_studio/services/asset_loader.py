@@ -66,7 +66,7 @@ class AssetLoaderWorker(QObject):
 
         icon = self._create_icon(thumb)
 
-        Logger.debug(f"loaded asset from {model}")
+        # Logger.debug(f"loaded asset from {model}")
         asset = Asset(model, icon, Path(thumb))
         self._cache[path] = asset
 
@@ -95,7 +95,7 @@ class AssetLoaderWorker(QObject):
 
         for p in path.iterdir():
             if p.suffix.lower() in Asset.IMG_EXT:
-                Logger.debug(f"found thumbnail: {path / p.name}")
+                # Logger.debug(f"found thumbnail: {path / p.name}")
                 return str(path / p.name)
 
         return self._default_icon

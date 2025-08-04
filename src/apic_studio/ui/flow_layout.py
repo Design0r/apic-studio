@@ -63,17 +63,18 @@ class FlowLayout(QLayout):
         y: int = rect.y()
         line_height: int = 0
         spacing: int = self.spacing()
+        policy = QSizePolicy.ControlType.PushButton
 
         for item in self._item_list:
             style = item.widget().style()
             layout_spacing_x: int = style.layoutSpacing(
-                QSizePolicy.ControlType.PushButton,
-                QSizePolicy.ControlType.PushButton,
+                policy,
+                policy,
                 Qt.Orientation.Horizontal,
             )
             layout_spacing_y: int = style.layoutSpacing(
-                QSizePolicy.ControlType.PushButton,
-                QSizePolicy.ControlType.PushButton,
+                policy,
+                policy,
                 Qt.Orientation.Vertical,
             )
             space_x: int = spacing + layout_spacing_x

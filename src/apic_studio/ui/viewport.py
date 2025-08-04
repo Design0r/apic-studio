@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from collections import deque
 from functools import partial
 from pathlib import Path
-from typing import Optional
+from typing import Deque, Optional
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
 
@@ -42,6 +43,10 @@ class Viewport(QWidget):
         self.curr_view = "materials"
         self.curr_pool: Path
         self.backup = BackupManager()
+
+        self._pending_assets: Deque[Path] = deque()
+        self._load_timer: Optional[QTimer] = None
+        self._batch_size: int = 25
 
         self.init_widgets()
         self.init_layouts()
@@ -92,7 +97,37 @@ class Viewport(QWidget):
                 continue
             item.widget().setParent(None)
 
-    def draw(self, path: Path, force: bool = False):
+    def _start_incremental_load(self, force: bool) -> None:
+        if self._load_timer and self._load_timer.isActive():
+            self._load_timer.stop()
+
+        self._load_timer = QTimer(self)
+        self._load_timer.setInterval(0)
+        self._load_timer.timeout.connect(lambda: self._process_batch(force))
+        self._load_timer.start()
+
+    def _process_batch(self, force: bool) -> None:
+        for _ in range(self._batch_size):
+            if not self._pending_assets:
+                if self._load_timer:
+                    self._load_timer.stop()
+                return
+
+            x = self._pending_assets.popleft()
+            if not force and (cached_widget := self.widgets.get(x.stem)):
+                self.flow_layout.addWidget(cached_widget)
+                continue
+
+            b = ViewportButton(x, (200, 200))
+            b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
+            b.clicked.connect(partial(self.on_btn_click, x))
+
+            self.widgets[x.stem] = b
+            self.flow_layout.addWidget(b)
+            self.loader.load_asset(x, refresh=force)
+
+    def draw(self, path: Path, force: bool = False) -> None:
         self._clear_layout()
 
         Logger.debug(f"drawing called: {path}")
@@ -101,23 +136,16 @@ class Viewport(QWidget):
 
         self.curr_pool = path.parent
 
-        for x in path.iterdir():
+        self._pending_assets.clear()
+
+        for x in sorted(path.iterdir(), key=lambda x: x.stem):
             if not self.loader.is_asset(x):
                 continue
 
-            if not force and (cached_widget := self.widgets.get(x.stem)):
-                self.flow_layout.addWidget(cached_widget)
-                continue
+            self._pending_assets.append(x)
 
-            b = ViewportButton(x, (200, 200))
-            b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-            b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
-
-            b.clicked.connect(partial(self.on_btn_click, x))
-
-            self.widgets[x.stem] = b
-            self.flow_layout.addWidget(b)
-            self.loader.load_asset(x, refresh=force)
+        if self._pending_assets:
+            self._start_incremental_load(force)
 
     def on_btn_click(self, x: Path):
         asset = self.loader.get_asset(x)
