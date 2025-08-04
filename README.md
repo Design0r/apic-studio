@@ -65,7 +65,7 @@ uv run src/apic_studio.py
 3. Build executable
 
 ```bash
-Make build
+make build
 
 [or]
 
