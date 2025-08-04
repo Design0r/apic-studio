@@ -2,7 +2,7 @@ import logging
 import socket
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 LoggerCallback = Callable[[str, str], None]
 
@@ -91,7 +91,7 @@ class Logger:
         cls.exec_callbacks("Critical Error", msg)
 
     @classmethod
-    def log(cls, level, msg: str, *args, **kwargs):
+    def log(cls, level: int, msg: str, *args: tuple[Any], **kwargs: dict[str, Any]):
         lg = cls.logger_obj()
         lg.log(level, msg, *args, **kwargs)
 
