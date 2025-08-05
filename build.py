@@ -1,6 +1,7 @@
 import shutil
 from pathlib import Path
 
+import imageio
 import PyInstaller.__main__
 
 
@@ -74,12 +75,25 @@ class Builder:
 
 def main():
     CWD = Path(__file__).parent
+
+    dll_src = CWD / "build" / "imageio" / "freeimage" / "freeimage-3.18.0-win64.dll"
+    dll_dst = Path("imageio", "plugins", ".")
+
+    imageio.plugins.freeimage.download(directory=str(dll_src.parent.parent))
+
+    renamed = dll_src.parent / "freeimage.dll"
+    if renamed.exists():
+        renamed.unlink()
+
+    dll_src = dll_src.rename(renamed)
+
     PyInstaller.__main__.run(
         [
             "src/apic_studio.py",
             # "--onefile",
             "--name",
             "Apic Studio",
+            f"--add-binary={dll_src}:{dll_dst}",
             "--noconsole",
             "--noconfirm",
             "--icon",

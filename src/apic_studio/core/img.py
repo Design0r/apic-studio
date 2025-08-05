@@ -6,7 +6,10 @@ import numpy as np
 
 from shared.logger import Logger
 
-imageio.plugins.freeimage.download()
+try:
+    imageio.plugins.freeimage.download()
+except:
+    pass
 
 
 def create_sdr_preview(hdri_path: Path, thumbnail_path: Path, width_size: int):
