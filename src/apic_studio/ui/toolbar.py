@@ -21,6 +21,7 @@ from apic_studio.ui.dialogs import (
     ExportMaterialDialog,
     ExportModelDialog,
     ImportModelsDialog,
+    ProgressDialog,
     SettingsDialog,
     files_dialog,
     folder_dialog,
@@ -550,17 +551,25 @@ class ModelToolbar(AssetToolbar):
 
     def import_dialog(self):
         folder = folder_dialog("Select Folder to search for REF.c4d")
-        assets = AssetConverter.crawl_assets(Path(folder))
+        if not folder:
+            return
+
+        assets = AssetConverter.crawl_assets(Path(folder), lambda x: "REF" not in x)
 
         dialog = ImportModelsDialog(assets)
         dialog.finished.connect(self.on_import)
         dialog.exec()
 
     def on_import(self, assets: list[Path]):
-        ac = AssetConverter(self.current_pool)
-        for path in assets:
-            ac.create_asset_from_file(path)
-        self.pool_changed.emit(self.current_pool)
+        if not assets:
+            return
+
+        prog = ProgressDialog("Copying Models...", 0, len(assets), self)
+        self.ac = AssetConverter(self.current_pool)
+        self.ac.progress.connect(prog.setValue)
+        self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+        prog.show()
+        self.ac.create_assets_from_files(assets)
 
     def on_export_dialog_finished(self, data: ExportModelDialog.Data):
         if not self.current_pool:
@@ -718,10 +727,12 @@ class HdriToolbar(AssetToolbar):
 
     def on_import(self):
         files, _ = files_dialog("Select HDRIs to import")
-        ac = AssetConverter(self.current_pool)
-        new_assets: list[Path] = []
-        for f in files:
-            new = ac.create_asset_from_file(Path(f))
-            new_assets.append(new)
+        if not files:
+            return
 
-        self.pool_changed.emit(self.current_pool)
+        prog = ProgressDialog("Copying HDRIs...", 0, len(files), self)
+        self.ac = AssetConverter(self.current_pool)
+        self.ac.progress.connect(prog.setValue)
+        self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+        prog.show()
+        self.ac.create_assets_from_files(files)

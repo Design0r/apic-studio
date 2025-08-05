@@ -3,9 +3,9 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 from queue import Empty, Queue
-from typing import Optional
+from typing import Callable, Optional
 
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
 from PySide6.QtGui import QIcon
 
 from apic_studio.core import Asset, img, settings
@@ -113,9 +113,12 @@ class AssetLoaderWorker(QObject):
 
         return None
 
-    def _create_thumbnail(self, path: Path) -> Optional[Path]:
+    def _create_thumbnail(self, path: Path):
         size = settings.SettingsManager().MaterialSettings.render_res_x
-        img.create_sdr_preview(path, path.parent / f"{path.stem}.jpg", size)
+        try:
+            img.create_sdr_preview(path, path.parent / f"{path.stem}.jpg", size)
+        except Exception as e:
+            Logger.exception(e)
 
     def is_asset(self, path: Path) -> bool:
         return self._search_3d_model(path) is not None
@@ -154,36 +157,65 @@ class AssetLoader(QObject):
         self.t.wait()
 
 
-class AssetConverter:
-    def __init__(self, root_path: Path = Path()) -> None:
+class CopyTask(QRunnable):
+    def __init__(
+        self, root: Path, files: list[str] | list[Path], notifier: AssetConverter
+    ):
+        super().__init__()
+        self.root = root
+        self.files = files
+        self.notifier = notifier
+
+    def run(self):
+        for i, f in enumerate(self.files):
+            if isinstance(f, str):
+                file = Path(f)
+            else:
+                file = f
+
+            asset_dir = self.root / file.stem
+            new_asset_path = asset_dir / file.name
+
+            if asset_dir.exists():
+                Logger.warning(f"asset directory already exists: {asset_dir}")
+                self.notifier.progress.emit(i + 1)
+                continue
+
+            asset_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                shutil.copy2(file, new_asset_path)
+                self.notifier.progress.emit(i + 1)
+            except Exception as e:
+                Logger.exception(e)
+
+        self.notifier.finished.emit()
+
+
+class AssetConverter(QObject):
+    progress = Signal(int)
+    finished = Signal()
+
+    def __init__(self, root_path: Path = Path(), parent: Optional[QObject] = None):
+        super().__init__(parent)
         self.root = root_path
+        self._pool = QThreadPool.globalInstance()
 
     def set_root(self, path: Path):
         self.root = path
 
-    def create_asset_from_file(self, file: Path) -> Path:
-        asset_dir = self.root / file.stem
-        new_asset_path = asset_dir / file.name
-        if asset_dir.exists():
-            Logger.warning(f"asset directory already exists: {asset_dir}")
-            return new_asset_path
-
-        asset_dir.mkdir()
-        try:
-            shutil.copy2(file, new_asset_path)
-        except FileNotFoundError as e:
-            Logger.exception(e)
-            return Path()
-
-        return new_asset_path
+    def create_assets_from_files(self, files: list[str] | list[Path]):
+        task = CopyTask(self.root, files, self)
+        self._pool.start(task)  # type: ignore
 
     @staticmethod
-    def crawl_assets(root: Path) -> dict[str, Path]:
+    def crawl_assets(
+        root: Path, filter: Callable[[str], bool], suffix: str = ".c4d"
+    ) -> dict[str, Path]:
         result: dict[str, Path] = {}
 
         for path, _, files in root.walk():
             for file in files:
-                if "REF" not in file or not file.endswith(".c4d"):
+                if filter(file) or not file.endswith(suffix):
                     continue
                 result[file] = path / file
 

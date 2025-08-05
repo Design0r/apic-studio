@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QProgressDialog,
     QPushButton,
     QScrollArea,
     QSpinBox,
@@ -758,6 +759,26 @@ class ImportModelsDialog(QDialog):
     def accept(self) -> None:
         super().accept()
         self.finished.emit(self.get_selected())
+
+
+class ProgressDialog(QProgressDialog):
+    def __init__(
+        self,
+        labelText: str,
+        minimum: int,
+        maximum: int,
+        parent: Optional[QWidget] = None,
+    ):
+        super().__init__(
+            labelText,
+            "",
+            minimum,
+            maximum,
+            parent,
+        )
+        self.setWindowModality(Qt.WindowModality.WindowModal)
+        self.setCancelButton(None)
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
 
 
 def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
