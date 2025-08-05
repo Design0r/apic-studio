@@ -1,1 +1,3 @@
-from .asset import Asset as Asset
+from .asset import Asset
+
+__all__ = ["Asset"]

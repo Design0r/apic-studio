@@ -1,2 +1,3 @@
-from .cinema import *
-from .message import *
+from .message import Message, MessageRouter, MsgHandlerFunc
+
+__all__ = ["Message", "MessageRouter", "MsgHandlerFunc"]

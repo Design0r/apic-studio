@@ -1,16 +1,11 @@
 from __future__ import annotations
 
 import json
-from enum import StrEnum
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Callable, DefaultDict, NamedTuple, Optional
 
 if TYPE_CHECKING:
     from ..network import Connection
-
-
-class MessageType(StrEnum):
-    pass
 
 
 class Message(NamedTuple):

@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from apic_studio.core.settings import SettingsManager
-from apic_studio.services.backup import Backup, BackupManager
+from apic_studio.services import Backup, BackupManager
 from shared.logger import Logger
 
 from .buttons import IconButton
@@ -508,9 +508,9 @@ class SettingsDialog(QDialog):
     def load(self):
         core = self.settings.CoreSettings
         mat = self.settings.MaterialSettings
-        win = self.settings.WindowSettings
+        _ = self.settings.WindowSettings
         mod = self.settings.ModelSettings
-        hdri = self.settings.HdriSettings
+        _ = self.settings.HdriSettings
 
         self.socket_port.setValue(core.socket_port)
         self.addr.setText(core.socket_addr)
@@ -526,7 +526,7 @@ class SettingsDialog(QDialog):
     def store(self):
         core = self.settings.CoreSettings
         mat = self.settings.MaterialSettings
-        win = self.settings.WindowSettings
+        _ = self.settings.WindowSettings
         mod = self.settings.ModelSettings
 
         core.socket_port = self.socket_port.value()

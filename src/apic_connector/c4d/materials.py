@@ -37,19 +37,3 @@ def import_file(conn: Connection, msg: Message):
     core.import_file(path)
 
     conn.send(Message("success"))
-
-
-@router.register("preview.create")
-def render_preview(conn: Connection, msg: Message):
-    if msg.data is None:
-        conn.send(Message("error", "expected message data"))
-        return
-    path = msg.data.get("path")
-    if not path:
-        conn.send(Message("error", "file path is empty."))
-        return
-
-    mtls = materials.get_materials(msg.data["materials"])
-    materials.save_material_previews(mtls, path)
-
-    conn.send(Message("success"))

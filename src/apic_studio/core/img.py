@@ -8,7 +8,7 @@ from shared.logger import Logger
 
 try:
     imageio.plugins.freeimage.download()
-except:
+except Exception:
     pass
 
 

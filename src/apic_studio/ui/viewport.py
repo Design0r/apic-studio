@@ -9,9 +9,9 @@ from PySide6.QtCore import QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
 
+from apic_studio.core import Asset
 from apic_studio.core.settings import SettingsManager
-from apic_studio.services import Asset, AssetLoader, DCCBridge, Screenshot
-from apic_studio.services.backup import BackupManager
+from apic_studio.services import AssetLoader, BackupManager, DCCBridge, Screenshot
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.dialogs import CreateBackupDialog
 from apic_studio.ui.flow_layout import FlowLayout

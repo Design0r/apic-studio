@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from apic_studio.services import AssetConverter, DCCBridge, PoolManager, crawl_assets
+from apic_studio.services import AssetConverter, DCCBridge, PoolManager
 from apic_studio.ui.dialogs import (
     BackupDialog,
     CreatePoolDialog,
@@ -550,7 +550,7 @@ class ModelToolbar(AssetToolbar):
 
     def import_dialog(self):
         folder = folder_dialog("Select Folder to search for REF.c4d")
-        assets = crawl_assets(Path(folder))
+        assets = AssetConverter.crawl_assets(Path(folder))
 
         dialog = ImportModelsDialog(assets)
         dialog.finished.connect(self.on_import)
