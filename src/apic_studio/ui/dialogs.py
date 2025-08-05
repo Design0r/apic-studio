@@ -673,6 +673,98 @@ class CreateBackupDialog(QDialog):
         self.button_box.rejected.connect(self.reject)
 
 
+class ImportModelsDialog(QDialog):
+    finished = Signal(list)
+
+    def __init__(self, models: dict[str, Path], parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.models = models
+        self._widgets: list[tuple[QCheckBox, QLabel]] = []
+
+        self.setWindowTitle("Import Models")
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.select_all_btn = QPushButton("Select All")
+        self.deselect_all_btn = QPushButton("Deselect All")
+
+        self.scroll_widget = QWidget()
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidget(self.scroll_widget)
+        self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.scroll_area.setWidgetResizable(True)
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.select_layout = QHBoxLayout()
+        self.scroll_layout = QVBoxLayout(self.scroll_widget)
+
+        for mtl in self.models:
+            layout = self.add_row(mtl)
+            self.scroll_layout.addLayout(layout)
+        self.scroll_layout.addStretch()
+
+        self.select_layout.addStretch()
+        self.select_layout.addWidget(self.select_all_btn)
+        self.select_layout.addWidget(self.deselect_all_btn)
+
+        self.main_layout.addWidget(self.scroll_area)
+        self.main_layout.addLayout(self.select_layout)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        self.select_all_btn.clicked.connect(self.select_all)
+        self.deselect_all_btn.clicked.connect(self.deselect_all)
+
+    def add_row(self, name: str):
+        layout = QHBoxLayout()
+        checkbox = QCheckBox("")
+        label = QLabel(name)
+
+        layout.setSpacing(10)
+        layout.addWidget(checkbox)
+        layout.addWidget(label, 0, Qt.AlignmentFlag.AlignLeft)
+        layout.addStretch()
+
+        self._widgets.append((checkbox, label))
+        return layout
+
+    def get_selected(self) -> list[Path]:
+        return [
+            self.models[label.text()]
+            for check, label in self._widgets
+            if check.isChecked()
+        ]
+
+    def select_all(self):
+        for check, _ in self._widgets:
+            check.setChecked(True)
+
+    def deselect_all(self):
+        for check, _ in self._widgets:
+            check.setChecked(False)
+
+    def accept(self) -> None:
+        super().accept()
+        self.finished.emit(self.get_selected())
+
+
 def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
     folder = QFileDialog.getOpenFileNames(caption=title)
+    return folder
+
+
+def folder_dialog(title: str = "Select Folder") -> str:
+    folder = QFileDialog.getExistingDirectory(caption=title)
     return folder

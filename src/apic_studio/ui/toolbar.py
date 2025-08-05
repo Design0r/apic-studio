@@ -13,15 +13,17 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from apic_studio.services import AssetConverter, DCCBridge, PoolManager
+from apic_studio.services import AssetConverter, DCCBridge, PoolManager, crawl_assets
 from apic_studio.ui.dialogs import (
     BackupDialog,
     CreatePoolDialog,
     DeletePoolDialog,
     ExportMaterialDialog,
     ExportModelDialog,
+    ImportModelsDialog,
     SettingsDialog,
     files_dialog,
+    folder_dialog,
 )
 from apic_studio.ui.lines import VLine
 from apic_studio.ui.log_viewer import LogViewer
@@ -497,6 +499,10 @@ class ModelToolbar(AssetToolbar):
         self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
         self.export_btn.set_tooltip("Export model")
 
+        self.import_btn = IconButton((30, 30))
+        self.import_btn.set_icon(":icons/tabler-icon-file-import.png")
+        self.import_btn.set_tooltip("Import model")
+
         self.backup_btn = IconButton((30, 30))
         self.backup_btn.set_icon(":icons/tabler-icon-archive.png")
         self.backup_btn.set_tooltip("Show archive")
@@ -510,13 +516,21 @@ class ModelToolbar(AssetToolbar):
         super().init_layouts()
 
         self.add_widgets(
-            [self.export_btn, self.backup_btn, VLine(), self.refresh_btn], stretch=True
+            [
+                self.export_btn,
+                self.import_btn,
+                self.backup_btn,
+                VLine(),
+                self.refresh_btn,
+            ],
+            stretch=True,
         )
 
     @override
     def init_signals(self):
         super().init_signals()
         self.export_btn.clicked.connect(self.export_dialog)
+        self.import_btn.clicked.connect(self.import_dialog)
         self.refresh_btn.clicked.connect(
             lambda: self.pool_changed.emit(self.current_pool)
         )
@@ -533,6 +547,20 @@ class ModelToolbar(AssetToolbar):
         dialog = ExportModelDialog()
         dialog.finished.connect(self.on_export_dialog_finished)
         dialog.exec()
+
+    def import_dialog(self):
+        folder = folder_dialog("Select Folder to search for REF.c4d")
+        assets = crawl_assets(Path(folder))
+
+        dialog = ImportModelsDialog(assets)
+        dialog.finished.connect(self.on_import)
+        dialog.exec()
+
+    def on_import(self, assets: list[Path]):
+        ac = AssetConverter(self.current_pool)
+        for path in assets:
+            ac.create_asset_from_file(path)
+        self.pool_changed.emit(self.current_pool)
 
     def on_export_dialog_finished(self, data: ExportModelDialog.Data):
         if not self.current_pool:

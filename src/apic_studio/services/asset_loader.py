@@ -176,3 +176,16 @@ class AssetConverter:
             return Path()
 
         return new_asset_path
+
+
+def crawl_assets(root: Path) -> dict[str, Path]:
+    result: dict[str, Path] = {}
+
+    for path, _, files in root.walk():
+        for file in files:
+            if "REF" not in file or not file.endswith(".c4d"):
+                continue
+            result[file] = path / file
+
+    print(result)
+    return result
