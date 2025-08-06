@@ -779,6 +779,7 @@ class ProgressDialog(QProgressDialog):
         self.setWindowModality(Qt.WindowModality.WindowModal)
         self.setCancelButton(None)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setWindowTitle("")
 
 
 def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
