@@ -144,6 +144,7 @@ def main():
 
     c4d.documents.InsertBaseDocument(doc)
 
+    set_camera(doc, args.camera)
     for mat in args.materials.split(","):
         mat_path = Path(mat)
         mat_name = mat_path.stem
@@ -151,7 +152,6 @@ def main():
         if not core.import_file(mat):
             raise RuntimeError(f"Failed to load material file: {mat}")
 
-        set_camera(doc, args.camera)
         set_render_settings(doc, output_path, (args.width, args.height))
         obj = doc.SearchObject(args.object)
         if not obj:
