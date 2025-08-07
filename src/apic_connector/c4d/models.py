@@ -16,9 +16,10 @@ def export_selected(conn: Connection, msg: Message):
     if not path:
         conn.send(Message("error", "File path is empty."))
         return
+    globalize = msg.data.get("globalize_textures", False)
 
     Logger.debug(f"exporting selected models to {path}")
-    models.export_selected(path)
+    models.export_selected(path, globalize)
 
     conn.send(Message("success"))
 

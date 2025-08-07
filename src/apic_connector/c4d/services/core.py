@@ -20,14 +20,23 @@ def open_file(file_path: str):
     c4d.documents.LoadFile(file_path)
 
 
-def save_file_as(file_path: str) -> bool:
+def save_file_as(file_path: str, globalize_textures: bool) -> bool:
+    if globalize_textures:
+        globalize_filenames()
+
     doc = c4d.documents.GetActiveDocument()
     res = c4d.documents.SaveDocument(
         doc, file_path, c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST, c4d.FORMAT_C4DEXPORT
     )
     if not res:
-        Logger.info(f"saven scene failed: {file_path}")
+        Logger.info(f"save scene failed: {file_path}")
         return res
 
-    Logger.info(f"saven scene succeeded: {file_path}")
+    Logger.info(f"save scene succeeded: {file_path}")
     return res
+
+
+def globalize_filenames():
+    c4d.CallCommand(1029486)  # open project asset inspector
+    c4d.CallCommand(1029813)  # select all assets
+    c4d.CallCommand(1029820)  # globalize

@@ -1,8 +1,13 @@
 import c4d
 from shared.logger import Logger
 
+from .core import globalize_filenames
 
-def export_selected(file_path: str):
+
+def export_selected(file_path: str, globalize_textures: bool):
+    if globalize_textures:
+        globalize_filenames()
+
     doc = c4d.documents.GetActiveDocument()
     sel = doc.GetActiveObjects(c4d.GETACTIVEOBJECTFLAGS_SELECTIONORDER)
     if not sel:

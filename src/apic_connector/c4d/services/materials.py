@@ -5,8 +5,13 @@ import c4d
 from shared.logger import Logger
 from shared.utils import sanitize_string
 
+from .core import globalize_filenames
 
-def export_selected(file_path: str):
+
+def export_selected(file_path: str, globalize_textures: bool):
+    if globalize_textures:
+        globalize_filenames()
+
     doc = c4d.documents.GetActiveDocument()
     sel = doc.GetActiveObjects(c4d.GETACTIVEOBJECTFLAGS_SELECTIONORDER)
     if not sel:
@@ -37,7 +42,12 @@ def get_materials(name_filter: Optional[list[str]]) -> list[c4d.BaseMaterial]:
     return [m for m in materials]
 
 
-def export_materials(names: Optional[list[str]], path: str) -> bool:
+def export_materials(
+    names: Optional[list[str]], path: str, globalize_textures: bool
+) -> bool:
+    if globalize_textures:
+        globalize_filenames()
+
     doc = c4d.documents.GetActiveDocument()
     mats = doc.GetMaterials()
 

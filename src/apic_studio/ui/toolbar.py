@@ -586,9 +586,11 @@ class ModelToolbar(AssetToolbar):
         file_path = file_dir / f"{name}.{ext}"
 
         if export_type == ExportModelDialog.ExportType.SAVE:
-            self.dcc.save_as(file_path)
+            self.dcc.save_as(file_path, globalize_textures=data.globalize_textures)
         elif export_type == ExportModelDialog.ExportType.EXPORT:
-            self.dcc.models_export_selected(file_path)
+            self.dcc.models_export_selected(
+                file_path, globalize_textures=data.globalize_textures
+            )
 
         self.pool_changed.emit(self.current_pool)
 
@@ -685,7 +687,11 @@ class MaterialToolbar(AssetToolbar):
             if data.copy_textures:
                 self.dcc.copy_textures(file_path)
 
-        self.dcc.materials_export(data.materials, self.current_pool)
+        self.dcc.materials_export(
+            data.materials,
+            self.current_pool,
+            globalize_tetxures=data.globalize_textures,
+        )
         self.pool_changed.emit(self.current_pool)
 
 

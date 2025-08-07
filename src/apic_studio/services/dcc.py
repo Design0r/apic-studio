@@ -135,8 +135,13 @@ class DCCBridge:
     def on_disconnect(self, fn: Callable[[], None]) -> None:
         self.ctx.on_disconnect(fn)
 
-    def models_export_selected(self, path: Path) -> Message:
-        res = self.call("models.export.selected", {"path": str(path)})
+    def models_export_selected(
+        self, path: Path, globalize_textures: bool = False
+    ) -> Message:
+        res = self.call(
+            "models.export.selected",
+            {"path": str(path), "globalize_textures": globalize_textures},
+        )
         if self.is_err(res):
             Logger.error(f"failed to export asset: {path.name} to {path}: {res}")
         return res
@@ -148,8 +153,11 @@ class DCCBridge:
 
         return res
 
-    def save_as(self, path: Path) -> Message:
-        res = self.call("core.file.save_as", {"path": str(path)})
+    def save_as(self, path: Path, globalize_textures: bool = False) -> Message:
+        res = self.call(
+            "core.file.save_as",
+            {"path": str(path), "globalize_textures": globalize_textures},
+        )
         if self.is_err(res):
             Logger.error(f"failed to save as: {path.name} to {path}: {res}")
 
@@ -169,9 +177,16 @@ class DCCBridge:
 
         return res
 
-    def materials_export(self, materials: list[str], path: Path) -> Message:
+    def materials_export(
+        self, materials: list[str], path: Path, globalize_tetxures: bool = False
+    ) -> Message:
         res = self.call(
-            "materials.export", data={"materials": materials, "path": str(path)}
+            "materials.export",
+            data={
+                "materials": materials,
+                "path": str(path),
+                "globalize_textures": globalize_tetxures,
+            },
         )
         if self.is_err(res):
             Logger.error(f"failed to export materials: {res}")

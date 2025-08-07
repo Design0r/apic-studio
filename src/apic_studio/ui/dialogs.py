@@ -145,6 +145,7 @@ class ExportModelDialog(QDialog):
         ext: str
         export_type: Literal["Save current Scene", "Export selected"]
         copy_textures: bool
+        globalize_textures: bool
 
     finished = Signal(Data)
 
@@ -165,7 +166,9 @@ class ExportModelDialog(QDialog):
         self.export_options = QComboBox()
         self.export_options.addItems([self.ExportType.EXPORT, self.ExportType.SAVE])
 
-        self.copy_textues_check = QCheckBox("")
+        self.copy_textues_check = QCheckBox()
+        self.globalize_textures = QCheckBox()
+        self.globalize_textures.setChecked(True)
 
         buttons = (
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -178,7 +181,10 @@ class ExportModelDialog(QDialog):
 
         self.form_layout.addRow("Name", self.name_edit)
         self.form_layout.addRow("Export Options", self.export_options)
-        self.form_layout.addRow("Copy Textures and Repath", self.copy_textues_check)
+        self.form_layout.addRow("Globalize Textures", self.globalize_textures)
+        self.form_layout.addRow(
+            "Copy Textures and Repath (not implemented)", self.copy_textues_check
+        )
 
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addWidget(self.button_box)
@@ -197,6 +203,7 @@ class ExportModelDialog(QDialog):
             ext,
             self.ExportType(opt).value,
             self.copy_textues_check.isChecked(),
+            self.globalize_textures.isChecked(),
         )
 
         self.finished.emit(data)
@@ -207,6 +214,7 @@ class ExportMaterialDialog(QDialog):
         ext: str
         copy_textures: bool
         materials: list[str]
+        globalize_textures: bool
 
     finished = Signal(Data)
 
@@ -223,7 +231,11 @@ class ExportMaterialDialog(QDialog):
         self.init_signals()
 
     def init_widgets(self):
-        self.copy_textues_check = QCheckBox("Copy Textures and Repath")
+        self.copy_textues_check = QCheckBox(
+            "Copy Textures and Repath (not implemented)"
+        )
+        self.globalize_textures = QCheckBox("Globalize Textures")
+        self.globalize_textures.setChecked(True)
 
         self.select_all = QPushButton("Select All")
         self.deselect_all = QPushButton("Deselect All")
@@ -256,6 +268,9 @@ class ExportMaterialDialog(QDialog):
         self.main_layout.addWidget(self.scroll_area)
         self.main_layout.addWidget(
             self.copy_textues_check, alignment=Qt.AlignmentFlag.AlignRight
+        )
+        self.main_layout.addWidget(
+            self.globalize_textures, alignment=Qt.AlignmentFlag.AlignRight
         )
         self.main_layout.addLayout(self.select_layout)
         self.main_layout.addWidget(self.button_box)
@@ -293,7 +308,10 @@ class ExportMaterialDialog(QDialog):
     def accept(self) -> None:
         super().accept()
         data = self.Data(
-            "c4d", self.copy_textues_check.isChecked(), self.get_selected_materials()
+            "c4d",
+            self.copy_textues_check.isChecked(),
+            self.get_selected_materials(),
+            self.globalize_textures.isChecked(),
         )
         self.finished.emit(data)
 
