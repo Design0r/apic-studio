@@ -1,7 +1,7 @@
 import subprocess
 import sys
 from pathlib import Path
-from subprocess import PIPE, Popen
+from subprocess import Popen
 from typing import Any, Callable, Optional, Protocol
 
 from PySide6.QtCore import QObject, QThread
@@ -101,13 +101,13 @@ class RenderThread(QThread):
         self.cmd = cmd
 
     def run(self):
-        with Popen(self.cmd, stdout=PIPE, stderr=PIPE) as p:
-            out, err = p.communicate()
-            try:
-                Logger.debug(out.decode(errors="ignore"))
-                Logger.debug(err.decode(errors="ignore"))
-            except UnicodeEncodeError:
-                pass
+        with Popen(self.cmd) as p:
+            # out, err = p.communicate()
+            # try:
+            #     Logger.debug(out.decode(errors="ignore"))
+            #     Logger.debug(err.decode(errors="ignore"))
+            # except UnicodeEncodeError:
+            #     pass
             p.wait()
 
 
@@ -236,7 +236,11 @@ def render_material(
     builder = CmdBuilder()
     s = SettingsManager()
     m = s.MaterialSettings
-    builder.add_positional(str(s.ROOT_PATH.parent / "scripts" / "render_material.py"))
+    p = s.ROOT_PATH.parent / "scripts" / "render_material.py"
+    if not p.exists():
+        p = s.ROOT_PATH / "src" / "apic_studio" / "scripts" / "render_material.py"
+
+    builder.add_positional(str(p))
 
     builder.add_flag("--scene", Path(m.render_scene))
     builder.add_flag("--object", m.render_object)
@@ -253,7 +257,10 @@ def render_material(
 def repath_textures(scene_path: Path, callback: Optional[Callable[[], None]] = None):
     s = SettingsManager()
     builder = CmdBuilder()
-    builder.add_positional(str(s.ROOT_PATH.parent / "scripts" / "repath_textures.py"))
+    p = s.ROOT_PATH.parent / "scripts" / "repath_textures.py"
+    if not p.exists():
+        p = s.ROOT_PATH / "apic_studio" / "scripts" / "repath_textures.py"
+    builder.add_positional(str(p))
     builder.add_flag("--scene", scene_path)
 
     cmd = builder.build_list()

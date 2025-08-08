@@ -35,7 +35,7 @@ def get_assets_to_copy(doc: "c4d.BaseDocument", target: Path) -> list[dict[str, 
     filtered: list[dict[str, Any]] = []
     for a in assets:
         filename = Path(a["filename"])
-        if filename.parent != target and filename.suffix != ".c4d":
+        if filename.parent != target and filename.suffix != ".c4d" and a["nodeSpace"]:
             filtered.append(a)
 
     return filtered
@@ -44,29 +44,25 @@ def get_assets_to_copy(doc: "c4d.BaseDocument", target: Path) -> list[dict[str, 
 def relink_node_asset(item: dict[str, Any], new_path: str):
     owner = item.get("owner")  # c4d.BaseMaterial
     if not owner:
-        return
+        raise ValueError("No owner found.")
 
     node_path = item.get("nodePath", "")  # e.g. 'texturesampler@...'
     node_space = item.get("nodeSpace", "")
     if not node_path or not node_space:
-        print("no owner found.")
-        return
+        raise ValueError("No nodeSpace or nodePath found.")
 
     nm = owner.GetNodeMaterialReference()
     if not nm:
-        print("no node material reference.")
-        return
+        raise ValueError("No node material reference.")
 
     graph = nm.GetGraph(node_space)
     if graph.IsNullValue():
-        print("no graph found.")
-        return
+        raise ValueError("No graph found.")
 
     with graph.BeginTransaction() as tr:
         node = graph.GetNode(maxon.NodePath(node_path))
         if node.IsNullValue():
-            print("node is null.")
-            return
+            raise ValueError("Node is null.")
         # Redshift TextureSampler → input 'tex0' → child port 'path'
         if (
             node_space == "com.redshift3d.redshift4c4d.class.nodespace"
@@ -81,7 +77,7 @@ def relink_node_asset(item: dict[str, Any], new_path: str):
                 path_port.SetPortValue(new_path)
         tr.Commit()
 
-    print(f"relinked asset {Path(new_path).name}")
+    print(f"Relinked asset {Path(new_path).name}")
 
 
 def copy_file(src: Path, dst: Path):
@@ -89,7 +85,7 @@ def copy_file(src: Path, dst: Path):
         return
 
     shutil.copy2(src, dst)
-    print(f"copied {src.name} to {dst}")
+    print(f"Copied {src.name} to {dst}")
 
 
 def main():
@@ -101,6 +97,7 @@ def main():
         raise RuntimeError(f"Failed to load base scene file: {args.scene}")
 
     c4d.documents.InsertBaseDocument(doc)
+    print(f"Loaded scene {args.scene}")
 
     tex = Path(args.scene).parent / "tex"
     tex.mkdir(exist_ok=True)
@@ -116,8 +113,8 @@ def main():
             try:
                 relink_node_asset(asset, str(new_asset_path))
             except Exception as e:
-                print(f"Failed to relink asset: {asset}")
-                print(e)
+                print(f"Failed to relink asset: {asset}\n{e}")
+                break
 
     ok = c4d.documents.SaveDocument(
         doc, args.scene, c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST, c4d.FORMAT_C4DEXPORT
@@ -125,7 +122,7 @@ def main():
     if not ok:
         print(f"failed to save document {args.scene}")
 
-    print("saved document")
+    print("Document saved")
 
 
 if __name__ == "__main__":
