@@ -182,9 +182,7 @@ class ExportModelDialog(QDialog):
         self.form_layout.addRow("Name", self.name_edit)
         self.form_layout.addRow("Export Options", self.export_options)
         self.form_layout.addRow("Globalize Textures", self.globalize_textures)
-        self.form_layout.addRow(
-            "Copy Textures and Repath (not implemented)", self.copy_textues_check
-        )
+        self.form_layout.addRow("Copy Textures and Repath", self.copy_textues_check)
 
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addWidget(self.button_box)
@@ -231,9 +229,7 @@ class ExportMaterialDialog(QDialog):
         self.init_signals()
 
     def init_widgets(self):
-        self.copy_textues_check = QCheckBox(
-            "Copy Textures and Repath (not implemented)"
-        )
+        self.copy_textues_check = QCheckBox("Copy Textures and Repath")
         self.globalize_textures = QCheckBox("Globalize Textures")
         self.globalize_textures.setChecked(True)
 

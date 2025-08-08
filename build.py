@@ -108,6 +108,8 @@ def main():
     b.add_ressource(CWD / "src" / "shared")
     b.add_ressource(CWD / "src" / "apic_connector")
 
+    b.add_ext_copy(CWD / "src" / "scripts", CWD / "dist" / "Apic Studio" / "scripts")
+
     b.build()
 
 

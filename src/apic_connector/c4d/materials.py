@@ -18,8 +18,11 @@ def export_materials(conn: Connection, msg: Message):
     if not msg.data:
         conn.send(Message("error", data={"message": "expected data"}))
         return
+    globalize = msg.data.get("globalize_textures", False)
 
-    ok = materials.export_materials(msg.data["materials"], msg.data["path"])
+    ok = materials.export_materials(
+        msg.data["materials"], msg.data["path"], globalize_textures=globalize
+    )
     conn.send(Message("success" if ok else "error"))
 
 

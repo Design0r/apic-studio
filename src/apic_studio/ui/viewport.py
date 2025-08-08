@@ -170,6 +170,9 @@ class Viewport(QWidget):
         backup_act = QAction("Create Backup")
         backup_act.triggered.connect(lambda: self.on_open_dialog(btn.file))
 
+        repath_act = QAction("Repath Textures")
+        repath_act.triggered.connect(lambda: self.dcc.repath_textures(btn.file))
+
         if self.curr_view == "models":
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
         elif self.curr_view == "materials":
@@ -205,11 +208,13 @@ class Viewport(QWidget):
         if self.curr_view in ("models", "lightsets"):
             menu.addAction(screenshot_act)
             menu.addAction(backup_act)
+            menu.addAction(repath_act)
 
         if self.curr_view == "materials":
             menu.addAction(render_act)
             menu.addAction(delete_preview_act)
             menu.addAction(backup_act)
+            menu.addAction(repath_act)
 
         menu.addSeparator()
         menu.addAction(delete_act)

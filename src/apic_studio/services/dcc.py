@@ -17,7 +17,7 @@ class CmdBuilder:
         self._cmd: list[str] = []
 
     def add_positional(self, value: str):
-        self._cmd.append(value)
+        self._cmd.append(f'"{value}"')
 
     def add_flag(self, flag: str, value: Any):
         self._cmd.append(flag)
@@ -74,7 +74,7 @@ class Cinema4D:
 
         def on_finished():
             if callback:
-                Logger.debug("Finished c4dpy process")
+                Logger.info("Finished c4dpy process")
                 callback()
             self._renders = []
             rt.deleteLater()
@@ -104,8 +104,8 @@ class RenderThread(QThread):
         with Popen(self.cmd, stdout=PIPE, stderr=PIPE) as p:
             out, err = p.communicate()
             try:
-                Logger.info(out.decode(errors="ignore"))
-                Logger.error(err.decode(errors="ignore"))
+                Logger.debug(out.decode(errors="ignore"))
+                Logger.debug(err.decode(errors="ignore"))
             except UnicodeEncodeError:
                 pass
             p.wait()
@@ -160,13 +160,6 @@ class DCCBridge:
         )
         if self.is_err(res):
             Logger.error(f"failed to save as: {path.name} to {path}: {res}")
-
-        return res
-
-    def copy_textures(self, path: Path) -> Message:
-        res = self.call("textures.export", {"path": str(path)})
-        if self.is_err(res):
-            Logger.error(f"failed to export textures: {path.name} to {path}: {res}")
 
         return res
 
@@ -231,21 +224,37 @@ class DCCBridge:
 
         return res
 
+    def repath_textures(
+        self, path: Path, callback: Optional[Callable[[], None]] = None
+    ):
+        repath_textures(path, callback=callback)
+
 
 def render_material(
-    materials: list[Path], callback: Optional[Callable[..., None]] = None
+    materials: list[Path], callback: Optional[Callable[[], None]] = None
 ):
     builder = CmdBuilder()
-    s = SettingsManager().MaterialSettings
-    builder.add_positional(
-        str(Path(__file__).parent.parent / "scripts" / "render_material.py")
-    )
-    builder.add_flag("--scene", Path(s.render_scene))
-    builder.add_flag("--object", s.render_object)
-    builder.add_flag("--camera", s.render_cam)
-    builder.add_flag("--width", s.render_res_x)
-    builder.add_flag("--height", s.render_res_y)
+    s = SettingsManager()
+    m = s.MaterialSettings
+    builder.add_positional(str(s.ROOT_PATH.parent / "scripts" / "render_material.py"))
+
+    builder.add_flag("--scene", Path(m.render_scene))
+    builder.add_flag("--object", m.render_object)
+    builder.add_flag("--camera", m.render_cam)
+    builder.add_flag("--width", m.render_res_x)
+    builder.add_flag("--height", m.render_res_y)
     builder.add_flag("--materials", ",".join((str(m) for m in materials)))
+
+    cmd = builder.build_list()
+    c4d = Cinema4D()
+    c4d.run_py(cmd, callback=callback)
+
+
+def repath_textures(scene_path: Path, callback: Optional[Callable[[], None]] = None):
+    s = SettingsManager()
+    builder = CmdBuilder()
+    builder.add_positional(str(s.ROOT_PATH.parent / "scripts" / "repath_textures.py"))
+    builder.add_flag("--scene", scene_path)
 
     cmd = builder.build_list()
     c4d = Cinema4D()

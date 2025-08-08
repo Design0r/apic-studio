@@ -277,16 +277,24 @@ class Statusbar(Toolbar):
         self.logs_btn.clicked.connect(self.show_logs)
 
     def update_info(self, level: str, text: str) -> None:
+        if not text:
+            return
+
         self.info.setText(text)
 
-        if level == "Info":
-            self.info.setStyleSheet("QLineEdit {background-color: rgb(50,100,50);}")
-        elif level == "Warning":
-            self.info.setStyleSheet("QLineEdit {background-color: rgb(100,100,50);}")
-        elif level in ("Error", "Exception", "Critical Error"):
-            self.info.setStyleSheet("QLineEdit {background-color: rgb(100,50,50);}")
-        elif level == "Clear":
-            self.info.setStyleSheet("QLineEdit {background-color: rgb(50,50,50);}")
+        try:
+            if level == "Info":
+                self.info.setStyleSheet("QLineEdit {background-color: rgb(50,100,50);}")
+            elif level == "Warning":
+                self.info.setStyleSheet(
+                    "QLineEdit {background-color: rgb(100,100,50);}"
+                )
+            elif level in ("Error", "Exception", "Critical Error"):
+                self.info.setStyleSheet("QLineEdit {background-color: rgb(100,50,50);}")
+            elif level == "Clear":
+                self.info.setStyleSheet("QLineEdit {background-color: rgb(50,50,50);}")
+        except Exception:
+            pass
 
         self.info.setCursorPosition(0)
 
@@ -592,10 +600,10 @@ class ModelToolbar(AssetToolbar):
                 file_path, globalize_textures=data.globalize_textures
             )
 
-        self.pool_changed.emit(self.current_pool)
-
         if copy_textures:
-            self.dcc.copy_textures(file_path)
+            self.dcc.repath_textures(file_path)
+
+        self.pool_changed.emit(self.current_pool)
 
 
 class MaterialToolbar(AssetToolbar):
@@ -678,20 +686,24 @@ class MaterialToolbar(AssetToolbar):
             Logger.error("No current pool selected for export.")
             return
 
+        mtl_paths: list[Path] = []
         for mtl in data.materials:
             mtl = sanitize_string(mtl)
             file_dir = self.current_pool / mtl
             file_dir.mkdir(parents=True, exist_ok=True)
             file_path = file_dir / f"{mtl}.{data.ext}"
-
-            if data.copy_textures:
-                self.dcc.copy_textures(file_path)
+            mtl_paths.append(file_path)
 
         self.dcc.materials_export(
             data.materials,
             self.current_pool,
             globalize_tetxures=data.globalize_textures,
         )
+
+        if data.copy_textures:
+            for mtl in mtl_paths:
+                self.dcc.repath_textures(mtl)
+
         self.pool_changed.emit(self.current_pool)
 
 
