@@ -860,7 +860,6 @@ class TagDialog(QDialog):
             tags.append(tag)
             self.tag_created.emit(tag)
 
-        print("selected tags", tags)
         self.tags_selected.emit(tags)
         super().accept()
 

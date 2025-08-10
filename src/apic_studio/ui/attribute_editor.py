@@ -205,7 +205,6 @@ class AttributeEditor(QWidget):
     def on_tags_changed(self, tags: list[str]):
         self.current_asset.metadata.tags = tags
         self.current_asset.metadata.save()
-        print(tags)
 
         self.create_tags(tags)
 

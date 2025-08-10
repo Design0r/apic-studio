@@ -36,7 +36,6 @@ def save_file_as(conn: Connection, msg: Message):
         conn.send(Message("error", "File path is empty."))
         return
     globalize = msg.data.get("globalize_textures", False)
-    print(msg)
 
     res = core.save_file_as(path, globalize)
     if res:
