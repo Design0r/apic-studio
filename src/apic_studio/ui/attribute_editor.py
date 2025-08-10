@@ -6,6 +6,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QPushButton,
     QScrollArea,
@@ -15,8 +16,103 @@ from PySide6.QtWidgets import (
 )
 
 from apic_studio.core import Asset
+from apic_studio.services.tags import TagService
+from apic_studio.ui.dialogs import TagDialog
 
 from .buttons import IconButton
+from .flow_layout import FlowLayout
+
+
+class Tag(QWidget):
+    remove = Signal(str)
+
+    def __init__(self, label: str, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+
+        self.text = label
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.label = QLabel(self.text)
+        self.delete_btn = QPushButton("X")
+        self.delete_btn.setFixedWidth(20)
+
+    def init_layouts(self):
+        self.main_layout = QHBoxLayout(self)
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addWidget(self.delete_btn)
+
+    def init_signals(self):
+        self.delete_btn.clicked.connect(lambda: self.remove.emit(self.text))
+
+
+class TagCollection(QWidget):
+    tags_changed = Signal(list)
+
+    def __init__(self, label: str, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+
+        self.tag_svc = TagService()
+        self.text = label
+        self.tags: dict[str, Tag] = {}
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.label = QLabel(self.text)
+        self.add_btn = QPushButton("Add Tag")
+
+    def init_layouts(self):
+        self.main_layout = FlowLayout(self)
+        self.main_layout.addWidget(self.add_btn)
+
+    def init_signals(self):
+        self.add_btn.clicked.connect(self.add_tag_dialog)
+
+    def add_tag_dialog(self):
+        dialog = TagDialog(self.tag_svc.get_all())
+        dialog.tags_selected.connect(self.on_tags_selected)
+        dialog.tag_created.connect(self.on_tag_created)
+        dialog.exec()
+
+    def on_tag_created(self, tag: str):
+        self.tag_svc.create(tag)
+
+    def on_tags_selected(self, tags: list[str]):
+        for t in tags:
+            self.add_tag(t)
+
+        self.tags_changed.emit(tags)
+
+    def on_tag_delete(self, tag: str):
+        widget = self.tags.pop(tag)
+        widget.setParent(None)
+        widget.deleteLater()
+
+        self.tags_changed.emit(list(self.tags))
+
+    def add_tag(self, tag: str):
+        t = Tag(tag)
+        t.remove.connect(self.on_tag_delete)
+        self.main_layout.addWidget(t)
+        self.tags[tag] = t
+
+    def clear(self):
+        while self.main_layout.count():
+            item = self.main_layout.takeAt(0)
+            if not item:
+                continue
+            widget = item.widget()
+            widget.setParent(None)
+            if widget is not self.add_btn:
+                item.widget().deleteLater()
+        self.tags.clear()
+        self.main_layout.addWidget(self.add_btn)
 
 
 class AttributeEditor(QWidget):
@@ -57,6 +153,7 @@ class AttributeEditor(QWidget):
         self.asset_path = QLineEdit("/path/to/asset")
         self.asset_path.setReadOnly(True)
         self.asset_renderer = QLineEdit("Redshift")
+        self.tag_collection = TagCollection("")
         self.asset_notes = QTextEdit("notes about asset...")
         self.asset_notes.setStyleSheet(" border: 1px solid #222;")
 
@@ -73,6 +170,7 @@ class AttributeEditor(QWidget):
         self.form_layout.addRow("Size", self.asset_size)
         self.form_layout.addRow("Path", self.asset_path)
         self.form_layout.addRow("Renderer", self.asset_renderer)
+        self.form_layout.addRow("Tags", self.tag_collection)
         self.form_layout.addRow("Notes", self.asset_notes)
         self.form_layout.setContentsMargins(0, 0, 0, 0)
 
@@ -102,6 +200,19 @@ class AttributeEditor(QWidget):
     def init_signals(self):
         self.save_btn.clicked.connect(self.on_save)
         self.load.connect(self.on_load)
+        self.tag_collection.tags_changed.connect(self.on_tags_changed)
+
+    def on_tags_changed(self, tags: list[str]):
+        self.current_asset.metadata.tags = tags
+        self.current_asset.metadata.save()
+        print(tags)
+
+        self.create_tags(tags)
+
+    def create_tags(self, tags: list[str]):
+        self.tag_collection.clear()
+        for t in tags:
+            self.tag_collection.add_tag(t)
 
     def on_save(self):
         self.current_asset.metadata.notes = self.asset_notes.toPlainText()
@@ -117,3 +228,4 @@ class AttributeEditor(QWidget):
         self.asset_path.setText(str(asset.path))
         self.asset_notes.setText(asset.metadata.notes)
         asset.metadata.load()
+        self.create_tags(asset.metadata.tags)

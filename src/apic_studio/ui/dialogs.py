@@ -796,6 +796,84 @@ class ProgressDialog(QProgressDialog):
         self.setWindowTitle("")
 
 
+class TagDialog(QDialog):
+    tags_selected = Signal(list)
+    tag_created = Signal(str)
+
+    def __init__(self, tags: list[str], parent: Optional[QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Tags")
+        self.all_tags = tags
+
+        self._button_cache: dict[str, QPushButton] = {}
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+        self.add_tags(self.all_tags)
+
+    def init_widgets(self):
+        self.name_edit = QLineEdit("")
+        self.name_edit.setFixedHeight(30)
+
+        self.scroll_widget = QWidget()
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+        )
+        self.scroll_area.setWidget(self.scroll_widget)
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.tag_layout = QVBoxLayout()
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+
+        self.form_layout.addRow(QLabel("Tag Name"), self.name_edit)
+
+        self.scroll_widget.setLayout(self.tag_layout)
+
+        self.main_layout.addWidget(self.scroll_area)
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+    def accept(self) -> None:
+        tags: list[str] = []
+        for tag, btn in self._button_cache.items():
+            if not btn.isChecked():
+                continue
+            tags.append(tag)
+
+        if (t := self.name_edit.text()) and t not in self._button_cache.keys():
+            tag = self.name_edit.text()
+            tags.append(tag)
+            self.tag_created.emit(tag)
+
+        print("selected tags", tags)
+        self.tags_selected.emit(tags)
+        super().accept()
+
+    def add_tags(self, tags: list[str]):
+        for tag in tags:
+            btn = QPushButton(tag)
+            btn.setCheckable(True)
+            self._button_cache[tag] = btn
+            self.tag_layout.addWidget(btn)
+
+        self.tag_layout.addStretch()
+
+
 def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
     folder = QFileDialog.getOpenFileNames(caption=title)
     return folder
