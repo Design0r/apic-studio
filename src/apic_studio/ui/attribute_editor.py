@@ -42,6 +42,7 @@ class Tag(QWidget):
 
     def init_layouts(self):
         self.main_layout = QHBoxLayout(self)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
         self.main_layout.addWidget(self.label)
         self.main_layout.addWidget(self.delete_btn)
 
@@ -51,6 +52,7 @@ class Tag(QWidget):
 
 class TagCollection(QWidget):
     tags_changed = Signal(list)
+    tag_removed = Signal(str)
 
     def __init__(self, label: str, parent: Optional[QWidget] = None):
         super().__init__(parent)
@@ -94,7 +96,7 @@ class TagCollection(QWidget):
         widget.setParent(None)
         widget.deleteLater()
 
-        self.tags_changed.emit(list(self.tags))
+        self.tag_removed.emit(tag)
 
     def add_tag(self, tag: str):
         t = Tag(tag)
@@ -201,12 +203,19 @@ class AttributeEditor(QWidget):
         self.save_btn.clicked.connect(self.on_save)
         self.load.connect(self.on_load)
         self.tag_collection.tags_changed.connect(self.on_tags_changed)
+        self.tag_collection.tag_removed.connect(self.on_tag_removed)
 
-    def on_tags_changed(self, tags: list[str]):
-        self.current_asset.metadata.tags = tags
+    def on_tag_removed(self, tag: str):
+        self.current_asset.metadata.tags.remove(tag)
         self.current_asset.metadata.save()
 
-        self.create_tags(tags)
+    def on_tags_changed(self, tags: list[str]):
+        tag_set = set(self.current_asset.metadata.tags).union(tags)
+        tag_list = list(tag_set)
+        self.current_asset.metadata.tags = tag_list
+        self.current_asset.metadata.save()
+
+        self.create_tags(tag_list)
 
     def create_tags(self, tags: list[str]):
         self.tag_collection.clear()

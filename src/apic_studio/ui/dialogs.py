@@ -802,9 +802,10 @@ class TagDialog(QDialog):
 
     def __init__(self, tags: list[str], parent: Optional[QWidget] = None):
         super().__init__(parent)
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setWindowTitle("Add Tags")
-        self.all_tags = tags
 
+        self.all_tags = tags
         self._button_cache: dict[str, QPushButton] = {}
 
         self.init_widgets()
@@ -815,15 +816,15 @@ class TagDialog(QDialog):
 
     def init_widgets(self):
         self.name_edit = QLineEdit("")
-        self.name_edit.setFixedHeight(30)
+        # self.name_edit.setFixedHeight(30)
 
         self.scroll_widget = QWidget()
         self.scroll_area = QScrollArea()
         self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOn
-        )
+        # self.scroll_area.setVerticalScrollBarPolicy(
+        #     Qt.ScrollBarPolicy.ScrollBarAlwaysOn
+        # )
         self.scroll_area.setWidget(self.scroll_widget)
 
         buttons = (
