@@ -20,8 +20,6 @@ class Application:
         self.dcc = DCCBridge(self.connection)
         self.window: MainWindow
 
-        self.init()
-
     def init(self):
         self.settings.load_settings()
 
@@ -49,10 +47,10 @@ class Application:
         Logger.info("starting Apic Studio...")
 
         Thread(
-            target=lambda: self.connection.connect(self.settings.CoreSettings.address),
+            target=self.connection.connect,
+            args=(self.settings.CoreSettings.address,),
             daemon=True,
         ).start()
+
         self.window.show()
         self.app.exec()
-
-        self.shutdown()

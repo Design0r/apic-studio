@@ -15,7 +15,9 @@ os.environ["IMAGEIO_FREEIMAGE_LIB"] = str(
 
 def main():
     app = Application()
+    app.init()
     app.run()
+    app.shutdown()
 
 
 if __name__ == "__main__":

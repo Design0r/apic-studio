@@ -132,6 +132,7 @@ class MainWindow(QWidget):
             geo.height(),
         ]
         self.loader.stop()
+        self.viewport.shutdown()
         self.settings.WindowSettings.current_viewport = self.viewport.curr_view
         return super().closeEvent(event)
 

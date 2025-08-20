@@ -248,3 +248,8 @@ class Viewport(QWidget):
         del self.widgets[btn.file.stem]
         btn.setParent(None)
         btn.deleteLater()
+
+    def shutdown(self):
+        if self._load_timer:
+            self._load_timer.stop()
+            self._load_timer.deleteLater()
