@@ -17,3 +17,6 @@ profile:
 
 snakeviz:
 	uv run snakeviz apic_studio.prof
+
+nuitka:
+	uv run nuitka src/apic_studio.py --onefile --enable-plugin=pyside6

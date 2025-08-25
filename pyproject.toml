@@ -15,6 +15,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "graphviz>=0.21",
+    "nuitka>=2.7.12",
     "pyinstaller>=6.13.0",
     "pylint>=3.3.7",
     "pyside6-stubs>=6.7.3.0",
