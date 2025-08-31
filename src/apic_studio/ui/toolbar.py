@@ -320,6 +320,8 @@ class LabledToolbar(Toolbar):
     def init_widgets(self):
         super().init_widgets()
         self.label = QLabel(self.label_str)
+        self.label.setStyleSheet("font-size: 20px;")
+        self.label.setContentsMargins(5, 0, 5, 0)
 
     @override
     def init_layouts(self):

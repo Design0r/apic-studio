@@ -184,7 +184,6 @@ class AttributeEditor(QWidget):
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         self.main_layout.setContentsMargins(10, 10, 10, 10)
 
-        self.main_layout.addLayout(self.banner_layout)
         self.main_layout.addWidget(self.icon, alignment=Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addLayout(self.button_layout)

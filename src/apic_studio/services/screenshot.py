@@ -1,8 +1,7 @@
 import time
 from pathlib import Path
 
-import mss
-from PIL import Image
+import rust_thumbnails
 from PySide6.QtCore import QCoreApplication, QObject, QPoint, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 
@@ -29,7 +28,7 @@ class Screenshot(QObject):
         QTimer.singleShot(200, lambda: self._continue_screenshot(data))
 
     def _continue_screenshot(self, data: ScreenshotResult):
-        screen_path = Path(data.folder, f"{data.asset_name}.jpg")
+        screen_path = Path(data.folder, f"{data.asset_name}.png")
         self.create(screen_path, data.geometry)
         self.created.emit(data.folder)
 
@@ -46,15 +45,10 @@ class Screenshot(QObject):
         phys_w = int(w * dpr)
         phys_h = int(h * dpr)
 
-        with mss.mss() as sct:
-            monitor = {
-                "top": phys_y,
-                "left": phys_x,
-                "width": phys_w,
-                "height": phys_h,
-            }
+        try:
+            rust_thumbnails.screenshot(str(path), phys_x, phys_y, phys_w, phys_h)
+        except Exception as e:
+            Logger.exception(e)
+            return
 
-            sct_img = sct.grab(monitor)
-            img = Image.frombytes("RGB", sct_img.size, sct_img.bgra, "raw", "BGRX")
-            img.resize((350, 350)).save(path, "JPEG")
-            Logger.info(f"saved Screenshot to {path}")
+        Logger.info(f"saved screenshot to: {path}")

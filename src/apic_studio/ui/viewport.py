@@ -135,7 +135,6 @@ class Viewport(QWidget):
             return
 
         self.curr_pool = path.parent
-
         self._pending_assets.clear()
 
         for x in sorted(path.iterdir(), key=lambda x: x.stem):

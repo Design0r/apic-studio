@@ -5,7 +5,9 @@ from apic_studio.resources import resources  # noqa: F401
 
 def main():
     app = Application()
+    app.init()
     app.run()
+    app.shutdown()
 
 
 if __name__ == "__main__":

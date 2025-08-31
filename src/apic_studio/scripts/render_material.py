@@ -3,8 +3,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 import c4d
-import cv2
-import numpy as np
+import rust_thumbnails
 
 from apic_connector.c4d.services import core
 
@@ -116,23 +115,6 @@ def apply_material(obj: c4d.BaseObject, mtl: c4d.BaseMaterial):
     obj.InsertTag(ttag)
 
 
-def reinhard_tonemap(img: cv2.Mat, exposure: float = 1.0, white: float = 1.0):
-    return img * (1.0 + (img / (white**2))) / (exposure + img)
-
-
-def apply_gamma(file: str):
-    img = cv2.imread(file, cv2.IMREAD_UNCHANGED)
-    if img is None:
-        raise ValueError(f"Failed to load image: {file}")
-    img_f = img.astype(np.float32) / 255.0
-    corrected = np.power(img_f, 1.0 / 2.2)
-    out = np.clip(corrected * 255.0, 0, 255).round().astype(np.uint8)
-
-    if not cv2.imwrite(file, out):
-        raise RuntimeError(f"Failed to save image to: {file}")
-    print(f"Saved gamma‑corrected image to {file}")
-
-
 def main():
     args = parse_args()
 
@@ -158,7 +140,7 @@ def main():
             continue
         apply_material(obj, doc.SearchMaterial(mat_name))
         render_document_to_file(doc)
-        apply_gamma(output_path)
+        rust_thumbnails.apply_sdr_gamma(output_path)
         obj.KillTag(c4d.TAG_TEXTURE, 0)
 
 
