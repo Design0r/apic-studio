@@ -67,9 +67,7 @@ class FlowLayout(QLayout):
         spacing = self.spacing()
         policy = QSizePolicy.ControlType.PushButton
         style = (
-            self.parentWidget().style()
-            if self.parentWidget() is not None
-            else QApplication.style()
+            self.parentWidget().style() if self.parentWidget() else QApplication.style()
         )
 
         layout_spacing_x: int = style.layoutSpacing(
