@@ -1,7 +1,7 @@
 from typing import Optional
 
-from PySide6.QtCore import QPoint, QRect, QSize, Qt
-from PySide6.QtWidgets import QLayout, QLayoutItem, QSizePolicy, QWidget
+from PySide6.QtCore import QRect, QSize, Qt
+from PySide6.QtWidgets import QApplication, QLayout, QLayoutItem, QSizePolicy, QWidget
 
 
 class FlowLayout(QLayout):
@@ -59,37 +59,56 @@ class FlowLayout(QLayout):
         return size
 
     def _do_layout(self, rect: QRect, test_only: bool) -> int:
-        x: int = rect.x()
-        y: int = rect.y()
-        line_height: int = 0
-        spacing: int = self.spacing()
+        x = rect.x()
+        y = rect.y()
+        line_height = 0
+
+        # cache spacing + style info once
+        spacing = self.spacing()
         policy = QSizePolicy.ControlType.PushButton
+        style = (
+            self.parentWidget().style()
+            if self.parentWidget() is not None
+            else QApplication.style()
+        )
+
+        layout_spacing_x: int = style.layoutSpacing(
+            policy, policy, Qt.Orientation.Horizontal
+        )
+        layout_spacing_y: int = style.layoutSpacing(
+            policy, policy, Qt.Orientation.Vertical
+        )
+        space_x = spacing + layout_spacing_x
+        space_y = spacing + layout_spacing_y
+
+        # Qt rect.right() is inclusive; cache bounds
+        left = rect.x()
+        right = rect.right()
 
         for item in self._item_list:
-            style = item.widget().style()
-            layout_spacing_x: int = style.layoutSpacing(
-                policy,
-                policy,
-                Qt.Orientation.Horizontal,
-            )
-            layout_spacing_y: int = style.layoutSpacing(
-                policy,
-                policy,
-                Qt.Orientation.Vertical,
-            )
-            space_x: int = spacing + layout_spacing_x
-            space_y: int = spacing + layout_spacing_y
-            next_x: int = x + item.sizeHint().width() + space_x
-            if next_x - space_x > rect.right() and line_height > 0:
-                x = rect.x()
-                y = y + line_height + space_y
-                next_x = x + item.sizeHint().width() + space_x
+            if item.isEmpty():
+                continue
+
+            hint = item.sizeHint()
+            w = hint.width()
+            h = hint.height()
+
+            next_x = x + w + space_x
+
+            # Wrap if the current item would overflow the line
+            # (only if there is already something on this line)
+            if (x > left) and (next_x - space_x > right) and (line_height > 0):
+                x = left
+                y += line_height + space_y
+                next_x = x + w + space_x
                 line_height = 0
 
             if not test_only:
-                item.setGeometry(QRect(QPoint(x, y), item.sizeHint()))
+                # use integer overload to avoid temporary QRect/QPoint allocations
+                item.setGeometry(QRect(x, y, w, h))
 
             x = next_x
-            line_height = max(line_height, item.sizeHint().height())
+            if h > line_height:
+                line_height = h
 
-        return y + line_height - rect.y()
+        return (y + line_height) - rect.y()

@@ -44,6 +44,7 @@ class AssetLoaderWorker(QObject):
             try:
                 path = self.task_queue.get()
             except Empty:
+                Logger.debug("empty task queue")
                 continue
 
             asset = self.load_asset(path)
@@ -77,7 +78,7 @@ class AssetLoaderWorker(QObject):
         icon = QIcon(thumbnail)
 
         available_sizes = icon.availableSizes()
-        if available_sizes and available_sizes[0].width() != width:
+        if available_sizes and available_sizes[0].width() < width:
             pixmap = icon.pixmap(available_sizes[0])
             scaled_pixmap = pixmap.scaled(
                 width,

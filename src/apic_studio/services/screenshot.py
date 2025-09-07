@@ -5,6 +5,7 @@ import rust_thumbnails
 from PySide6.QtCore import QCoreApplication, QObject, QPoint, QTimer, Signal
 from PySide6.QtGui import QGuiApplication
 
+from apic_studio.core.settings import SettingsManager
 from apic_studio.ui.dialogs import ScreenshotDialog, ScreenshotResult
 from shared.logger import Logger
 
@@ -34,6 +35,7 @@ class Screenshot(QObject):
 
     def create(self, path: Path, geometry: tuple[int, int, int, int]) -> None:
         x, y, w, h = geometry
+        s = SettingsManager().MaterialSettings.render_res_x
 
         screen = QGuiApplication.screenAt(QPoint(x, y))
         dpr = screen.devicePixelRatio() if screen else 1.0
@@ -46,7 +48,7 @@ class Screenshot(QObject):
         phys_h = int(h * dpr)
 
         try:
-            rust_thumbnails.screenshot(str(path), phys_x, phys_y, phys_w, phys_h)
+            rust_thumbnails.screenshot(str(path), phys_x, phys_y, phys_w, phys_h, s)
         except Exception as e:
             Logger.exception(e)
             return
