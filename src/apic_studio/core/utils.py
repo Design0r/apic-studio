@@ -2,6 +2,7 @@ import cProfile
 import pstats
 import time
 from functools import wraps
+from pathlib import Path
 from typing import Any, Callable
 
 from .settings import SettingsManager
@@ -23,7 +24,7 @@ def benchmark(func: Callable[..., Any]) -> Callable[..., Any]:
 
 def profile(
     *functions: Callable[[], Any],
-    filename: str = str(s.ROOT_PATH.parent / "apic_studio.prof"),
+    filename: str = str(Path(s.CoreSettings.root_path).parent / "apic_studio.prof"),
 ):
     with cProfile.Profile() as pr:
         for func in functions:

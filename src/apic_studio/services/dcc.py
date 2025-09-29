@@ -243,9 +243,15 @@ def render_material(
     builder = CmdBuilder()
     s = SettingsManager()
     m = s.MaterialSettings
-    p = s.ROOT_PATH.parent / "scripts" / "render_material.py"
+    p = Path(s.CoreSettings.root_path).parent / "scripts" / "render_material.py"
     if not p.exists():
-        p = s.ROOT_PATH / "src" / "apic_studio" / "scripts" / "render_material.py"
+        p = (
+            Path(s.CoreSettings.root_path)
+            / "src"
+            / "apic_studio"
+            / "scripts"
+            / "render_material.py"
+        )
 
     builder.add_positional(str(p))
 
@@ -264,9 +270,10 @@ def render_material(
 def repath_textures(scene_path: Path, callback: Optional[Callable[[], None]] = None):
     s = SettingsManager()
     builder = CmdBuilder()
-    p = s.ROOT_PATH.parent / "scripts" / "repath_textures.py"
+    root = Path(s.CoreSettings.root_path)
+    p = root.parent / "scripts" / "repath_textures.py"
     if not p.exists():
-        p = s.ROOT_PATH / "apic_studio" / "scripts" / "repath_textures.py"
+        p = root / "apic_studio" / "scripts" / "repath_textures.py"
     builder.add_positional(str(p))
     builder.add_flag("--scene", scene_path)
 

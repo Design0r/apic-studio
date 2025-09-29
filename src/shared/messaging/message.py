@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, DefaultDict, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Callable, DefaultDict, NamedTuple, Optional, Self
 
 if TYPE_CHECKING:
     from ..network import Connection
@@ -50,6 +50,8 @@ class MessageRouter:
 
         return decorator
 
-    def include_router(self, sub_router: MessageRouter):
+    def include_router(self, sub_router: MessageRouter) -> Self:
         for k, v in sub_router.routes.items():
             self.routes[k].extend(v)
+
+        return self

@@ -96,12 +96,6 @@ class WindowSettings(Settings):
         self.current_viewport = "materials"
 
 
-p = Path.home()
-print(p)
-l = p
-print(l, l.exists())
-
-
 @register
 class CoreSettings(Settings):
     def __init__(self) -> None:

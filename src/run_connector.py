@@ -8,13 +8,14 @@ from c4d.threading import C4DThread
 
 sys.path.append(str(Path(__file__).parent / "apic_connector"))
 sys.path.append(str(Path(__file__).parent / "shared"))
+
 from apic_connector import c4d as routers
 from shared.logger import Logger
 from shared.messaging import Message, MessageRouter
 from shared.network import Connection, Server
 
 thread = None
-PLUGIN_ID = 1234567
+PLUGIN_ID = 1337567
 
 
 class ServerThread(C4DThread):
@@ -81,11 +82,14 @@ def main():
     if thread is not None:
         return True
 
-    router = MessageRouter()
-    router.include_router(routers.core_router)
-    router.include_router(routers.models_router)
-    router.include_router(routers.material_router)
-    router.include_router(routers.hdri_router)
+    router = (
+        MessageRouter()
+        .include_router(routers.core_router)
+        .include_router(routers.models_router)
+        .include_router(routers.material_router)
+        .include_router(routers.hdri_router)
+    )
+
     queue: Queue[tuple[Connection, Message]] = Queue()
 
     if not c4d.plugins.FindPlugin(PLUGIN_ID):
