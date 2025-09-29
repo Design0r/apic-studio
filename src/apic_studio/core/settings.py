@@ -26,9 +26,9 @@ class Settings(ABC):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            key: value
+            key: value if not isinstance(value, Path) else str(value)
             for key, value in self.__dict__.items()
-            if not key.startswith("pools")
+            if not key.startswith("pools") or not key.startswith("_")
         }
 
     def from_dict(self, data: dict[str, Any]):
@@ -96,16 +96,34 @@ class WindowSettings(Settings):
         self.current_viewport = "materials"
 
 
+p = Path.home()
+print(p)
+l = p
+print(l, l.exists())
+
+
 @register
 class CoreSettings(Settings):
     def __init__(self) -> None:
         super().__init__()
+        self._local = Path.home() / "AppData" / "Local" / "ApicStudio"
         self.socket_addr = "localhost"
         self.socket_port = 1337
+        self.root_path = str(Path(__file__).parent.parent.parent)
+        self.config_path = str(self._local / f"config-{gethostname()}.json")
+        self.db_path = str(Path(self.root_path, "apic_studio.db"))
+        self.logs = str(Path(self.root_path, "logs"))
+        self.logging_path = str(Path(self.logs, f"{datetime.now().date()}.log"))
 
     @property
     def address(self) -> tuple[str, int]:
         return (self.socket_addr, self.socket_port)
+
+    def set_root_path(self, value: str):
+        self.root_path = value
+        self.db_path = str(Path(value, "apic_studio.db"))
+        self.logs = str(Path(value, "logs"))
+        self.logging_path = str(Path(value, "logs", f"{datetime.now().date()}.log"))
 
 
 class SettingsManager:
@@ -117,12 +135,6 @@ class SettingsManager:
     ModelSettings: ModelSettings
     LightsetSettings: LightsetSettings
     HdriSettings: HdriSettings
-
-    ROOT_PATH = Path(__file__).parent.parent.parent
-    CONFIG_PATH = ROOT_PATH.parent / f"configs/config-{gethostname()}.json"
-    DB_PATH = ROOT_PATH.parent / "apic_studio.db"
-    LOGS = ROOT_PATH.parent / "logs"
-    LOGGING_PATH = LOGS / f"{datetime.now().date()}.log"
 
     def __new__(cls):
         if cls._instance is None:
@@ -142,29 +154,31 @@ class SettingsManager:
         self._initialized = True
 
     def load_settings(self):
-        if not self.CONFIG_PATH.exists():
+        cp = Path(self.CoreSettings.config_path)
+        if not cp.exists():
             self.save_settings()
 
-        if not self.CONFIG_PATH.exists():
-            Logger.error(f"settings path {self.CONFIG_PATH} does not exist")
+        if not cp.exists():
+            Logger.error(f"settings path {cp} does not exist")
             return
 
-        with open(self.CONFIG_PATH, "r", encoding="utf-8") as file:
+        with open(cp, "r", encoding="utf-8") as file:
             data = json.load(file)
             self.set_all_settings(data)
 
-        Logger.info(f"loading settings from {self.CONFIG_PATH}")
+        Logger.info(f"loading settings from {cp}")
 
     def save_settings(self):
-        path = Path(self.CONFIG_PATH).parent
+        cp = Path(self.CoreSettings.config_path)
+        path = Path(cp).parent
         if not path.exists():
             path.mkdir(parents=True, exist_ok=True)
 
-        with open(self.CONFIG_PATH, "w", encoding="utf-8") as file:
+        with open(cp, "w", encoding="utf-8") as file:
             data = self.get_all_settings()
             json.dump(data, file, indent=4)
 
-        Logger.info(f"saving settings to {self.CONFIG_PATH}")
+        Logger.info(f"saving settings to {cp}")
 
     def get_all_settings(self) -> dict[str, Any]:
         return {n: getattr(self, n).to_dict() for n in Settings.settings}

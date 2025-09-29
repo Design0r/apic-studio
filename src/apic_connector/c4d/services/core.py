@@ -40,3 +40,14 @@ def globalize_filenames():
     c4d.CallCommand(1029486)  # open project asset inspector
     c4d.CallCommand(1029813)  # select all assets
     c4d.CallCommand(1029820)  # globalize
+
+
+def load_xref(file_path: str):
+    doc = c4d.documents.GetActiveDocument()
+
+    obj = c4d.BaseObject(c4d.Oxref)
+    obj[c4d.ID_CA_XREF_FILE] = file_path
+    obj[c4d.ID_CA_XREF_LOADED] = True
+    obj[c4d.ID_CA_XREF_GENERATOR] = True
+    doc.InsertObject(obj)
+    c4d.EventAdd()

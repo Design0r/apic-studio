@@ -77,7 +77,7 @@ def connection() -> Generator[sqlite3.Connection]:
 
 
 def _create_connection() -> sqlite3.Connection:
-    path = SettingsManager.DB_PATH
+    path = SettingsManager().CoreSettings.db_path
     conn = sqlite3.connect(path)
     conn.executescript("""
         PRAGMA synchronous = NORMAL;
@@ -151,13 +151,13 @@ def run_migration(conn: sqlite3.Connection, migration: str) -> None:
         conn.execute(migration)
         conn.commit()
     except Exception as e:
-        Logger.info("Migration Failed:")
+        Logger.error("Migration Failed:")
         Logger.exception(e)
 
 
 def init_db():
     Logger.info("Initializing DB...")
-    path = SettingsManager.DB_PATH
+    path = Path(SettingsManager().CoreSettings.db_path)
 
     if path.exists():
         Logger.info(f"Detected existing DB {path}")

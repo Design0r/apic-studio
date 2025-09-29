@@ -43,3 +43,19 @@ def import_file(conn: Connection, msg: Message):
     core.import_file(path)
 
     conn.send(Message("success"))
+
+
+@router.register("reference")
+def reference_file(conn: Connection, msg: Message):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    Logger.debug(f"referencing model from {path}")
+    core.load_xref(path)
+
+    conn.send(Message("success"))

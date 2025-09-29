@@ -29,5 +29,5 @@ dev = [
 ]
 
 [tool.uv.sources]
-rust-thumbnails = { path = "../rust-thumbnails/target/wheels/rust_thumbnails-0.1.1-cp313-cp313-macosx_11_0_arm64.whl" }
+rust-thumbnails = { path = "../rust-thumbnails/target/wheels/rust_thumbnails-0.1.1-cp313-cp313-win_amd64.whl" }
 

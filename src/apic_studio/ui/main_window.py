@@ -44,7 +44,7 @@ class MainWindow(QWidget):
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setWindowFlag(Qt.WindowType.Window)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self.setStyleSheet("QWidget {background-color: #444}")
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()

@@ -153,6 +153,13 @@ class DCCBridge:
 
         return res
 
+    def models_reference(self, path: Path) -> Message:
+        res = self.call("models.reference", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to reference asset: {path.name} to {path}: {res}")
+
+        return res
+
     def save_as(self, path: Path, globalize_textures: bool = False) -> Message:
         res = self.call(
             "core.file.save_as",

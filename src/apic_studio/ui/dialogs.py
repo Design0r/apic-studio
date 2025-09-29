@@ -42,6 +42,7 @@ class CreatePoolDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Create new Pool")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -103,6 +104,7 @@ class DeletePoolDialog(QDialog):
 
         self.setWindowTitle("Delete current Pool")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -154,6 +156,7 @@ class ExportModelDialog(QDialog):
 
         self.setWindowTitle("Export")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -223,6 +226,7 @@ class ExportMaterialDialog(QDialog):
 
         self.setWindowTitle("Export")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -410,6 +414,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
         self.settings = SettingsManager()
 
         self.init_widgets()
@@ -427,6 +432,8 @@ class SettingsDialog(QDialog):
         self.socket_port.setRange(0, 2**16)
         self.socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.addr = QLineEdit("localhost")
+        self.root_path = QLineEdit(self.settings.CoreSettings.root_path)
+        self.browse_root = QPushButton(QIcon(":icons/tabler-icon-folder-open.png"), "")
 
         self.window_settings = QGroupBox("Window Settings")
 
@@ -462,9 +469,14 @@ class SettingsDialog(QDialog):
     def init_layouts(self):
         self.settings_groups_layout = QVBoxLayout(self)
 
+        self.root_layout = QHBoxLayout()
+        self.root_layout.addWidget(self.root_path)
+        self.root_layout.addWidget(self.browse_root)
+
         self.core_settings_layout = QFormLayout(self.core_settings)
         self.core_settings_layout.addRow("Cinema 4D socket address", self.addr)
         self.core_settings_layout.addRow("Cinema 4D socket port", self.socket_port)
+        self.core_settings_layout.addRow("Root Path", self.root_layout)
 
         self.general_settings_layout = QFormLayout(self.window_settings)
 
@@ -509,6 +521,7 @@ class SettingsDialog(QDialog):
 
     def init_signals(self):
         self.browse_render_scene.clicked.connect(self.open_render_scene)
+        self.browse_root.clicked.connect(self.set_root_dir)
         self.save.clicked.connect(self.store)
 
     def open_render_scene(self):
@@ -519,6 +532,14 @@ class SettingsDialog(QDialog):
             return
 
         self.render_scene.setText(file)
+
+    def set_root_dir(self):
+        dir = QFileDialog().getExistingDirectory(self, "Browse Folder")
+        if not dir:
+            return
+
+        self.settings.CoreSettings.set_root_path(dir)
+        self.root_path.setText(dir)
 
     def load(self):
         core = self.settings.CoreSettings
@@ -573,6 +594,7 @@ class BackupDialog(QDialog):
 
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setWindowTitle("Backup Viewer")
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -663,6 +685,7 @@ class CreateBackupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Create Backup")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -698,6 +721,7 @@ class ImportModelsDialog(QDialog):
 
         self.setWindowTitle("Import Models")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -793,6 +817,7 @@ class ProgressDialog(QProgressDialog):
         self.setWindowModality(Qt.WindowModality.WindowModal)
         self.setCancelButton(None)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
         self.setWindowTitle("")
 
 
@@ -803,6 +828,7 @@ class TagDialog(QDialog):
     def __init__(self, tags: list[str], parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
         self.setWindowTitle("Add Tags")
 
         self.all_tags = tags
