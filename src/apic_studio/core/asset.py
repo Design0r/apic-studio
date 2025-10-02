@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -29,7 +30,7 @@ class Asset:
         self.icon = icon
         self.icon_path = icon_path
         self.suffix = file.suffix
-        self.metadata: Metadata = Metadata(self.path / f"{self.name}.json")
+        self.metadata = Metadata(self.path / f"{self.name}.json")
 
     def format_size(self) -> str:
         # bytes
@@ -45,13 +46,11 @@ class Asset:
         return f"Asset(path={self.file}, icon={self.icon})"
 
 
+@dataclass(slots=True)
 class Metadata:
-    __slots__ = ("notes", "tags", "path")
-
-    def __init__(self, path: Path) -> None:
-        self.path = path
-        self.notes: str = ""
-        self.tags: list[str] = []
+    path: Path
+    notes: str = field(default="")
+    tags: list[str] = field(default_factory=list[str])
 
     def load(self):
         if not self.path.exists():

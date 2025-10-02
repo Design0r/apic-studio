@@ -149,7 +149,6 @@ def select_all() -> dict[str, DBRow]:
 def run_migration(conn: sqlite3.Connection, migration: str) -> None:
     try:
         conn.execute(migration)
-        conn.commit()
     except Exception as e:
         Logger.error("Migration Failed:")
         Logger.exception(e)
@@ -169,5 +168,6 @@ def init_db():
         for i, migration in enumerate(MIGRATIONS, start=1):
             Logger.info(f"Migration {i}/{len(MIGRATIONS)}")
             run_migration(conn, migration)
+        conn.commit()
 
     Logger.info("Initialized DB")

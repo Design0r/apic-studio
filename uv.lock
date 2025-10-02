@@ -542,7 +542,7 @@ name = "rust-thumbnails"
 version = "0.1.1"
 source = { path = "../rust-thumbnails/target/wheels/rust_thumbnails-0.1.1-cp313-cp313-win_amd64.whl" }
 wheels = [
-    { filename = "rust_thumbnails-0.1.1-cp313-cp313-win_amd64.whl", hash = "sha256:92efcd9d39dc205e1cd2568dbf280fef37e2355165462273d135dd4a0a82c35e" },
+    { filename = "rust_thumbnails-0.1.1-cp313-cp313-win_amd64.whl", hash = "sha256:f1fe1fdc9133d02249dc110bdadacc5c90ddfdcbfc26da4e5aab375b6e3fcd8b" },
 ]
 
 [[package]]

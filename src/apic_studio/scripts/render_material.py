@@ -140,7 +140,7 @@ def main():
             continue
         apply_material(obj, doc.SearchMaterial(mat_name))
         render_document_to_file(doc)
-        rust_thumbnails.apply_sdr_gamma(output_path)
+        rust_thumbnails.apply_srgb_gamma(output_path)
         obj.KillTag(c4d.TAG_TEXTURE, 0)
 
 

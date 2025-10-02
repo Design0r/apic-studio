@@ -48,6 +48,7 @@ class MainWindow(QWidget):
 
         self.init_widgets()
         self.init_layouts()
+
         self.init_signals()
 
         self.set_view(self.settings.WindowSettings.current_viewport, draw=False)

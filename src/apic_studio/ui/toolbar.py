@@ -602,10 +602,10 @@ class ModelToolbar(AssetToolbar):
                 file_path, globalize_textures=data.globalize_textures
             )
 
+        self.pool_changed.emit(self.current_pool)
+
         if copy_textures:
             self.dcc.repath_textures(file_path)
-
-        self.pool_changed.emit(self.current_pool)
 
 
 class MaterialToolbar(AssetToolbar):

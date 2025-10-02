@@ -1,9 +1,10 @@
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
 
 
-class Backup(NamedTuple):
+@dataclass(slots=True)
+class Backup:
     name: str
     original_name: str
     path: Path

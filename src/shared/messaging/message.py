@@ -1,19 +1,21 @@
 from __future__ import annotations
 
 import json
+from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, DefaultDict, NamedTuple, Optional, Self
+from typing import TYPE_CHECKING, Any, Callable, DefaultDict, Optional, Self
 
 if TYPE_CHECKING:
     from ..network import Connection
 
 
-class Message(NamedTuple):
+@dataclass(slots=True)
+class Message:
     message: str
     data: Optional[Any] = None
 
     def as_json(self, encoding: str = "utf-8") -> bytes:
-        message = self._asdict()
+        message = asdict(self)
         return json.dumps(message).encode(encoding)
 
     @staticmethod

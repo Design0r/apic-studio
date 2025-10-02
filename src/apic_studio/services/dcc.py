@@ -243,7 +243,7 @@ def render_material(
     builder = CmdBuilder()
     s = SettingsManager()
     m = s.MaterialSettings
-    p = Path(s.CoreSettings.root_path).parent / "scripts" / "render_material.py"
+    p = Path(s.CoreSettings.root_path) / "scripts" / "render_material.py"
     if not p.exists():
         p = (
             Path(s.CoreSettings.root_path)

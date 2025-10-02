@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal, NamedTuple, Optional
@@ -142,7 +143,8 @@ class ExportModelDialog(QDialog):
         SAVE = "Save current Scene"
         EXPORT = "Export selected"
 
-    class Data(NamedTuple):
+    @dataclass(slots=True)
+    class Data:
         name: str
         ext: str
         export_type: Literal["Save current Scene", "Export selected"]
@@ -211,7 +213,8 @@ class ExportModelDialog(QDialog):
 
 
 class ExportMaterialDialog(QDialog):
-    class Data(NamedTuple):
+    @dataclass(slots=True)
+    class Data:
         ext: str
         copy_textures: bool
         materials: list[str]

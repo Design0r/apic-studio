@@ -15,7 +15,7 @@ from shared.messaging import Message, MessageRouter
 from shared.network import Connection, Server
 
 thread = None
-PLUGIN_ID = 1337567
+PLUGIN_ID = 1234567
 
 
 class ServerThread(C4DThread):
