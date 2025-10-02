@@ -40,6 +40,13 @@ class MainWindow(QWidget):
         self.screenshot = Screenshot()
         self.dcc = dcc
 
+        self.vp_map: dict[str, Any] = {
+            "materials": self.settings.MaterialSettings,
+            "models": self.settings.ModelSettings,
+            "lightsets": self.settings.LightsetSettings,
+            "hdris": self.settings.HdriSettings,
+        }
+
         self.setWindowTitle(f"Apic Studio - {__version__}")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setWindowFlag(Qt.WindowType.Window)
@@ -49,9 +56,8 @@ class MainWindow(QWidget):
         self.init_widgets()
         self.init_layouts()
 
-        self.init_signals()
-
         self.set_view(self.settings.WindowSettings.current_viewport, draw=False)
+        self.init_signals()
 
     def init_widgets(self):
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
@@ -121,7 +127,7 @@ class MainWindow(QWidget):
         self.material_tb.render_previews.connect(self.render_previews)
 
         for t in self.toolbar.multibars.values():
-            t.pool_changed.connect(lambda: self.draw(force=True))
+            t.pool_changed.connect(self.draw)
             t.asset_changed.connect(self.loader.load_asset)
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -137,9 +143,9 @@ class MainWindow(QWidget):
         self.settings.WindowSettings.current_viewport = self.viewport.curr_view
         return super().closeEvent(event)
 
-    def set_view(self, view: str, draw: bool = True):
-        self.toolbar.set_current_view(view)
+    def set_view(self, view: str, draw: bool = True, ignore_signals: bool = False):
         self.viewport.set_current_view(view)
+        self.toolbar.set_current_view(view)
         if draw:
             self.draw()
 
@@ -152,13 +158,7 @@ class MainWindow(QWidget):
                 return
             self.viewport.draw(curr_pool, force=force)
 
-        vp_map: dict[str, Any] = {
-            "materials": self.settings.MaterialSettings,
-            "models": self.settings.ModelSettings,
-            "lightsets": self.settings.LightsetSettings,
-            "hdris": self.settings.HdriSettings,
-        }
-        vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem
+        self.vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem
 
     @override
     def show(self):

@@ -371,8 +371,6 @@ class AssetToolbar(LabledToolbar):
         self.open_folder.set_icon(":icons/tabler-icon-folder-open.png")
         self.open_folder.set_tooltip("Open pool in explorer")
 
-        self._load_pools()
-
     @override
     def init_layouts(self):
         super().init_layouts()
@@ -418,9 +416,9 @@ class AssetToolbar(LabledToolbar):
         dialog.pool_deleted.connect(lambda: self.pool.delete(self.current_pool))
         dialog.exec()
 
-        self._load_pools()
+        self.load_pools()
 
-    def _load_pools(self):
+    def load_pools(self):
         self.dropdown.clear()
 
         items = self.pool.get()
@@ -438,8 +436,12 @@ class AssetToolbar(LabledToolbar):
         )
         self.dropdown.setMinimumWidth(max_item_width + 50)
 
-    def set_current_pool(self, pool: str):
+    def set_current_pool(self, pool: str, ignore_signals: bool = False):
+        if ignore_signals:
+            self.blockSignals(True)
         self.dropdown.setCurrentText(pool)
+        if ignore_signals:
+            self.blockSignals(False)
 
 
 class MultiToolbar(QWidget):
@@ -455,14 +457,11 @@ class MultiToolbar(QWidget):
         self.thickness = (
             next(iter(self.multibars.values())).thickness if len(multibars) > 0 else 30
         )
-        self.current = next(iter(self.multibars.values()))
+        self.current: AssetToolbar
 
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
-
-        if len(multibars) > 0:
-            self.set_current_view(next(iter(self.multibars)))
 
     def init_widgets(self):
         if self.direction == ToolbarDirection.Horizontal:
@@ -488,6 +487,7 @@ class MultiToolbar(QWidget):
 
         self._clear_layout()
         self.current = self.multibars[toolbar_id]
+        self.current.load_pools()
         self.main_layout.addWidget(self.current)
 
 
