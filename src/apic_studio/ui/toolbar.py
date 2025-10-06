@@ -419,10 +419,12 @@ class AssetToolbar(LabledToolbar):
         self.load_pools()
 
     def load_pools(self):
+        self.blockSignals(True)
         self.dropdown.clear()
 
         items = self.pool.get()
-        self.dropdown.addItems(tuple(items.keys()))
+        items_list = tuple(items.keys())
+        self.dropdown.addItems(items_list)
         self._pools = items
 
         if self.dropdown.count() == 0:
@@ -435,13 +437,10 @@ class AssetToolbar(LabledToolbar):
             ]
         )
         self.dropdown.setMinimumWidth(max_item_width + 50)
+        self.blockSignals(False)
 
-    def set_current_pool(self, pool: str, ignore_signals: bool = False):
-        if ignore_signals:
-            self.blockSignals(True)
+    def set_current_pool(self, pool: str):
         self.dropdown.setCurrentText(pool)
-        if ignore_signals:
-            self.blockSignals(False)
 
 
 class MultiToolbar(QWidget):

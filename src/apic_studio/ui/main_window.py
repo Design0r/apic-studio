@@ -55,9 +55,9 @@ class MainWindow(QWidget):
 
         self.init_widgets()
         self.init_layouts()
+        self.init_signals()
 
         self.set_view(self.settings.WindowSettings.current_viewport, draw=False)
-        self.init_signals()
 
     def init_widgets(self):
         self.setGeometry(*self.settings.WindowSettings.window_geometry)
@@ -143,21 +143,21 @@ class MainWindow(QWidget):
         self.settings.WindowSettings.current_viewport = self.viewport.curr_view
         return super().closeEvent(event)
 
-    def set_view(self, view: str, draw: bool = True, ignore_signals: bool = False):
+    def set_view(self, view: str, draw: bool = True):
         self.viewport.set_current_view(view)
         self.toolbar.set_current_view(view)
+        self.toolbar.current.set_current_pool(self.vp_map[view].current_pool)
+
         if draw:
             self.draw()
 
     def draw(self, curr_pool: Optional[Path] = None, force: bool = False):
-        if curr_pool:
-            self.viewport.draw(curr_pool, force=force)
-        else:
+        if not curr_pool:
             curr_pool = self.toolbar.current.current_pool
             if not curr_pool:
                 return
-            self.viewport.draw(curr_pool, force=force)
 
+        self.viewport.draw(curr_pool, force=force)
         self.vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem
 
     @override
