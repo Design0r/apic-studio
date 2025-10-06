@@ -96,6 +96,9 @@ class Connection:
         except ConnectionRefusedError as e:
             Logger.exception(e)
             self._disconnect()
+            Logger.error(
+                f"connection refused, disconnecting from socket {address}, apic studio connector is not available"
+            )
             return self
         except OSError as e:
             Logger.exception(e)
