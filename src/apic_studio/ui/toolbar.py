@@ -105,7 +105,7 @@ class Toolbar(QWidget):
 
     def init_layouts(self) -> None:
         if self.direction == ToolbarDirection.Horizontal:
-            self.main_layout = QHBoxLayout(self)
+            self.main_layout: QHBoxLayout | QVBoxLayout = QHBoxLayout(self)
             self.main_layout.setContentsMargins(2, 2, 2, 2)
             return
 
@@ -355,7 +355,7 @@ class AssetToolbar(LabledToolbar):
         super().__init__(label, thickness, direction, parent)
 
     @override
-    def init_widgets(self):
+    def init_widgets(self) -> None:
         super().init_widgets()
         self.dropdown = QComboBox()
         self.dropdown.setLayoutDirection(Qt.LayoutDirection.LayoutDirectionAuto)
@@ -495,6 +495,8 @@ class MultiToolbar(QWidget):
         self.current = self.multibars[toolbar_id]
         self.current.load_pools()
         self.main_layout.addWidget(self.current)
+
+        return self.current
 
 
 class ModelToolbar(AssetToolbar):

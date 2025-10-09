@@ -18,6 +18,6 @@ def create_sdr_preview(
         rust_thumbnails.sdr_to_jpg(str(hdri_path), str(thumbnail_path), width_size)
     except Exception as e:
         Logger.exception(e)
-        return
+        return None
 
     return thumbnail_path

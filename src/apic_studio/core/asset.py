@@ -52,7 +52,7 @@ class Metadata:
     notes: str = field(default="")
     tags: list[str] = field(default_factory=list[str])
 
-    def load(self):
+    def load(self) -> None:
         if not self.path.exists():
             self.save()
 
@@ -61,7 +61,7 @@ class Metadata:
             self.notes = res.get("notes", "")
             self.tags = res.get("tags", [])
 
-    def save(self):
+    def save(self) -> None:
         with open(self.path, "w") as f:
             data: dict[str, Any] = {"notes": self.notes, "tags": self.tags}
             json.dump(data, f)

@@ -76,11 +76,11 @@ def PluginMessage(id: int, _) -> bool:
     return True
 
 
-def main():
+def main() -> None:
     global thread
 
     if thread is not None:
-        return True
+        return None
 
     router = (
         MessageRouter()

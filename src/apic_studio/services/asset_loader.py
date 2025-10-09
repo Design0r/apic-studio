@@ -59,7 +59,7 @@ class AssetLoaderWorker(QObject):
 
         model = self._search_3d_model(path)
         if not model:
-            return
+            return None
 
         if thumb == self._default_icon and model.suffix.lower() in {".hdr", ".exr"}:
             self._create_thumbnail(model)
@@ -102,10 +102,11 @@ class AssetLoaderWorker(QObject):
         return self._default_icon
 
     def _search_3d_model(self, path: Path) -> Optional[Path]:
-        if not path.is_dir() and path.suffix.lower() in Asset.CG_EXT:
+        is_dir = path.is_dir()
+        if not is_dir and path.suffix.lower() in Asset.CG_EXT:
             return path
 
-        if not path.is_dir():
+        if not is_dir:
             return None
 
         for p in path.iterdir():

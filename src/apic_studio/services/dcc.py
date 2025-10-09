@@ -88,7 +88,9 @@ class Cinema4D:
 
         subprocess.run(cmd)
 
-    def version(self) -> str: ...
+    def versions(self) -> list[Path]:
+        loc = self.default_location
+        return list(loc.glob("Maxon Cinema 4D*"))
 
 
 class RenderThread(QThread):

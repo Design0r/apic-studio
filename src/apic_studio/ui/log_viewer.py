@@ -109,7 +109,7 @@ def read_last_lines(path: str, num_lines: int = 1000, encoding: str = "utf-8"):
     """
     line_terminator = b"\n"
     buffer = bytearray()
-    lines = []
+    lines: list[bytearray] = []
     with open(path, "rb") as f:
         f.seek(0, os.SEEK_END)
         block_size = 4096

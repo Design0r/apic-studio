@@ -678,7 +678,7 @@ class BackupDialog(QDialog):
 
         if not self.get_item_level(selected) == 1:
             Logger.error("select an archived version instead of the group")
-            return
+            return None
 
         return backup.path
 
