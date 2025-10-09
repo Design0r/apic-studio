@@ -236,6 +236,24 @@ class DCCBridge:
     ):
         repath_textures(path, callback=callback)
 
+    def batch_repath_textures(
+        self, paths: list[Path], callback: Optional[Callable[[], None]] = None
+    ):
+        def _seq_repath():
+            try:
+                p = paths.pop()
+            except IndexError:
+                return
+
+            if not p:
+                return
+
+            self.repath_textures(p, _seq_repath)
+            if callback:
+                callback()
+
+        _seq_repath()
+
 
 def render_material(
     materials: list[Path], callback: Optional[Callable[[], None]] = None
@@ -271,9 +289,11 @@ def repath_textures(scene_path: Path, callback: Optional[Callable[[], None]] = N
     s = SettingsManager()
     builder = CmdBuilder()
     root = Path(s.CoreSettings.root_path)
-    p = root.parent / "scripts" / "repath_textures.py"
+    p = root / "scripts" / "repath_textures.py"
     if not p.exists():
-        p = root / "apic_studio" / "scripts" / "repath_textures.py"
+        Logger.error(f"Cant find scripts path {p}")
+        return
+
     builder.add_positional(str(p))
     builder.add_flag("--scene", scene_path)
 

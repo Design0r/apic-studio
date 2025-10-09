@@ -129,6 +129,7 @@ class MainWindow(QWidget):
         for t in self.toolbar.multibars.values():
             t.pool_changed.connect(self.draw)
             t.asset_changed.connect(self.loader.load_asset)
+            t.force_refresh.connect(lambda x: self.draw(x, force=True))
 
     def closeEvent(self, event: QCloseEvent) -> None:
         geo = self.geometry()
@@ -146,7 +147,9 @@ class MainWindow(QWidget):
     def set_view(self, view: str, draw: bool = True):
         self.viewport.set_current_view(view)
         self.toolbar.set_current_view(view)
-        self.toolbar.current.set_current_pool(self.vp_map[view].current_pool)
+        self.toolbar.current.set_current_pool(
+            self.vp_map[view].current_pool, blockSignals=True
+        )
 
         if draw:
             self.draw()
@@ -155,6 +158,7 @@ class MainWindow(QWidget):
         if not curr_pool:
             curr_pool = self.toolbar.current.current_pool
             if not curr_pool:
+                self.viewport._clear_layout()
                 return
 
         self.viewport.draw(curr_pool, force=force)

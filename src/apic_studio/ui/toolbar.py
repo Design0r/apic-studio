@@ -277,7 +277,7 @@ class Statusbar(Toolbar):
         self.logs_btn.clicked.connect(self.show_logs)
 
     def update_info(self, level: str, text: str) -> None:
-        if not text:
+        if not level == "Clear" and not text:
             return
 
         self.info.setText(text)
@@ -339,6 +339,7 @@ class AssetToolbar(LabledToolbar):
     open = Signal()
     pool_changed = Signal(Path)
     asset_changed = Signal(Path)
+    force_refresh = Signal(Path)
 
     def __init__(
         self,
@@ -410,6 +411,7 @@ class AssetToolbar(LabledToolbar):
         self.dropdown.addItem(name)
         self.dropdown.setCurrentText(name)
         self._pools[name] = path
+        self.pool_changed.emit(self.current_pool)
 
     def open_delete_dialog(self):
         dialog = DeletePoolDialog()
@@ -417,6 +419,7 @@ class AssetToolbar(LabledToolbar):
         dialog.exec()
 
         self.load_pools()
+        self.pool_changed.emit(self.current_pool)
 
     def load_pools(self):
         self.blockSignals(True)
@@ -439,8 +442,12 @@ class AssetToolbar(LabledToolbar):
         self.dropdown.setMinimumWidth(max_item_width + 50)
         self.blockSignals(False)
 
-    def set_current_pool(self, pool: str):
+    def set_current_pool(self, pool: str, blockSignals: bool = False):
+        if blockSignals:
+            self.blockSignals(True)
         self.dropdown.setCurrentText(pool)
+        if blockSignals:
+            self.blockSignals(False)
 
 
 class MultiToolbar(QWidget):
@@ -542,7 +549,7 @@ class ModelToolbar(AssetToolbar):
         self.export_btn.clicked.connect(self.export_dialog)
         self.import_btn.clicked.connect(self.import_dialog)
         self.refresh_btn.clicked.connect(
-            lambda: self.pool_changed.emit(self.current_pool)
+            lambda: self.force_refresh.emit(self.current_pool)
         )
         self.backup_btn.clicked.connect(self.backup_dialog)
 
@@ -626,7 +633,7 @@ class MaterialToolbar(AssetToolbar):
         super().init_widgets()
         self.export_btn = IconButton((30, 30))
         self.export_btn.set_icon(":icons/tabler-icon-package-export.png")
-        self.export_btn.set_tooltip("Export model")
+        self.export_btn.set_tooltip("Export materials")
 
         self.render_btn = IconButton((30, 30))
         self.render_btn.set_icon(":icons/tabler-icon-photo.png")
@@ -660,7 +667,7 @@ class MaterialToolbar(AssetToolbar):
         super().init_signals()
         self.export_btn.clicked.connect(self.export_dialog)
         self.refresh_btn.clicked.connect(
-            lambda: self.pool_changed.emit(self.current_pool)
+            lambda: self.force_refresh.emit(self.current_pool)
         )
         self.render_btn.clicked.connect(self.render_previews.emit)
         self.backup_btn.clicked.connect(self.backup_dialog)
@@ -701,11 +708,10 @@ class MaterialToolbar(AssetToolbar):
             globalize_tetxures=data.globalize_textures,
         )
 
-        if data.copy_textures:
-            for mtl in mtl_paths:
-                self.dcc.repath_textures(mtl)
-
         self.pool_changed.emit(self.current_pool)
+
+        if data.copy_textures:
+            self.dcc.batch_repath_textures(mtl_paths)
 
 
 class HdriToolbar(AssetToolbar):
@@ -741,7 +747,7 @@ class HdriToolbar(AssetToolbar):
         super().init_signals()
         self.import_btn.clicked.connect(self.on_import)
         self.refresh_btn.clicked.connect(
-            lambda: self.pool_changed.emit(self.current_pool)
+            lambda: self.force_refresh.emit(self.current_pool)
         )
 
     def on_import(self):
