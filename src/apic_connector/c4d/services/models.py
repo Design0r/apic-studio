@@ -1,4 +1,5 @@
 import c4d
+
 from shared.logger import Logger
 
 from .core import globalize_filenames
@@ -15,7 +16,8 @@ def export_selected(file_path: str, globalize_textures: bool):
         return
 
     flags = c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST | c4d.SAVEDOCUMENTFLAGS_0
-    result = c4d.documents.SaveDocument(doc, file_path, flags, c4d.FORMAT_C4DEXPORT)
+    temp = c4d.documents.IsolateObjects(doc, sel)
+    result = c4d.documents.SaveDocument(temp, file_path, flags, c4d.FORMAT_C4DEXPORT)
     if result:
         Logger.debug(f"export succeeded: {file_path}")
     else:
