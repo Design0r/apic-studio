@@ -76,7 +76,25 @@ def PluginMessage(id: int, _) -> bool:
     return True
 
 
+def is_headless() -> bool:
+    vt = c4d.GeGetVersionType()
+    if vt in (
+        c4d.VERSIONTYPE_COMMANDLINE,
+        c4d.VERSIONTYPE_CINEWARE,
+        c4d.VERSIONTYPE_TEAMRENDER_SERVER,
+    ):
+        return True
+
+    if c4d.GeGetCinemaInfo(c4d.CINEMAINFO_FORBID_GUI):
+        return True
+
+    return False
+
+
 def main() -> None:
+    if is_headless():
+        return
+
     global thread
 
     if thread is not None:
