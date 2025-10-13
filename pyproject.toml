@@ -3,8 +3,11 @@ name = "apic-studio"
 version = "0.1.0"
 description = "An Asset Browser for Cinema4D"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = ["pyside6>=6.8.2.1", "rust-thumbnails"]
+requires-python = ">=3.14"
+dependencies = [
+    "pyside6>=6.8.2.1",
+    "rust-thumbnails",
+]
 
 
 [dependency-groups]
@@ -17,6 +20,5 @@ dev = [
     "snakeviz>=2.2.2",
 ]
 
-
 [tool.uv.sources]
-rust-thumbnails = { path = "../rust-thumbnails/target/wheels/rust_thumbnails-0.1.1-cp313-cp313-win_amd64.whl" }
+rust-thumbnails = { path = "../rust-thumbnails/target/wheels/rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl" }
