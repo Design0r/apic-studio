@@ -141,7 +141,6 @@ class Viewport(QWidget):
 
         for x in sorted(path.iterdir(), key=lambda x: x.stem):
             if filter and filter.lower() not in x.stem.lower():
-                print(f"excluded {x.stem} by filter {filter}")
                 continue
 
             if not self.loader.is_asset(x):
@@ -207,11 +206,13 @@ class Viewport(QWidget):
 
         if self.curr_view == "hdris":
             menu.addAction(import_as_area)
+            menu.addAction(delete_preview_act)
 
         menu.addSeparator()
 
         if self.curr_view in ("models", "lightsets"):
             menu.addAction(screenshot_act)
+            menu.addAction(delete_preview_act)
             menu.addAction(backup_act)
             menu.addAction(repath_act)
 
@@ -244,7 +245,9 @@ class Viewport(QWidget):
 
     def on_del_preview(self, btn: ViewportButton):
         file_dir = btn.file.parent
-        for f in file_dir.glob("*.png"):
+        for f in file_dir.iterdir():
+            if f.suffix.lower() not in Asset.IMG_EXT:
+                continue
             Logger.debug(f"Deleting preview: {f}")
             f.unlink()
         self.loader.load_asset(file_dir, refresh=True)

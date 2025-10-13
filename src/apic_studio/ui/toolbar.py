@@ -703,7 +703,6 @@ class MaterialToolbar(AssetToolbar):
         dialog = BackupDialog(self.current_pool)
         dialog.imported.connect(lambda x: self.dcc.models_import(x))  # type: ignore
         dialog.opened.connect(lambda x: self.dcc.file_open(x))  # type: ignore
-        # dialog.referenced.connect(lambda x: self.dcc.file_open(x))  # type: ignore
         dialog.exec()
 
     def on_export_dialog_finished(self, data: ExportMaterialDialog.Data):
@@ -774,7 +773,7 @@ class HdriToolbar(AssetToolbar):
         self.refresh_btn.clicked.connect(
             lambda: self.force_refresh.emit(self.current_pool)
         )
-        self.search_text_changed.connect(self.on_search)
+        self.searchbar.text_changed.connect(self.on_search)
 
     def on_import(self):
         files, _ = files_dialog("Select HDRIs to import")

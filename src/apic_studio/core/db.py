@@ -150,24 +150,24 @@ def run_migration(conn: sqlite3.Connection, migration: str) -> None:
     try:
         conn.execute(migration)
     except Exception as e:
-        Logger.error("Migration Failed:")
+        Logger.error("migration Failed:")
         Logger.exception(e)
 
 
 def init_db():
-    Logger.info("Initializing DB...")
+    Logger.info("initializing DB...")
     path = Path(SettingsManager().CoreSettings.db_path)
 
     if path.exists():
-        Logger.info(f"Detected existing DB {path}")
+        Logger.info(f"detected existing DB {path}")
     else:
-        Logger.info("Creating new DB")
+        Logger.info("creating new DB")
 
-    Logger.info("Running migrations...")
+    Logger.info("running migrations...")
     with connection() as conn:
         for i, migration in enumerate(MIGRATIONS, start=1):
-            Logger.info(f"Migration {i}/{len(MIGRATIONS)}")
+            Logger.info(f"migration {i}/{len(MIGRATIONS)}")
             run_migration(conn, migration)
         conn.commit()
 
-    Logger.info("Initialized DB")
+    Logger.info("initialized DB")
