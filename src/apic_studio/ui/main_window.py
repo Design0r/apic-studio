@@ -130,6 +130,9 @@ class MainWindow(QWidget):
             t.pool_changed.connect(self.draw)
             t.asset_changed.connect(self.loader.load_asset)
             t.force_refresh.connect(lambda x: self.draw(x, force=True))
+            t.search_text_changed.connect(
+                lambda path, filter: self.draw(path, force=True, filter=filter)
+            )
 
     def closeEvent(self, event: QCloseEvent) -> None:
         geo = self.geometry()
@@ -154,14 +157,19 @@ class MainWindow(QWidget):
         if draw:
             self.draw()
 
-    def draw(self, curr_pool: Optional[Path] = None, force: bool = False):
+    def draw(
+        self,
+        curr_pool: Optional[Path] = None,
+        force: bool = False,
+        filter: Optional[str] = None,
+    ):
         if not curr_pool:
             curr_pool = self.toolbar.current.current_pool
             if not curr_pool:
                 self.viewport._clear_layout()
                 return
 
-        self.viewport.draw(curr_pool, force=force)
+        self.viewport.draw(curr_pool, force=force, filter=filter)
         self.vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem
 
     @override

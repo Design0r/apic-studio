@@ -127,7 +127,9 @@ class Viewport(QWidget):
             self.flow_layout.addWidget(b)
             self.loader.load_asset(x, refresh=force)
 
-    def draw(self, path: Path, force: bool = False) -> None:
+    def draw(
+        self, path: Path, force: bool = False, filter: Optional[str] = None
+    ) -> None:
         self._clear_layout()
 
         Logger.debug(f"drawing called: {path}")
@@ -138,6 +140,10 @@ class Viewport(QWidget):
         self._pending_assets.clear()
 
         for x in sorted(path.iterdir(), key=lambda x: x.stem):
+            if filter and filter.lower() not in x.stem.lower():
+                print(f"excluded {x.stem} by filter {filter}")
+                continue
+
             if not self.loader.is_asset(x):
                 continue
 

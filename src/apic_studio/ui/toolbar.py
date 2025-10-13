@@ -33,6 +33,7 @@ from shared.utils import sanitize_string
 
 from .buttons import ConnectionButton, IconButton, SidebarButton
 from .lines import HLine
+from .searchbar import Searchbar
 
 SIDEBAR_STYLE = """
 QWidget{
@@ -340,6 +341,7 @@ class AssetToolbar(LabledToolbar):
     pool_changed = Signal(Path)
     asset_changed = Signal(Path)
     force_refresh = Signal(Path)
+    search_text_changed = Signal(tuple)
 
     def __init__(
         self,
@@ -530,6 +532,8 @@ class ModelToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
+        self.searchbar = Searchbar()
+
     @override
     def init_layouts(self):
         super().init_layouts()
@@ -541,6 +545,8 @@ class ModelToolbar(AssetToolbar):
                 self.backup_btn,
                 VLine(),
                 self.refresh_btn,
+                VLine(),
+                self.searchbar,
             ],
             stretch=True,
         )
@@ -554,6 +560,7 @@ class ModelToolbar(AssetToolbar):
             lambda: self.force_refresh.emit(self.current_pool)
         )
         self.backup_btn.clicked.connect(self.backup_dialog)
+        self.searchbar.text_changed.connect(self.on_search)
 
     def backup_dialog(self):
         dialog = BackupDialog(self.current_pool)
@@ -588,6 +595,9 @@ class ModelToolbar(AssetToolbar):
         self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
         prog.show()
         self.ac.create_assets_from_files(assets)
+
+    def on_search(self, text: str):
+        self.search_text_changed.emit((self.current_pool, text))
 
     def on_export_dialog_finished(self, data: ExportModelDialog.Data):
         if not self.current_pool:
@@ -649,6 +659,8 @@ class MaterialToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
+        self.searchbar = Searchbar()
+
     @override
     def init_layouts(self):
         super().init_layouts()
@@ -660,6 +672,8 @@ class MaterialToolbar(AssetToolbar):
                 self.backup_btn,
                 VLine(),
                 self.refresh_btn,
+                VLine(),
+                self.searchbar,
             ],
             stretch=True,
         )
@@ -673,6 +687,7 @@ class MaterialToolbar(AssetToolbar):
         )
         self.render_btn.clicked.connect(self.render_previews.emit)
         self.backup_btn.clicked.connect(self.backup_dialog)
+        self.searchbar.text_changed.connect(self.on_search)
 
     def export_dialog(self):
         res = self.dcc.materials_list()
@@ -715,6 +730,9 @@ class MaterialToolbar(AssetToolbar):
         if data.copy_textures:
             self.dcc.batch_repath_textures(mtl_paths)
 
+    def on_search(self, text: str):
+        self.search_text_changed.emit((self.current_pool, text))
+
 
 class HdriToolbar(AssetToolbar):
     def __init__(
@@ -739,10 +757,15 @@ class HdriToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
+        self.searchbar = Searchbar()
+
     @override
     def init_layouts(self):
         super().init_layouts()
-        self.add_widgets([self.import_btn, VLine(), self.refresh_btn], stretch=True)
+        self.add_widgets(
+            [self.import_btn, VLine(), self.refresh_btn, VLine(), self.searchbar],
+            stretch=True,
+        )
 
     @override
     def init_signals(self):
@@ -751,6 +774,7 @@ class HdriToolbar(AssetToolbar):
         self.refresh_btn.clicked.connect(
             lambda: self.force_refresh.emit(self.current_pool)
         )
+        self.search_text_changed.connect(self.on_search)
 
     def on_import(self):
         files, _ = files_dialog("Select HDRIs to import")
@@ -763,3 +787,6 @@ class HdriToolbar(AssetToolbar):
         self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
         prog.show()
         self.ac.create_assets_from_files(files)
+
+    def on_search(self, text: str):
+        self.search_text_changed.emit((self.current_pool, text))
