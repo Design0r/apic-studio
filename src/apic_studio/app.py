@@ -52,7 +52,7 @@ class Application:
         Thread(
             target=self.connection.connect,
             args=(self.settings.CoreSettings.address,),
-            daemon=False,
+            daemon=True,
         ).start()
 
         self.window.show()
