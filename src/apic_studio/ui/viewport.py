@@ -13,7 +13,7 @@ from apic_studio.core import Asset
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, BackupManager, DCCBridge, Screenshot
 from apic_studio.ui.buttons import ViewportButton
-from apic_studio.ui.dialogs import CreateBackupDialog
+from apic_studio.ui.dialogs import CreateBackupDialog, RenameAssetDialog
 from apic_studio.ui.flow_layout import FlowLayout
 from shared.logger import Logger
 
@@ -172,7 +172,7 @@ class Viewport(QWidget):
         import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(btn.file))
 
         backup_act = QAction("Create Backup")
-        backup_act.triggered.connect(lambda: self.on_open_dialog(btn.file))
+        backup_act.triggered.connect(lambda: self.on_backup(btn.file))
 
         repath_act = QAction("Repath Textures")
         repath_act.triggered.connect(lambda: self.dcc.repath_textures(btn.file))
@@ -193,6 +193,9 @@ class Viewport(QWidget):
 
         screenshot_act = QAction("Create Screenshot")
         screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))
+
+        rename_act = QAction("Rename")
+        rename_act.triggered.connect(lambda: self.rename_asset(btn))
 
         delete_act = QAction("Delete")
         delete_act.triggered.connect(lambda: self.delete_widget(btn))
@@ -223,6 +226,7 @@ class Viewport(QWidget):
             menu.addAction(repath_act)
 
         menu.addSeparator()
+        menu.addAction(rename_act)
         menu.addAction(delete_act)
 
         menu.exec_(btn.mapToGlobal(point))
@@ -233,13 +237,16 @@ class Viewport(QWidget):
             callback=lambda: self.loader.load_asset(btn.file.parent, refresh=True),
         )
 
+    def on_backup(self, path: Path):
+        self.backup.create(path)
+
     def on_open_dialog(self, path: Path):
-        def on_backup(path: Path):
+        def on_backup_open(path: Path):
             self.backup.create(path)
             self.dcc.file_open(path)
 
         backup = CreateBackupDialog()
-        backup.accepted.connect(lambda: on_backup(path))
+        backup.accepted.connect(lambda: on_backup_open(path))
         backup.rejected.connect(lambda: self.dcc.file_open(path))
         backup.exec()
 
@@ -261,3 +268,24 @@ class Viewport(QWidget):
         if self._load_timer:
             self._load_timer.stop()
             self._load_timer.deleteLater()
+
+    def rename_asset(self, btn: ViewportButton):
+        dialog = RenameAssetDialog(btn.file.stem)
+        dialog.asset_renamed.connect(lambda x: self.on_rename_asset(btn, x))  # type: ignore
+        dialog.exec()
+
+    def on_rename_asset(self, btn: ViewportButton, name: str):
+        if not name or not btn.file.exists():
+            return
+
+        new_asset = self.loader.rename_asset(btn.file.parent, name)
+        if not new_asset:
+            return
+
+        self.backup.rename_from_asset(new_asset.path, name)
+
+        old_btn_key = btn.file.stem
+        del self.widgets[old_btn_key]
+        self.widgets[name] = btn
+
+        self.loader.load_asset(new_asset.path)

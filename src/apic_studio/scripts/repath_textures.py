@@ -13,6 +13,12 @@ def parse_args() -> Namespace:
     p.add_argument(
         "--scene", "-s", type=str, help="c4d render scene path", required=True
     )
+    p.add_argument(
+        "--nocopy",
+        "-nc",
+        help="does not copy textures to local tex folder. default: False",
+        action="store_true",
+    )
 
     return p.parse_args(sys.argv[1:])
 
@@ -35,7 +41,11 @@ def get_assets_to_copy(doc: "c4d.BaseDocument", target: Path) -> list[dict[str, 
     filtered: list[dict[str, Any]] = []
     for a in assets:
         filename = Path(a["filename"])
-        if filename.parent != target and filename.suffix != ".c4d" and a["nodeSpace"]:
+        if (
+            filename.parent.parent != target.parent
+            and filename.suffix != ".c4d"
+            and a["nodeSpace"]
+        ):
             filtered.append(a)
 
     return filtered
@@ -109,7 +119,9 @@ def main():
                 continue
 
             new_asset_path = tex / asset_path.name
-            copy_file(asset_path, new_asset_path)
+            if not args.nocopy:
+                copy_file(asset_path, new_asset_path)
+
             try:
                 relink_node_asset(asset, str(new_asset_path))
             except Exception as e:

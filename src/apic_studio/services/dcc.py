@@ -19,9 +19,10 @@ class CmdBuilder:
     def add_positional(self, value: str):
         self._cmd.append(f'"{value}"')
 
-    def add_flag(self, flag: str, value: Any):
+    def add_flag(self, flag: str, value: Optional[Any] = None):
         self._cmd.append(flag)
-        self._cmd.append(f'"{value}"')
+        if value:
+            self._cmd.append(f'"{value}"')
 
     def build(self) -> str:
         return " ".join(self._cmd)
@@ -234,9 +235,12 @@ class DCCBridge:
         return res
 
     def repath_textures(
-        self, path: Path, callback: Optional[Callable[[], None]] = None
+        self,
+        path: Path,
+        callback: Optional[Callable[[], None]] = None,
+        nocopy: bool = False,
     ):
-        repath_textures(path, callback=callback)
+        repath_textures(path, callback=callback, nocopy=nocopy)
 
     def batch_repath_textures(
         self, paths: list[Path], callback: Optional[Callable[[], None]] = None
@@ -287,7 +291,11 @@ def render_material(
     c4d.run_py(cmd, callback=callback)
 
 
-def repath_textures(scene_path: Path, callback: Optional[Callable[[], None]] = None):
+def repath_textures(
+    scene_path: Path,
+    nocopy: bool = False,
+    callback: Optional[Callable[[], None]] = None,
+):
     s = SettingsManager()
     builder = CmdBuilder()
     root = Path(s.CoreSettings.root_path)
@@ -298,6 +306,8 @@ def repath_textures(scene_path: Path, callback: Optional[Callable[[], None]] = N
 
     builder.add_positional(str(p))
     builder.add_flag("--scene", scene_path)
+    if nocopy:
+        builder.add_flag("--nocopy")
 
     cmd = builder.build_list()
     c4d = Cinema4D()

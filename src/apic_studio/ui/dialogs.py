@@ -903,6 +903,53 @@ class TagDialog(QDialog):
         self.tag_layout.addStretch()
 
 
+class RenameAssetDialog(QDialog):
+    asset_renamed = Signal(str)
+
+    def __init__(self, old_name: str, parent: Optional[QWidget] = None):
+        super().__init__(parent)
+
+        self.old_name = old_name
+
+        self.setWindowTitle("Rename Asset")
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.name_edit = QLineEdit()
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+        self.folder_layout = QHBoxLayout()
+        self.folder_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.folder_layout.setContentsMargins(0, 0, 0, 0)
+        self.buttons_layout = QHBoxLayout()
+
+        self.form_layout.addRow(QLabel("Old Name"), QLabel(self.old_name))
+        self.form_layout.addRow(QLabel("New Name"), self.name_edit)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+    def accept(self) -> None:
+        self.asset_renamed.emit(self.name_edit.text())
+        super().accept()
+
+
 def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
     folder = QFileDialog.getOpenFileNames(caption=title)
     return folder

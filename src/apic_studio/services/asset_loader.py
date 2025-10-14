@@ -150,6 +150,15 @@ class AssetLoader(QObject):
             self.worker.remove_from_cache(path)
         self.worker.add_task(path)
 
+    def rename_asset(self, path: Path, name: str) -> Optional[Asset]:
+        asset = self.worker.get_asset(path)
+        if not asset:
+            Logger.error(f"unable to rename, asset does not exist {path}")
+            return
+
+        asset = asset.rename(name, self.worker._create_icon)  # type: ignore
+        return asset
+
     def on_asset_loaded(self, asset: Asset):
         self.asset_loaded.emit(asset)
 

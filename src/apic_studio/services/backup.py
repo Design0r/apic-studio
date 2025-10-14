@@ -2,6 +2,8 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
+from shared.logger import Logger
+
 
 @dataclass(slots=True)
 class Backup:
@@ -31,6 +33,17 @@ class BackupManager:
 
         return backups
 
+    def rename_from_asset(self, path: Path, new_name: str) -> AssetBackups:
+        backups = self.load_from_asset(path)
+        for b in backups:
+            new_backup = b.path.rename(
+                b.path.parent
+                / (f"{new_name}_{b.path.stem.split('_').pop()}{b.path.suffix}")
+            )
+            Logger.info(f"renamed backup {b.path.name} to {new_backup.name}")
+
+        return backups
+
     def load_from_pool(self, path: Path) -> PoolBackups:
         return [b for a in path.iterdir() if (b := self.load_from_asset(a))]
 
@@ -51,6 +64,8 @@ class BackupManager:
         )
         shutil.copy2(path, backup_path)
         backup = Backup(backup_path.stem, path.stem, backup_path, next_version)
+
+        Logger.info(f"created backup {backup_path.name}")
 
         return backup
 
