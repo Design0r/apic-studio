@@ -41,6 +41,7 @@ class DCC(Protocol):
 
 class Cinema4D:
     def __init__(self, install_location: Optional[Path] = None) -> None:
+        self.install_location = install_location
         self.default_locations = {
             "darwin": Path(""),
             "win32": Path("C:\\Program Files\\"),
@@ -53,21 +54,53 @@ class Cinema4D:
         return self.default_locations[self.platform]
 
     def _get_base(self) -> Path:
-        loc = self.default_location
+        loc = self.install_location or self.default_location
         res = list(loc.glob("Maxon Cinema 4D*"))
         latest = res[-1]
         return latest
 
-    def get_exe(self, version: Optional[str]) -> Path:
-        return self._get_base() / "Cinema 4D.exe"
+    def get_versions(self) -> list[Path]:
+        loc = self.install_location or self.default_location
+        return list(loc.glob("Maxon Cinema 4D*"))
 
-    def get_batch(self, version: Optional[str] = None) -> Path:
-        return self._get_base() / "Commandline.exe"
+    def _get_version_base(self, version: str) -> Optional[Path]:
+        versions = self.get_versions()
+        if not versions:
+            Logger.error(
+                "no Cinema 4D version detected, install Cinema 4D or specify a custom installation location"
+            )
+            return
+        for v in versions:
+            if version in v.stem:
+                return v
 
-    def get_py(self) -> Path:
-        return self._get_base() / "c4dpy.exe"
+    def get_exe(self, version: Optional[str] = None) -> Optional[Path]:
+        exe = "Cinema 4D.exe"
+        if not version:
+            return self._get_base() / exe
 
-    def run_exe(self, args: list[str]): ...
+        if v := self._get_version_base(version):
+            return v / exe
+
+    def get_batch(self, version: Optional[str] = None) -> Optional[Path]:
+        exe = "Commandline.exe"
+        if not version:
+            return self._get_base() / exe
+
+        if v := self._get_version_base(version):
+            return v / exe
+
+    def get_py(self, version: Optional[str] = None) -> Optional[Path]:
+        exe = "c4dpy.exe"
+        if not version:
+            return self._get_base() / exe
+
+        if v := self._get_version_base(version):
+            return v / exe
+
+    def run_exe(self, args: list[str]) -> None:
+        raise NotImplementedError()
+
     def run_py(self, args: list[str], callback: Optional[Callable[[], None]] = None):
         cmd = f"{self.get_py()} {' '.join(args)}"
         rt = RenderThread(cmd)
@@ -86,7 +119,6 @@ class Cinema4D:
 
     def run_batch(self, args: list[str]):
         cmd = f"{self.get_batch()} {' '.join(args)}"
-
         subprocess.run(cmd)
 
     def versions(self) -> list[Path]:
