@@ -176,9 +176,20 @@ class CopyTask(QRunnable):
         self.root = root
         self.files = files
         self.notifier = notifier
+        self._running = True
+
+    def stop(self):
+        self._running = False
 
     def run(self):
+        self._running = True
+
         for i, f in enumerate(self.files):
+            if not self._running:
+                self.notifier.finished.emit()
+                Logger.info("stopped copy task")
+                return
+
             if isinstance(f, str):
                 file = Path(f)
             else:
@@ -206,28 +217,41 @@ class AssetConverter(QObject):
     progress = Signal(int)
     finished = Signal()
 
-    def __init__(self, root_path: Path = Path(), parent: Optional[QObject] = None):
+    def __init__(
+        self, root_path: Optional[Path] = None, parent: Optional[QObject] = None
+    ):
         super().__init__(parent)
         self.root = root_path
         self._pool = QThreadPool.globalInstance()
+        self._running = True
 
     def set_root(self, path: Path):
         self.root = path
 
-    def create_assets_from_files(self, files: list[str] | list[Path]):
+    def create_assets_from_files(
+        self, files: list[str] | list[Path]
+    ) -> Optional[CopyTask]:
+        if not self.root:
+            Logger.error("no root path set for asset converter")
+            return
+
         task = CopyTask(self.root, files, self)
         self._pool.start(task)  # type: ignore
+        return task
 
     @staticmethod
     def crawl_assets(
-        root: Path, filter: Callable[[str], bool], suffix: str = ".c4d"
+        root: Path,
+        filter: Optional[Callable[[str], bool]] = None,
+        suffix: str = ".c4d",
     ) -> dict[str, Path]:
         result: dict[str, Path] = {}
 
         for path, _, files in root.walk():
             for file in files:
-                if filter(file) or not file.endswith(suffix):
+                if (filter and not filter(file)) or not file.endswith(suffix):
                     continue
+
                 result[file] = path / file
 
         return result

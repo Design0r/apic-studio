@@ -812,16 +812,16 @@ class ProgressDialog(QProgressDialog):
     ):
         super().__init__(
             labelText,
-            "",
+            "Cancel",
             minimum,
             maximum,
             parent,
         )
         self.setWindowModality(Qt.WindowModality.WindowModal)
-        self.setCancelButton(None)
+        # self.setCancelButton(None)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
-        self.setWindowTitle("")
+        self.setWindowTitle("Progress")
 
 
 class TagDialog(QDialog):

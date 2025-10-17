@@ -575,11 +575,11 @@ class ModelToolbar(AssetToolbar):
         dialog.exec()
 
     def import_dialog(self):
-        folder = folder_dialog("Select Folder to search for REF.c4d")
+        folder = folder_dialog("Select Folder to search for .c4d")
         if not folder:
             return
 
-        assets = AssetConverter.crawl_assets(Path(folder), lambda x: "REF" not in x)
+        assets = AssetConverter.crawl_assets(Path(folder))
 
         dialog = ImportModelsDialog(assets)
         dialog.finished.connect(self.on_import)
@@ -592,9 +592,15 @@ class ModelToolbar(AssetToolbar):
         prog = ProgressDialog("Copying Models...", 0, len(assets), self)
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
+        self.ac.finished.connect(prog.close)
         self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+
+        task = self.ac.create_assets_from_files(assets)
+        if not task:
+            return
+
+        prog.canceled.connect(task.stop)
         prog.show()
-        self.ac.create_assets_from_files(assets)
 
     def on_search(self, text: str):
         self.search_text_changed.emit((self.current_pool, text))
