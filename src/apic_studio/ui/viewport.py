@@ -177,7 +177,7 @@ class Viewport(QWidget):
         repath_act = QAction("Repath Textures")
         repath_act.triggered.connect(lambda: self.dcc.repath_textures(btn.file))
 
-        if self.curr_view == "models":
+        if self.curr_view in ("models", "lightsets"):
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
         elif self.curr_view == "materials":
             import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
