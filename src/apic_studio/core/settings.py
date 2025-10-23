@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from abc import ABC
 from datetime import datetime
 from enum import Enum
@@ -100,7 +101,9 @@ class WindowSettings(Settings):
 class CoreSettings(Settings):
     def __init__(self) -> None:
         super().__init__()
-        self._local = Path.home() / "AppData" / "Local" / "ApicStudio"
+        self._macos_local = Path.home() / "ApicStudio"
+        self._win_local = Path.home() / "AppData" / "Local" / "ApicStudio"
+        self._local = self._win_local if sys.platform == "win32" else self._win_local
         self.socket_addr = "localhost"
         self.socket_port = 1337
         self.root_path = str(Path(__file__).parent.parent.parent)
