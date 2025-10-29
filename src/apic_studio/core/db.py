@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS tags (
 ID INTEGER PRIMARY KEY AUTOINCREMENT,
 NAME CHAR(128) UNIQUE NOT NULL);
 """,
+    """
+CREATE TABLE IF NOT EXISTS apic_models(
+ID INTEGER PRIMARY KEY AUTOINCREMENT,
+NAME CHAR(128) UNIQUE NOT NULL,
+PATH TEXT NOT NULL);
+""",
 ]
 
 
@@ -57,6 +63,8 @@ class Tables(StrEnum):
     MODELS = "models"
     HDRIS = "hdris"
     LIGHTSETS = "lightsets"
+    TAGS = "tags"
+    APIC_MODELS = "apic_models"
 
     @classmethod
     def members(cls) -> tuple[str, ...]:
@@ -110,7 +118,8 @@ def select(table: Tables) -> dict[str, Path]:
     data = {}
     with connection() as conn:
         try:
-            cursor = conn.execute(f"SELECT name, path FROM {table.name};")
+            query = f"SELECT name, path FROM {table.name};"
+            cursor = conn.execute(query)
             p = {name: Path(path) for name, path in cursor.fetchall()}
             data = dict(sorted(p.items()))
         except Exception as e:

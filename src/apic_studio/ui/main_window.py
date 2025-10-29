@@ -43,6 +43,7 @@ class MainWindow(QWidget):
         self.vp_map: dict[str, Any] = {
             "materials": self.settings.MaterialSettings,
             "models": self.settings.ModelSettings,
+            "apic_models": self.settings.ModelSettings,
             "lightsets": self.settings.LightsetSettings,
             "hdris": self.settings.HdriSettings,
         }
@@ -67,6 +68,10 @@ class MainWindow(QWidget):
 
         self.model_tb = ModelToolbar(pools.ModelPoolManager(), self.dcc)
         self.model_tb.set_current_pool(self.settings.ModelSettings.current_pool)
+        self.apic_model_tb = ModelToolbar(
+            pools.ApicModelPoolManager(), self.dcc, label="Apic Models"
+        )
+        self.apic_model_tb.set_current_pool(self.settings.ModelSettings.current_pool)
         self.material_tb = MaterialToolbar(pools.MaterialPoolManager(), self.dcc)
         self.material_tb.set_current_pool(self.settings.MaterialSettings.current_pool)
         self.lightset_tb = ModelToolbar(
@@ -81,6 +86,7 @@ class MainWindow(QWidget):
             {
                 "materials": self.material_tb,
                 "models": self.model_tb,
+                "apic_models": self.apic_model_tb,
                 "lightsets": self.lightset_tb,
                 "hdris": self.hdri_tb,
             },
@@ -108,13 +114,14 @@ class MainWindow(QWidget):
 
         self.main_layout.addWidget(self.sidebar)
         self.main_layout.addLayout(self.vp_layout)
-        # self.splitter.setSizes([0, 1])
+
         self.splitter.setStretchFactor(0, 1)
         self.splitter.setStretchFactor(1, 0)
 
     def init_signals(self):
         s = self.sidebar
         s.models.clicked.connect(lambda: self.set_view("models"))
+        s.apic_models.clicked.connect(lambda: self.set_view("apic_models"))
         s.materials.clicked.connect(lambda: self.set_view("materials"))
         s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
         s.hdris.clicked.connect(lambda: self.set_view("hdris"))
@@ -129,9 +136,9 @@ class MainWindow(QWidget):
         for t in self.toolbar.multibars.values():
             t.pool_changed.connect(self.draw)
             t.asset_changed.connect(self.loader.load_asset)
-            t.force_refresh.connect(lambda x: self.draw(x, force=True))
+            t.force_refresh.connect(lambda x: self.draw(x, force=True))  # type: ignore
             t.search_text_changed.connect(
-                lambda x: self.draw(x[0], force=True, filter=x[1])
+                lambda x: self.draw(x[0], force=True, filter=x[1])  # type: ignore
             )
 
     def closeEvent(self, event: QCloseEvent) -> None:

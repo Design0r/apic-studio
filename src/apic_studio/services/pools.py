@@ -45,6 +45,10 @@ class ModelPoolManager(_AssetPoolManager):
     POOL_TYPE = "models"
 
 
+class ApicModelPoolManager(_AssetPoolManager):
+    POOL_TYPE = "apic_models"
+
+
 class MaterialPoolManager(_AssetPoolManager):
     POOL_TYPE = "materials"
 

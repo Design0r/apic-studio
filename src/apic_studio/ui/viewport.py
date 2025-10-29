@@ -36,6 +36,7 @@ class Viewport(QWidget):
         self.dcc = dcc
         self._widgets: dict[str, dict[str, ViewportButton]] = {
             "models": {},
+            "apic_models": {},
             "materials": {},
             "hdris": {},
             "lightsets": {},
@@ -177,7 +178,7 @@ class Viewport(QWidget):
         repath_act = QAction("Repath Textures")
         repath_act.triggered.connect(lambda: self.dcc.repath_textures(btn.file))
 
-        if self.curr_view in ("models", "lightsets"):
+        if self.curr_view in ("models", "apic_models", "lightsets"):
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
         elif self.curr_view == "materials":
             import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
@@ -213,7 +214,7 @@ class Viewport(QWidget):
 
         menu.addSeparator()
 
-        if self.curr_view in ("models", "lightsets"):
+        if self.curr_view in ("models", "apic_models", "lightsets"):
             menu.addAction(screenshot_act)
             menu.addAction(delete_preview_act)
             menu.addAction(backup_act)

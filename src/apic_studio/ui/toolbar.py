@@ -134,6 +134,7 @@ class Sidebar(Toolbar):
         self.buttons = (
             self.materials,
             self.models,
+            self.apic_models,
             self.lightsets,
             self.hdris,
             self.utilities,
@@ -144,6 +145,7 @@ class Sidebar(Toolbar):
         self.mode = {
             "materials": self.materials,
             "models": self.models,
+            "apic_models": self.apic_models,
             "lightsets": self.lightsets,
             "hdris": self.hdris,
             "utilities": self.utilities,
@@ -166,6 +168,11 @@ class Sidebar(Toolbar):
         self.models.set_icon(":icons/tabler-icon-box.png", icon_size)
         self.models.set_tooltip("Models")
         self.models.activated.connect(self.highlight_modes)
+
+        self.apic_models = SidebarButton(btn_size)
+        self.apic_models.set_icon(":icons/tabler-icon-box-apic.png", icon_size)
+        self.apic_models.set_tooltip("Apic Models")
+        self.apic_models.activated.connect(self.highlight_modes)
 
         self.lightsets = SidebarButton(btn_size)
         self.lightsets.set_icon(":icons/tabler-icon-lamp.png", icon_size)
@@ -208,6 +215,7 @@ class Sidebar(Toolbar):
 
         self.main_layout.addWidget(self.materials)
         self.main_layout.addWidget(self.models)
+        self.main_layout.addWidget(self.apic_models)
         self.main_layout.addWidget(self.lightsets)
         self.main_layout.addWidget(self.hdris)
         self.main_layout.addWidget(self.utilities)
