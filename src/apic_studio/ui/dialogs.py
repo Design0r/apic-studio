@@ -468,6 +468,7 @@ class SettingsDialog(QDialog):
         self.hdri_settings = QGroupBox("HDRI Settings")
 
         self.save = QPushButton("Save")
+        self.ok_btn = QPushButton("OK")
 
     def init_layouts(self):
         self.settings_groups_layout = QVBoxLayout(self)
@@ -513,6 +514,7 @@ class SettingsDialog(QDialog):
         self.save_layout = QHBoxLayout()
         self.save_layout.addStretch()
         self.save_layout.addWidget(self.save)
+        self.save_layout.addWidget(self.ok_btn)
 
         self.settings_groups_layout.addWidget(self.core_settings)
         self.settings_groups_layout.addWidget(self.window_settings)

@@ -74,20 +74,31 @@ class Connection:
 
         try:
             res = self.send_recv(msg)
+        except TimeoutError:
+            return False
+        except OSError:
+            return False
+
         except Exception as e:
             Logger.exception(e)
             self.is_connected = False
             return False
 
-        return res.get("status") == 200
+        data = res.get("data")
+        if not data:
+            return False
+        status = data.get("status")
+
+        return status == 200
 
     def _disconnect(self):
         self.is_connected = False
+        Logger.error("lost connection to apic studio connector")
         for c in self._on_disconnect:
             c()
 
     def connect(self, address: tuple[str, int]) -> Self:
-        Logger.info("connecting to C4D connector...")
+        Logger.info("connecting to apic studio connector...")
         if self.is_connected and self.status():
             return self
 
@@ -109,7 +120,7 @@ class Connection:
             self._disconnect()
             return self
 
-        Logger.info("connected to C4D connector")
+        Logger.info("connected to apic studio connector")
         self.is_connected = True
         for c in self._on_connect:
             c()

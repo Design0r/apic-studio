@@ -43,7 +43,7 @@ class MainWindow(QWidget):
         self.vp_map: dict[str, Any] = {
             "materials": self.settings.MaterialSettings,
             "models": self.settings.ModelSettings,
-            "apic_models": self.settings.ModelSettings,
+            "apic_models": self.settings.ApicModelSettings,
             "lightsets": self.settings.LightsetSettings,
             "hdris": self.settings.HdriSettings,
         }

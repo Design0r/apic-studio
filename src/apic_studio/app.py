@@ -7,7 +7,7 @@ from PySide6.QtWidgets import QApplication
 
 from apic_studio.core import db
 from apic_studio.core.settings import SettingsManager
-from apic_studio.services import DCCBridge
+from apic_studio.services import DCCBridge, PingService
 from apic_studio.ui.main_window import MainWindow
 from shared.logger import Logger
 from shared.network import Connection
@@ -54,6 +54,8 @@ class Application:
             args=(self.settings.CoreSettings.address,),
             daemon=True,
         ).start()
+
+        PingService(self.connection)
 
         self.window.show()
         self.app.exec()

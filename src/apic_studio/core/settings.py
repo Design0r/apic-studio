@@ -61,8 +61,8 @@ class MaterialSettings(Settings):
         self.current_pool = ""
         self.renderer = Renderer.VRAY.value
         self.render_scene = "Path/to/render/scene"
-        self.render_object = "shaderball_object"
-        self.render_cam = "render_cam"
+        self.render_object = "ShaderBall"
+        self.render_cam = "renderCam"
         self.render_res_x = 350
         self.render_res_y = 350
 
@@ -73,6 +73,12 @@ class ModelSettings(Settings):
         super().__init__()
         self.current_pool = ""
         self.screenshot_opacity = 0.30
+
+
+@register
+class ApicModelSettings(ModelSettings):
+    def __init__(self):
+        super().__init__()
 
 
 @register
@@ -130,6 +136,7 @@ class SettingsManager:
     WindowSettings: WindowSettings
     MaterialSettings: MaterialSettings
     ModelSettings: ModelSettings
+    ApicModelSettings: ApicModelSettings
     LightsetSettings: LightsetSettings
     HdriSettings: HdriSettings
 
