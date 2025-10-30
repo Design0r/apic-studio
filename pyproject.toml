@@ -1,6 +1,6 @@
 [project]
 name = "apic-studio"
-version = "0.5.0"
+version = "0.5.1"
 description = "An Asset Browser for Cinema4D"
 readme = "README.md"
 requires-python = ">=3.14"
