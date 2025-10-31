@@ -3,7 +3,11 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
 import c4d
-import rust_thumbnails
+
+try:
+    import rust_thumbnails
+except Exception:
+    print("rust_thumbnails dependency missing!")
 
 from apic_connector.c4d.services import core
 
@@ -140,7 +144,10 @@ def main():
             continue
         apply_material(obj, doc.SearchMaterial(mat_name))
         render_document_to_file(doc)
-        rust_thumbnails.apply_srgb_gamma(output_path)
+        try:
+            rust_thumbnails.apply_srgb_gamma(output_path)
+        except Exception:
+            pass
         obj.KillTag(c4d.TAG_TEXTURE, 0)
 
 
