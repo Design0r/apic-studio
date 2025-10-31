@@ -44,7 +44,8 @@ It provides structured pools for materials, models, HDRIs, and lightsets; suppor
 
 #### Requirements
 
-- **Python 3.13**
+- **Python 3.14**
+- **rustup toolchain**
 - **UV Package Manager**
 - **Make** [Optional]
 

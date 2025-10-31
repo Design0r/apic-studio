@@ -7,6 +7,7 @@ run:
 	uv run src/apic_studio.py
 
 build:
+	uv run maturin build --release
 	uv run build.py
 
 plot:

@@ -6,6 +6,14 @@ readme = "README.md"
 requires-python = ">=3.14"
 dependencies = ["pyside6>=6.8.2.1", "rust-thumbnails"]
 
+[build-system]
+requires = ["maturin>=1.3,<2.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+include = ["src/apic_studio_utils"]
+manifest-path = "src/apic_studio_utils/Cargo.toml"
 
 [dependency-groups]
 dev = [
@@ -14,7 +22,10 @@ dev = [
     "pyside6-stubs>=6.7.3.0",
     "ruff>=0.12.0",
     "snakeviz>=2.2.2",
+
+    "maturin>=1.9.4",
+    "tomli>=2.0.1",
 ]
 
 [tool.uv.sources]
-rust-thumbnails = { path = "../rust-thumbnails/target/wheels/rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl" }
+rust-thumbnails = { path = "./src/apic_studio_utils/target/wheels/rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl" }
