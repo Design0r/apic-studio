@@ -1,4 +1,5 @@
 import shutil
+import sys
 from pathlib import Path
 
 import PyInstaller.__main__
@@ -74,6 +75,11 @@ class Builder:
 
 def main():
     CWD = Path(__file__).parent
+    icon = (
+        str(Path("./src/apic_studio/resources/icons/apic_logo.ico"))
+        if sys.platform == "win32"
+        else str(Path("./src/apic_studio/resources/icons/apic_logo.icns"))
+    )
 
     PyInstaller.__main__.run(
         [
@@ -84,7 +90,7 @@ def main():
             "--noconsole",
             "--noconfirm",
             "--icon",
-            str(Path("./src/apic_studio/resources/icons/apic_logo.ico")),
+            icon,
         ]
     )
 
