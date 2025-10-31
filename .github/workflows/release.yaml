@@ -29,8 +29,10 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14" # If this errors, fall back to "3.12"
+          python-version: "3.14"
           cache: pip
+
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Install Python dependencies
         run: |
@@ -50,8 +52,59 @@ jobs:
           name: apic_studio_macos_${{ matrix.arch }}
           path: dist/apic_studio_macos_${{ matrix.arch }}.tar.gz
 
+  windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x86_64] # GitHub hosted runners are x64 (MSVC)
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Setup Rust (MSVC)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build apic studio utils
+        shell: pwsh
+        run: |
+          uv run maturin build --release
+
+      - name: Install Python dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade uv
+          uv --version
+          uv sync
+
+      - name: Execute PyInstaller
+        shell: pwsh
+        run: |
+          uv run build.py
+          # Package Windows build as a zip; include app dir and plugin
+          # Adjust names if your build output differs
+          if (Test-Path "dist\Apic Studio") {
+            Compress-Archive -Path @("dist\Apic Studio", "dist\apic_connector_plugin") -DestinationPath "dist\apic_studio_windows_x86_64.zip" -Force
+          } elseif (Test-Path "dist\ApicStudio") {
+            Compress-Archive -Path @("dist\ApicStudio", "dist\apic_connector_plugin") -DestinationPath "dist\apic_studio_windows_x86_64.zip" -Force
+          } else {
+            # Fallback: zip the whole dist folder (last resort)
+            Compress-Archive -Path "dist\*" -DestinationPath "dist\apic_studio_windows_x86_64.zip" -Force
+          }
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apic_studio_windows_x86_64
+          path: dist/apic_studio_windows_x86_64.zip
+
   publish:
-    needs: [macos]
+    needs: [macos, windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -71,3 +124,4 @@ jobs:
           files: |
             apic_studio_macos_x86_64/*
             apic_studio_macos_aarch64/*
+            apic_studio_windows_x86_64/*
