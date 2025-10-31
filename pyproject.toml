@@ -17,4 +17,4 @@ dev = [
 
 
 [tool.uv.sources]
-rust-thumbnails = { path = "./src/apic_studio_utils/target/wheels/rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl" }
+rust-thumbnails = { path = "./src/apic_studio_utils" }

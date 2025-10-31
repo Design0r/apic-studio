@@ -32,7 +32,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pyside6", specifier = ">=6.8.2.1" },
-    { name = "rust-thumbnails", path = "src/apic_studio_utils/target/wheels/rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl" },
+    { name = "rust-thumbnails", directory = "src/apic_studio_utils" },
 ]
 
 [package.metadata.requires-dev]
@@ -266,10 +266,14 @@ wheels = [
 
 [[package]]
 name = "rust-thumbnails"
-version = "0.1.1"
-source = { path = "src/apic_studio_utils/target/wheels/rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl" }
-wheels = [
-    { filename = "rust_thumbnails-0.1.1-cp314-cp314-win_amd64.whl", hash = "sha256:a9c762fef139e4202689bc1c9039a1439e84fdbb220c012a525c9151ee7d14e0" },
+source = { directory = "src/apic_studio_utils" }
+
+[package.metadata]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "maturin", specifier = ">=1.9.4" },
+    { name = "tomli", specifier = ">=2.0.1" },
 ]
 
 [[package]]

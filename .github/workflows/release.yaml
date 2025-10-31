@@ -70,20 +70,11 @@ jobs:
       - name: Setup Rust (MSVC)
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install uv
-        shell: pwsh
-        run: |
-          python -m pip install --upgrade uv
-
-      - name: Build apic studio utils
-        shell: pwsh
-        run: |
-          cd src/apic_studio_utils 
-          uv run maturin build --release
-
       - name: Install Python dependencies
         shell: pwsh
         run: |
+          python -m pip install --upgrade uv
+          uv --version
           uv sync
 
       - name: Execute PyInstaller
