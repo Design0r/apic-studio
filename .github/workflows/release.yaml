@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v*.*.*" # GitHub uses globs, not regex, for tag filters
+    branches:
+      - main
 
 jobs:
   macos:
