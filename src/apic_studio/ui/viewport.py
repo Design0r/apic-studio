@@ -283,6 +283,8 @@ class Viewport(QWidget):
         if not new_asset:
             return
 
+        self.dcc.repath_textures(new_asset.file)
+
         self.backup.rename_from_asset(new_asset.path, name)
 
         old_btn_key = btn.file.stem

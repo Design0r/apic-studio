@@ -43,7 +43,7 @@ class CreatePoolDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Create new Pool")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -105,7 +105,7 @@ class DeletePoolDialog(QDialog):
 
         self.setWindowTitle("Delete current Pool")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -158,7 +158,7 @@ class ExportModelDialog(QDialog):
 
         self.setWindowTitle("Export")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -172,6 +172,7 @@ class ExportModelDialog(QDialog):
         self.export_options.addItems([self.ExportType.EXPORT, self.ExportType.SAVE])
 
         self.copy_textues_check = QCheckBox()
+        self.copy_textues_check.setChecked(True)
         self.globalize_textures = QCheckBox()
         self.globalize_textures.setChecked(True)
 
@@ -229,7 +230,7 @@ class ExportMaterialDialog(QDialog):
 
         self.setWindowTitle("Export")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -237,6 +238,7 @@ class ExportMaterialDialog(QDialog):
 
     def init_widgets(self):
         self.copy_textues_check = QCheckBox("Copy Textures and Repath")
+        self.copy_textues_check.setChecked(True)
         self.globalize_textures = QCheckBox("Globalize Textures")
         self.globalize_textures.setChecked(True)
 
@@ -417,7 +419,7 @@ class SettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
         self.settings = SettingsManager()
 
         self.init_widgets()
@@ -599,7 +601,7 @@ class BackupDialog(QDialog):
 
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setWindowTitle("Backup Viewer")
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -690,7 +692,7 @@ class CreateBackupDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Create Backup")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -726,7 +728,7 @@ class ImportModelsDialog(QDialog):
 
         self.setWindowTitle("Import Models")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -822,7 +824,7 @@ class ProgressDialog(QProgressDialog):
         self.setWindowModality(Qt.WindowModality.WindowModal)
         # self.setCancelButton(None)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
         self.setWindowTitle("Progress")
 
 
@@ -833,7 +835,7 @@ class TagDialog(QDialog):
     def __init__(self, tags: list[str], parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
         self.setWindowTitle("Add Tags")
 
         self.all_tags = tags
@@ -915,7 +917,7 @@ class RenameAssetDialog(QDialog):
 
         self.setWindowTitle("Rename Asset")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
-        self.setStyleSheet("QWidget {background-color: #444; color: #fff}")
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
 
         self.init_widgets()
         self.init_layouts()
@@ -923,6 +925,8 @@ class RenameAssetDialog(QDialog):
 
     def init_widgets(self):
         self.name_edit = QLineEdit()
+        self.old_name_edit = QLineEdit(self.old_name)
+        self.old_name_edit.setReadOnly(True)
 
         buttons = (
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -937,7 +941,7 @@ class RenameAssetDialog(QDialog):
         self.folder_layout.setContentsMargins(0, 0, 0, 0)
         self.buttons_layout = QHBoxLayout()
 
-        self.form_layout.addRow(QLabel("Old Name"), QLabel(self.old_name))
+        self.form_layout.addRow(QLabel("Old Name"), self.old_name_edit)
         self.form_layout.addRow(QLabel("New Name"), self.name_edit)
 
         self.main_layout.addLayout(self.form_layout)

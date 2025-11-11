@@ -29,7 +29,7 @@ def get_assets_to_copy(doc: "c4d.BaseDocument", target: Path) -> list[dict[str, 
         doc,
         allowDialogs=False,
         lastPath="",
-        flags=c4d.ASSETDATA_FLAG_0,
+        flags=c4d.ASSETDATA_FLAG_NONE,
         assetList=assets,
     )
     if res == c4d.GETALLASSETSRESULT_FAILED:
@@ -41,8 +41,12 @@ def get_assets_to_copy(doc: "c4d.BaseDocument", target: Path) -> list[dict[str, 
     filtered: list[dict[str, Any]] = []
     for a in assets:
         filename = Path(a["filename"])
+        assetname = Path(a["assetname"])
+        compare_path = filename
+        if assetname.is_absolute():
+            compare_path = assetname
         if (
-            filename.parent.parent != target.parent
+            compare_path.parent.parent != target.parent
             and filename.suffix != ".c4d"
             and a["nodeSpace"]
         ):
