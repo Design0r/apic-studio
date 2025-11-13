@@ -1,4 +1,5 @@
 import c4d
+
 from shared.logger import Logger
 
 
@@ -46,8 +47,9 @@ def load_xref(file_path: str):
     doc = c4d.documents.GetActiveDocument()
 
     obj = c4d.BaseObject(c4d.Oxref)
-    obj[c4d.ID_CA_XREF_FILE] = file_path
-    obj[c4d.ID_CA_XREF_LOADED] = True
-    obj[c4d.ID_CA_XREF_GENERATOR] = True
     doc.InsertObject(obj)
+
+    fileId = c4d.DescID(c4d.DescLevel(c4d.ID_CA_XREF_FILE, c4d.DTYPE_FILENAME, 0))
+    obj.SetParameter(fileId, file_path, c4d.DESCFLAGS_SET_USERINTERACTION)  # type: ignore
+
     c4d.EventAdd()

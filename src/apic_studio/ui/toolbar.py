@@ -572,9 +572,9 @@ class ModelToolbar(AssetToolbar):
 
     def backup_dialog(self):
         dialog = BackupDialog(self.current_pool)
-        dialog.imported.connect(lambda x: self.dcc.models_import(x))  # type: ignore
-        dialog.opened.connect(lambda x: self.dcc.file_open(x))  # type: ignore
-        # dialog.referenced.connect(lambda x: self.dcc.file_open(x))  # type: ignore
+        dialog.imported.connect(lambda x: self.dcc.models_import(x))
+        dialog.opened.connect(lambda x: self.dcc.file_open(x))
+        dialog.referenced.connect(lambda x: self.dcc.models_reference(x))
         dialog.exec()
 
     def export_dialog(self):

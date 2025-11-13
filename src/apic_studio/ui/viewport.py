@@ -172,6 +172,8 @@ class Viewport(QWidget):
         import_as_area = QAction("Import as Arealight")
         import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(btn.file))
 
+        reference_act = QAction("Reference")
+
         backup_act = QAction("Create Backup")
         backup_act.triggered.connect(lambda: self.on_backup(btn.file))
 
@@ -180,6 +182,7 @@ class Viewport(QWidget):
 
         if self.curr_view in ("models", "apic_models", "lightsets"):
             import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
+            reference_act.triggered.connect(lambda: self.dcc.models_reference(btn.file))
         elif self.curr_view == "materials":
             import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
         elif self.curr_view == "hdris":
@@ -205,6 +208,9 @@ class Viewport(QWidget):
 
         if self.curr_view not in ("hdris", "utils"):
             menu.addAction(open_act)
+
+        if self.curr_view in ("models", "apic_models", "lightsets"):
+            menu.addAction(reference_act)
 
         menu.addAction(import_act)
 
