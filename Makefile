@@ -1,7 +1,7 @@
 .PHONY: build generate run profile
 
 generate:
-	pyside6-rcc ./src/apic_studio/resources/icons.qrc -o ./src/apic_studio/resources/resources.py
+	uv run pyside6-rcc ./src/apic_studio/resources/icons.qrc -o ./src/apic_studio/resources/resources.py
 
 run:
 	uv run src/apic_studio.py
