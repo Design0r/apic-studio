@@ -1,6 +1,7 @@
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Optional
 
 import c4d
 
@@ -81,7 +82,7 @@ def render_document_to_file(doc: "c4d.BaseDocument"):
         c4d.RENDERFLAGS_EXTERNAL,
     )
     if result == c4d.RENDERRESULT_OK:
-        print(f"Render complete: {bc[c4d.RDATA_PATH]}")
+        print("Render complete")
     else:
         raise RuntimeError(f"Render failed (code {result})")
 
@@ -113,7 +114,9 @@ def set_render_settings(doc: "c4d.BaseDocument", path: str, res: tuple[float, fl
     c4d.EventAdd()
 
 
-def apply_material(obj: c4d.BaseObject, mtl: c4d.BaseMaterial):
+def apply_material(obj: c4d.BaseObject, mtl: Optional[c4d.BaseMaterial]):
+    if not mtl:
+        return
     ttag = c4d.TextureTag()
     ttag.SetMaterial(mtl)
     obj.InsertTag(ttag)
