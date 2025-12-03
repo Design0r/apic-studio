@@ -29,6 +29,7 @@ class BackupManager:
         backups = [
             Backup(b.stem, path.stem, b, int(b.stem.split("_")[-1]))
             for b in backup_dir.iterdir()
+            if not b.is_dir() and b.stem.split("_")[-1].isdecimal()
         ]
 
         return backups
