@@ -55,7 +55,6 @@ fn exr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     let resize_height = jpg_buffer.height() as f32 / resize_factor;
     let w = jpg_buffer.width();
     let h = jpg_buffer.height();
-    println!("w: {w}, h: {h}, resize_height: {resize_height}, resize_width: {resize_width}");
 
     let resized = resize(
         jpg_buffer,

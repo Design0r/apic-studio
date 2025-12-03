@@ -8,10 +8,10 @@ name = "rust_thumbnails"
 crate-type = ["cdylib"]
 
 [dependencies]
-exr = "1.74.0"
-image = "0.25.9"
-pyo3 = "0.27.2"
-xcap = "0.7.1"
+exr = "1.73.0"
+image = "0.24.9"
+pyo3 = "0.19.2"
+xcap = "0.7.0"
 
 [profile.release]
 lto = "fat"
