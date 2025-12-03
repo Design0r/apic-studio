@@ -9,9 +9,9 @@ dependencies = ["pyside6>=6.8.2.1", "rust-thumbnails"]
 [dependency-groups]
 dev = [
     "graphviz>=0.21",
-    "pyinstaller>=6.13.0",
+    "pyinstaller>=6.17.0",
     "pyside6-stubs>=6.7.3.0",
-    "ruff>=0.12.0",
+    "ruff>=0.14.7",
     "snakeviz>=2.2.2",
 ]
 
