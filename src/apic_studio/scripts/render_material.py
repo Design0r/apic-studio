@@ -5,11 +5,6 @@ from typing import Optional
 
 import c4d
 
-try:
-    import rust_thumbnails
-except Exception:
-    print("rust_thumbnails dependency missing!")
-
 from apic_connector.c4d.services import core
 
 
@@ -42,38 +37,41 @@ def parse_args() -> Namespace:
     return p.parse_args(sys.argv[1:])
 
 
-def bake_linear_to_srgb(bmp: c4d.bitmaps.MultipassBitmap):
+def bake_linear_to_srgb(bmp: c4d.bitmaps.BaseBitmap):
     w, h = bmp.GetSize()
+
+    mode = getattr(
+        c4d,
+        "COLORSPACETRANSFORMATION_LINEAR_TO_VIEW",
+        c4d.COLORSPACETRANSFORMATION_LINEAR_TO_SRGB,
+    )
     for y in range(h):
         for x in range(w):
             # read raw 0–255 floats as a Vector
             vec = bmp.GetPixelDirect(x, y)
+
             # normalize to [0,1]
             lin = c4d.Vector(vec.x / 255.0, vec.y / 255.0, vec.z / 255.0)
 
             # apply standard Rec.709→sRGB transfer
-            srgb = c4d.utils.TransformColor(
-                lin, c4d.COLORSPACETRANSFORMATION_LINEAR_TO_SRGB
-            )
+            srgb = c4d.utils.TransformColor(lin, mode)
 
-            # clamp back to [0,255] ints and write
-            bmp.SetPixel(
-                x,
-                y,
-                int(max(0, min(255, srgb.x * 255))),
-                int(max(0, min(255, srgb.y * 255))),
-                int(max(0, min(255, srgb.z * 255))),
-            )
+            r = int(max(0, min(255, srgb.x * 255)))
+            g = int(max(0, min(255, srgb.y * 255)))
+            b = int(max(0, min(255, srgb.z * 255)))
+
+            bmp.SetPixel(x, y, r, g, b)
 
 
 def render_document_to_file(doc: "c4d.BaseDocument"):
     rd = doc.GetActiveRenderData()
     bc = rd.GetDataInstance()
 
-    bmp = c4d.bitmaps.MultipassBitmap(
-        int(bc[c4d.RDATA_XRES]), int(bc[c4d.RDATA_YRES]), c4d.COLORMODE_RGB
-    )
-    # bmp.AddChannel(True, True)
+    w = int(bc[c4d.RDATA_XRES])
+    h = int(bc[c4d.RDATA_YRES])
+    bmp = c4d.bitmaps.BaseBitmap()
+    if bmp.Init(w, h, 32) != c4d.IMAGERESULT_OK:
+        raise RuntimeError("Failed to init BaseBitmap")
 
     result = c4d.documents.RenderDocument(
         doc,
@@ -86,6 +84,8 @@ def render_document_to_file(doc: "c4d.BaseDocument"):
     else:
         raise RuntimeError(f"Render failed (code {result})")
 
+    bake_linear_to_srgb(bmp)
+
     out_path = bc[c4d.RDATA_PATH]
     if not bmp.Save(out_path, c4d.FILTER_PNG):
         raise RuntimeError(f"Failed to save render to: {out_path}")
@@ -93,12 +93,21 @@ def render_document_to_file(doc: "c4d.BaseDocument"):
     print(f"Saved render to {out_path}")
 
 
-def set_camera(doc: "c4d.BaseDocument", name: str):
-    camera = doc.SearchObject(name)
-    if not camera:
+def set_render_camera(doc: "c4d.BaseDocument", name: str):
+    cam = doc.SearchObject(name)
+    if not cam:
         raise ValueError(f"Failed to set render camera. {name} not found.")
-    viewport = doc.GetRenderBaseDraw()
-    viewport[c4d.BASEDRAW_DATA_CAMERA] = camera
+
+    take_data = doc.GetTakeData()
+    if not take_data:
+        raise RuntimeError("No TakeData on document; cannot set TAKEBASE_CAMERA.")
+
+    take = take_data.GetCurrentTake()
+    cam_descid = c4d.DescID(
+        c4d.DescLevel(c4d.TAKEBASE_CAMERA, c4d.DTYPE_BASELISTLINK, 0)
+    )
+    take.SetParameter(cam_descid, cam, c4d.DESCFLAGS_SET_0)
+    c4d.EventAdd()
 
 
 def set_render_settings(doc: "c4d.BaseDocument", path: str, res: tuple[float, float]):
@@ -123,6 +132,7 @@ def apply_material(obj: c4d.BaseObject, mtl: Optional[c4d.BaseMaterial]):
 
 
 def main():
+    c4d.StopAllThreads()
     args = parse_args()
 
     doc = c4d.documents.LoadDocument(
@@ -133,7 +143,7 @@ def main():
 
     c4d.documents.InsertBaseDocument(doc)
 
-    set_camera(doc, args.camera)
+    set_render_camera(doc, args.camera)
     for mat in args.materials.split(","):
         mat_path = Path(mat)
         mat_name = mat_path.stem
@@ -147,10 +157,7 @@ def main():
             continue
         apply_material(obj, doc.SearchMaterial(mat_name))
         render_document_to_file(doc)
-        try:
-            rust_thumbnails.apply_srgb_gamma(output_path)
-        except Exception:
-            pass
+
         obj.KillTag(c4d.TAG_TEXTURE, 0)
 
 

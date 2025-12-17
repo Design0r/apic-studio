@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 import c4d
+
 from shared.logger import Logger
 from shared.utils import sanitize_string
 
@@ -36,7 +37,7 @@ def get_materials(name_filter: Optional[list[str]]) -> list[c4d.BaseMaterial]:
     doc = c4d.documents.GetActiveDocument()
     materials = doc.GetMaterials()
     if name_filter:
-        filter_set = set(name_filter)
+        filter_set: set[str] = set(name_filter)
         return [m for m in materials if m.GetName() in filter_set]
 
     return [m for m in materials]
