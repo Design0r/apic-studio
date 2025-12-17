@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections import defaultdict
 from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, DefaultDict, Optional, Self
+from typing import TYPE_CHECKING, Any, Callable, Optional, Self
 
 if TYPE_CHECKING:
     from ..network import Connection
@@ -29,7 +30,7 @@ MsgHandlerFunc = Callable[["Connection", Message], None]
 class MessageRouter:
     def __init__(self, prefix: str = ""):
         self.prefix = prefix
-        self.routes: dict[str, list[MsgHandlerFunc]] = DefaultDict(list)
+        self.routes: dict[str, list[MsgHandlerFunc]] = defaultdict(list)
 
     def serve(self, ctx: Connection, message: Message):
         routes = self.routes.get(message.message)
