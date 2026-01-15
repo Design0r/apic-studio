@@ -5,7 +5,7 @@ from functools import partial
 from pathlib import Path
 from typing import Deque, Optional
 
-from PySide6.QtCore import QPoint, Qt, QTimer, Signal
+from PySide6.QtCore import QElapsedTimer, QPoint, Qt, QTimer, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
 
@@ -46,8 +46,13 @@ class Viewport(QWidget):
         self.backup = BackupManager()
 
         self._pending_assets: Deque[Path] = deque()
-        self._load_timer: Optional[QTimer] = None
-        self._batch_size: int = 25
+        self._load_timer: QTimer = QTimer(self)
+        self._load_timer.setSingleShot(True)
+        self._load_timer.timeout.connect(self._process_tick)
+
+        self._load_force: bool = False
+        self._loading_paths: set[Path] = set()  # prevents duplicate load requests
+        self._load_generation: int = 0
 
         self.init_widgets()
         self.init_layouts()
@@ -99,54 +104,67 @@ class Viewport(QWidget):
             item.widget().setParent(None)
 
     def _start_incremental_load(self, force: bool) -> None:
-        if self._load_timer and self._load_timer.isActive():
-            self._load_timer.stop()
+        self._load_force = force
+        self._load_generation += 1
+        self._schedule_next_tick()
 
-        self._load_timer = QTimer(self)
-        self._load_timer.setInterval(0)
-        self._load_timer.timeout.connect(lambda: self._process_batch(force))
-        self._load_timer.start()
+    def _schedule_next_tick(self) -> None:
+        if not self._pending_assets:
+            return
+        self._load_timer.start(0)
 
-    def _process_batch(self, force: bool) -> None:
-        for _ in range(self._batch_size):
-            if not self._pending_assets:
-                if self._load_timer:
-                    self._load_timer.stop()
+    def _process_tick(self) -> None:
+        gen = self._load_generation
+        budget_ms = 6
+
+        t = QElapsedTimer()
+        t.start()
+
+        while self._pending_assets and t.elapsed() < budget_ms:
+            x = self._pending_assets.popleft()
+
+            if gen != self._load_generation:
                 return
 
-            x = self._pending_assets.popleft()
-            if not force and (cached_widget := self.widgets.get(x.stem)):
+            if not self._load_force and (cached_widget := self.widgets.get(x.stem)):
                 self.flow_layout.addWidget(cached_widget)
                 continue
 
-            b = ViewportButton(x, (200, 200))
-            b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-            b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
-            b.clicked.connect(partial(self.on_btn_click, x))
+            b = self.widgets.get(x.stem)
+            if not b:
+                b = ViewportButton(x, (200, 200))
+                b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
+                b.clicked.connect(partial(self.on_btn_click, x))
+                self.widgets[x.stem] = b
 
-            self.widgets[x.stem] = b
             self.flow_layout.addWidget(b)
-            self.loader.load_asset(x, refresh=force)
+
+            if x not in self._loading_paths or self._load_force:
+                self._loading_paths.add(x)
+                self.loader.load_asset(x, refresh=self._load_force)
+
+        self._schedule_next_tick()
 
     def draw(
         self, path: Path, force: bool = False, filter: Optional[str] = None
     ) -> None:
         self._clear_layout()
+        self._pending_assets.clear()
+        self._loading_paths.clear()
 
-        Logger.debug(f"drawing called: {path}")
         if not path or not path.exists():
             return
 
         self.curr_pool = path.parent
-        self._pending_assets.clear()
+
+        needle = filter.lower() if filter else None
 
         for x in sorted(path.iterdir(), key=lambda x: x.stem):
-            if filter and filter.lower() not in x.stem.lower():
+            if needle and needle not in x.stem.lower():
                 continue
-
             if not self.loader.is_asset(x):
                 continue
-
             self._pending_assets.append(x)
 
         if self._pending_assets:
