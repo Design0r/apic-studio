@@ -530,6 +530,7 @@ class SettingsDialog(QDialog):
         self.browse_render_scene.clicked.connect(self.open_render_scene)
         self.browse_root.clicked.connect(self.set_root_dir)
         self.save.clicked.connect(self.store)
+        self.ok_btn.clicked.connect(self.store_and_close)
 
     def open_render_scene(self):
         file, _ = QFileDialog().getOpenFileName(
@@ -582,6 +583,10 @@ class SettingsDialog(QDialog):
         mat.render_cam = self.render_cam.text()
 
         mod.screenshot_opacity = self.screenshot_opacity.value()
+
+    def store_and_close(self):
+        self.store()
+        self.close()
 
 
 class BackupDialog(QDialog):
