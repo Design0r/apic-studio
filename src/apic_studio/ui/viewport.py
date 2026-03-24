@@ -53,6 +53,7 @@ class Viewport(QWidget):
         self._load_force: bool = False
         self._loading_paths: set[Path] = set()  # prevents duplicate load requests
         self._load_generation: int = 0
+        self._pool_asset_index: dict[Path, tuple[int, list[Path]]] = {}
 
         self.init_widgets()
         self.init_layouts()
@@ -90,18 +91,50 @@ class Viewport(QWidget):
     def on_asset_load(self, asset: Asset):
         w = self.widgets.get(asset.path.stem)
         if not w:
-            Logger.error(f"Failed to find widget by asset name: {asset.path.stem}")
+            # Can happen when a new draw/filter cycle supersedes older queued loads.
             return
 
         w.set_thumbnail(asset.icon, 185)
         w.set_file(asset.file, asset.size, asset.suffix)
 
     def _clear_layout(self):
-        while self.flow_layout.count():
-            item = self.flow_layout.takeAt(0)
-            if not item:
-                continue
-            item.widget().setParent(None)
+        self.grid_widget.setUpdatesEnabled(False)
+        try:
+            while self.flow_layout.count():
+                item = self.flow_layout.takeAt(self.flow_layout.count() - 1)
+                if not item:
+                    continue
+                widget = item.widget()
+                if widget:
+                    widget.setParent(None)
+        finally:
+            self.grid_widget.setUpdatesEnabled(True)
+
+    def _scan_pool_assets(self, path: Path) -> list[Path]:
+        if not path.exists() or not path.is_dir():
+            return []
+
+        assets: list[Path] = []
+        for x in sorted(path.iterdir(), key=lambda x: x.stem.lower()):
+            if self.loader.is_asset(x):
+                assets.append(x)
+        return assets
+
+    @staticmethod
+    def _pool_mtime_ns(path: Path) -> int:
+        try:
+            return path.stat().st_mtime_ns
+        except OSError:
+            return -1
+
+    def _get_pool_assets(self, path: Path, force: bool) -> list[Path]:
+        mtime_ns = self._pool_mtime_ns(path)
+        cached = self._pool_asset_index.get(path)
+        if force or not cached or cached[0] != mtime_ns:
+            assets = self._scan_pool_assets(path)
+            self._pool_asset_index[path] = (mtime_ns, assets)
+            return assets
+        return cached[1]
 
     def _start_incremental_load(self, force: bool) -> None:
         self._load_force = force
@@ -119,30 +152,34 @@ class Viewport(QWidget):
 
         t = QElapsedTimer()
         t.start()
+        self.grid_widget.setUpdatesEnabled(False)
 
-        while self._pending_assets and t.elapsed() < budget_ms:
-            x = self._pending_assets.popleft()
+        try:
+            while self._pending_assets and t.elapsed() < budget_ms:
+                x = self._pending_assets.popleft()
 
-            if gen != self._load_generation:
-                return
+                if gen != self._load_generation:
+                    return
 
-            if not self._load_force and (cached_widget := self.widgets.get(x.stem)):
-                self.flow_layout.addWidget(cached_widget)
-                continue
+                if not self._load_force and (cached_widget := self.widgets.get(x.stem)):
+                    self.flow_layout.addWidget(cached_widget)
+                    continue
 
-            b = self.widgets.get(x.stem)
-            if not b:
-                b = ViewportButton(x, (200, 200))
-                b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-                b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
-                b.clicked.connect(partial(self.on_btn_click, x))
-                self.widgets[x.stem] = b
+                b = self.widgets.get(x.stem)
+                if not b:
+                    b = ViewportButton(x, (200, 200))
+                    b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+                    b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
+                    b.clicked.connect(partial(self.on_btn_click, x))
+                    self.widgets[x.stem] = b
 
-            self.flow_layout.addWidget(b)
+                self.flow_layout.addWidget(b)
 
-            if x not in self._loading_paths or self._load_force:
-                self._loading_paths.add(x)
-                self.loader.load_asset(x, refresh=self._load_force)
+                if x not in self._loading_paths or self._load_force:
+                    self._loading_paths.add(x)
+                    self.loader.load_asset(x, refresh=self._load_force)
+        finally:
+            self.grid_widget.setUpdatesEnabled(True)
 
         self._schedule_next_tick()
 
@@ -160,10 +197,8 @@ class Viewport(QWidget):
 
         needle = filter.lower() if filter else None
 
-        for x in sorted(path.iterdir(), key=lambda x: x.stem):
+        for x in self._get_pool_assets(path, force):
             if needle and needle not in x.stem.lower():
-                continue
-            if not self.loader.is_asset(x):
                 continue
             self._pending_assets.append(x)
 

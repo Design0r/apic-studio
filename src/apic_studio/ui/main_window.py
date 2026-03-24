@@ -138,7 +138,7 @@ class MainWindow(QWidget):
             t.asset_changed.connect(self.loader.load_asset)
             t.force_refresh.connect(lambda x: self.draw(x, force=True))  # type: ignore
             t.search_text_changed.connect(
-                lambda x: self.draw(x[0], force=True, filter=x[1])  # type: ignore
+                lambda x: self.draw(x[0], filter=x[1])  # type: ignore
             )
 
     def closeEvent(self, event: QCloseEvent) -> None:

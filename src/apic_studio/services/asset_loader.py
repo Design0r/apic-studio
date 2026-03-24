@@ -55,9 +55,7 @@ class AssetLoaderWorker(QObject):
         if cached := self._cache.get(path):
             return cached
 
-        thumb = self._search_thumbnail(path)
-
-        model = self._search_3d_model(path)
+        model, thumb = self._scan_asset(path)
         if not model:
             return None
 
@@ -72,6 +70,27 @@ class AssetLoaderWorker(QObject):
         self._cache[path] = asset
 
         return asset
+
+    def _scan_asset(self, path: Path) -> tuple[Optional[Path], str]:
+        if not path.is_dir():
+            if path.suffix.lower() in Asset.CG_EXT:
+                return path, self._default_icon
+            return None, self._default_icon
+
+        model: Optional[Path] = None
+        thumb = self._default_icon
+
+        for p in path.iterdir():
+            suffix = p.suffix.lower()
+            if model is None and suffix in Asset.CG_EXT:
+                model = p
+            if thumb == self._default_icon and suffix in Asset.IMG_EXT:
+                thumb = str(p)
+
+            if model is not None and thumb != self._default_icon:
+                break
+
+        return model, thumb
 
     def _create_icon(self, thumbnail: str) -> QIcon:
         width, height = 200, 200
@@ -97,7 +116,7 @@ class AssetLoaderWorker(QObject):
         for p in path.iterdir():
             if p.suffix.lower() in Asset.IMG_EXT:
                 # Logger.debug(f"found thumbnail: {path / p.name}")
-                return str(path / p.name)
+                return str(p)
 
         return self._default_icon
 
@@ -111,7 +130,7 @@ class AssetLoaderWorker(QObject):
 
         for p in path.iterdir():
             if p.suffix.lower() in Asset.CG_EXT:
-                return path / p.name
+                return p
 
         return None
 
@@ -123,6 +142,8 @@ class AssetLoaderWorker(QObject):
             Logger.exception(e)
 
     def is_asset(self, path: Path) -> bool:
+        if path in self._cache:
+            return True
         return self._search_3d_model(path) is not None
 
 
