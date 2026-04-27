@@ -15,11 +15,12 @@ from shared.messaging import Message, MessageRouter
 from shared.network import Connection, Server
 
 thread = None
-PLUGIN_ID = 1234567
+PLUGIN_ID = 13371337
 
 
 class ServerThread(C4DThread):
     def __init__(self, server: Server):
+        super().__init__()
         self.server = server
 
     def Main(self):
@@ -32,6 +33,7 @@ class ServerThread(C4DThread):
 
 class TimerMessage(c4d.plugins.MessageData):
     def __init__(self, queue: Queue[tuple[Connection, Message]], router: MessageRouter):
+        super().__init__()
         self.queue = queue
         self.router = router
 

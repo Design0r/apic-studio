@@ -5,7 +5,7 @@ requires-python = ">=3.14"
 
 [project]
 name = "rust_thumbnails"
-requires-python = ">=3.7"
+requires-python = ">=3.14"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
