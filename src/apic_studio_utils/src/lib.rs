@@ -6,7 +6,8 @@ use exr::prelude::*;
 use image::codecs::hdr::HdrDecoder;
 use image::imageops::resize;
 use image::imageops::FilterType;
-use image::io::Reader as ImageReader;
+use image::ImageDecoder;
+use image::ImageReader;
 use image::{DynamicImage, ImageBuffer, Rgb, Rgba};
 use pyo3::prelude::*;
 use std::fs::File;
@@ -53,8 +54,6 @@ fn exr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     let jpg_buffer = &image.layer_data.channel_data.pixels;
     let resize_factor = jpg_buffer.width() as f32 / resize_width as f32;
     let resize_height = jpg_buffer.height() as f32 / resize_factor;
-    let w = jpg_buffer.width();
-    let h = jpg_buffer.height();
 
     let resized = resize(
         jpg_buffer,
@@ -75,11 +74,12 @@ fn hdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     let hdr_decoder = HdrDecoder::new(buf_reader).unwrap();
     let metadata = hdr_decoder.metadata();
 
-    let hdr_data = hdr_decoder.read_image_hdr().unwrap();
+    let mut hdr_bytes = vec![0u8; hdr_decoder.total_bytes() as usize];
+    hdr_decoder.read_image(&mut hdr_bytes).unwrap();
 
-    let hdr_data_flat: Vec<f32> = hdr_data
-        .iter()
-        .flat_map(|&Rgb([r, g, b])| vec![r, g, b])
+    let hdr_data_flat: Vec<f32> = hdr_bytes
+        .chunks_exact(4)
+        .map(|bytes| f32::from_ne_bytes(bytes.try_into().unwrap()))
         .collect();
 
     let hdr_image: ImageBuffer<Rgb<f32>, _> =
@@ -89,8 +89,8 @@ fn hdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     let (width, height) = hdr_image.dimensions();
     let mut img = ImageBuffer::<Rgb<u8>, _>::new(width, height);
 
-    let resize_factor = width / resize_width;
-    let resize_height = height / resize_factor;
+    let resize_factor = width as f32 / resize_width as f32;
+    let resize_height = (height as f32 / resize_factor).round() as u32;
 
     for (x, y, pixel) in img.enumerate_pixels_mut() {
         let hdr_pixel = hdr_image.get_pixel(x, y);
@@ -267,7 +267,7 @@ fn apply_srgb_gamma(file: &str) -> PyResult<()> {
 }
 
 #[pymodule]
-fn rust_thumbnails(_py: Python, m: &PyModule) -> PyResult<()> {
+fn rust_thumbnails(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(exr_to_jpg, m)?)?;
     m.add_function(wrap_pyfunction!(hdr_to_jpg, m)?)?;
     m.add_function(wrap_pyfunction!(sdr_to_jpg, m)?)?;

@@ -929,9 +929,7 @@ class RenameAssetDialog(QDialog):
         self.init_signals()
 
     def init_widgets(self):
-        self.name_edit = QLineEdit()
-        self.old_name_edit = QLineEdit(self.old_name)
-        self.old_name_edit.setReadOnly(True)
+        self.name_edit = QLineEdit(self.old_name)
 
         buttons = (
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -946,8 +944,8 @@ class RenameAssetDialog(QDialog):
         self.folder_layout.setContentsMargins(0, 0, 0, 0)
         self.buttons_layout = QHBoxLayout()
 
-        self.form_layout.addRow(QLabel("Old Name"), self.old_name_edit)
         self.form_layout.addRow(QLabel("New Name"), self.name_edit)
+        self.form_layout.setContentsMargins(0, 5, 0, 5)
 
         self.main_layout.addLayout(self.form_layout)
         self.main_layout.addWidget(self.button_box)

@@ -1,9 +1,9 @@
 [project]
 name = "apic-studio"
-version = "0.5.5"
+version = "0.5.6"
 description = "An Asset Browser for Cinema4D"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.14"
 dependencies = ["pyside6>=6.10.1", "rust-thumbnails>=0.1.2"]
 
 [dependency-groups]
@@ -18,8 +18,3 @@ dev = [
 
 [tool.uv.sources]
 rust-thumbnails = { path = "./src/apic_studio_utils" }
-
-[tool.ruff]
-include = [
-    "C:\\Program Files\\Maxon Cinema 4D 2026\\resource\\modules\\python\\libs\\python311",
-]
