@@ -89,13 +89,11 @@ class Viewport(QWidget):
         return self._widgets[self.curr_view]
 
     def on_asset_load(self, asset: Asset):
-        w = self.widgets.get(asset.path.stem)
-        if not w:
-            # Can happen when a new draw/filter cycle supersedes older queued loads.
-            return
-
-        w.set_thumbnail(asset.icon, 185)
-        w.set_file(asset.file, asset.size, asset.suffix)
+        for view_widgets in self._widgets.values():
+            w = view_widgets.get(asset.path.stem)
+            if w:
+                w.set_thumbnail(asset.icon, 185)
+                w.set_file(asset.file, asset.size, asset.suffix)
 
     def _clear_layout(self):
         self.grid_widget.setUpdatesEnabled(False)

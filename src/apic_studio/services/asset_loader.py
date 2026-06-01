@@ -9,15 +9,18 @@ from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
 from PySide6.QtGui import QIcon
 
 from apic_studio.core import Asset, img, settings
+from apic_studio.core.settings import SettingsManager
 from shared.logger import Logger
 
 
 class AssetLoaderWorker(QObject):
     asset_loaded = Signal(object)
+    _default_icon_cache: Optional[QIcon] = None
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, app_settings: SettingsManager, parent: Optional[QObject] = None):
         super().__init__(parent)
         self._cache: dict[Path, Asset] = {}
+        self._settings = app_settings
 
         self.task_queue: Queue[Path] = Queue()
         self._running = True
@@ -51,6 +54,11 @@ class AssetLoaderWorker(QObject):
             if asset:
                 self.asset_loaded.emit(asset)
 
+    def _get_default_icon(self) -> QIcon:
+        if AssetLoaderWorker._default_icon_cache is None:
+            AssetLoaderWorker._default_icon_cache = self._create_icon(self._default_icon)
+        return AssetLoaderWorker._default_icon_cache
+
     def load_asset(self, path: Path) -> Optional[Asset]:
         if cached := self._cache.get(path):
             return cached
@@ -60,10 +68,9 @@ class AssetLoaderWorker(QObject):
             return None
 
         if thumb == self._default_icon and model.suffix.lower() in {".hdr", ".exr"}:
-            self._create_thumbnail(model)
-            thumb = self._search_thumbnail(path)
+            thumb = self._create_thumbnail(model)
 
-        icon = self._create_icon(thumb)
+        icon = self._get_default_icon() if thumb == self._default_icon else self._create_icon(thumb)
 
         # Logger.debug(f"loaded asset from {model}")
         asset = Asset(model, icon, Path(thumb))
@@ -92,16 +99,15 @@ class AssetLoaderWorker(QObject):
 
         return model, thumb
 
-    def _create_icon(self, thumbnail: str) -> QIcon:
-        width, height = 200, 200
+    def _create_icon(self, thumbnail: str, size: int = 185) -> QIcon:
         icon = QIcon(thumbnail)
 
         available_sizes = icon.availableSizes()
-        if available_sizes and available_sizes[0].width() != width:
+        if available_sizes and available_sizes[0].width() != size:
             pixmap = icon.pixmap(available_sizes[0])
             scaled_pixmap = pixmap.scaled(
-                width,
-                height,
+                size,
+                size,
                 Qt.AspectRatioMode.KeepAspectRatio,
                 Qt.TransformationMode.FastTransformation,
             )
@@ -134,12 +140,16 @@ class AssetLoaderWorker(QObject):
 
         return None
 
-    def _create_thumbnail(self, path: Path):
-        size = settings.SettingsManager().MaterialSettings.render_res_x
+    def _create_thumbnail(self, path: Path) -> str:
+        size = self._settings.MaterialSettings.render_res_x
+        thumb_path = path.parent / f"{path.stem}.jpg"
         try:
-            img.create_sdr_preview(path, path.parent / f"{path.stem}.jpg", size)
+            img.create_sdr_preview(path, thumb_path, size)
+            if thumb_path.exists():
+                return str(thumb_path)
         except Exception as e:
             Logger.exception(e)
+        return self._default_icon
 
     def is_asset(self, path: Path) -> bool:
         if path in self._cache:
@@ -152,7 +162,7 @@ class AssetLoader(QObject):
 
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
-        self.worker = AssetLoaderWorker()
+        self.worker = AssetLoaderWorker(settings.SettingsManager())
         self.t = QThread()
 
         self.worker.moveToThread(self.t)
