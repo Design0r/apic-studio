@@ -46,6 +46,12 @@ ID INTEGER PRIMARY KEY AUTOINCREMENT,
 NAME CHAR(128) UNIQUE NOT NULL,
 PATH TEXT NOT NULL);
 """,
+    """
+CREATE TABLE IF NOT EXISTS textures(
+ID INTEGER PRIMARY KEY AUTOINCREMENT,
+NAME CHAR(128) UNIQUE NOT NULL,
+PATH TEXT NOT NULL);
+""",
 ]
 
 
@@ -65,6 +71,7 @@ class Tables(StrEnum):
     LIGHTSETS = "lightsets"
     TAGS = "tags"
     APIC_MODELS = "apic_models"
+    TEXTURES = "textures"
 
     @classmethod
     def members(cls) -> tuple[str, ...]:

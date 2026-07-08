@@ -96,6 +96,13 @@ class LightsetSettings(Settings):
 
 
 @register
+class TextureSettings(Settings):
+    def __init__(self):
+        super().__init__()
+        self.current_pool = ""
+
+
+@register
 class WindowSettings(Settings):
     def __init__(self) -> None:
         super().__init__()
@@ -139,6 +146,7 @@ class SettingsManager:
     ApicModelSettings: ApicModelSettings
     LightsetSettings: LightsetSettings
     HdriSettings: HdriSettings
+    TextureSettings: TextureSettings
 
     def __new__(cls):
         if cls._instance is None:

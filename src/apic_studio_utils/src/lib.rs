@@ -266,6 +266,19 @@ fn apply_srgb_gamma(file: &str) -> PyResult<()> {
     Ok(())
 }
 
+#[pyfunction]
+fn downscale_sdr_image(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
+    let img = ImageReader::open(input)
+        .expect("Failed to open image")
+        .decode()
+        .expect("Failed to decode image");
+
+    let resized = img.thumbnail(resize_width, resize_width);
+
+    resized.save(output).unwrap();
+    Ok(())
+}
+
 #[pymodule]
 fn rust_thumbnails(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(exr_to_jpg, m)?)?;
@@ -273,6 +286,7 @@ fn rust_thumbnails(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(sdr_to_jpg, m)?)?;
     m.add_function(wrap_pyfunction!(screenshot, m)?)?;
     m.add_function(wrap_pyfunction!(apply_srgb_gamma, m)?)?;
+    m.add_function(wrap_pyfunction!(downscale_sdr_image, m)?)?;
     Ok(())
 }
 

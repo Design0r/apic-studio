@@ -12,6 +12,8 @@ from apic_studio.ui.main_window import MainWindow
 from shared.logger import Logger
 from shared.network import Connection
 
+from .scripts.rename_thumbnails import run
+
 
 class Application:
     def __init__(self) -> None:
@@ -31,6 +33,8 @@ class Application:
         Logger.info("initializing Apic Studio...")
 
         db.init_db()
+
+        run()
 
         self.app.setStyle("Fusion")
         self.window = MainWindow(self.dcc, self.settings)

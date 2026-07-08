@@ -35,6 +35,7 @@ class Viewport(QWidget):
         self.screenshot = screenshot
         self.dcc = dcc
         self._widgets: dict[str, dict[str, ViewportButton]] = {
+            "textures": {},
             "models": {},
             "apic_models": {},
             "materials": {},
@@ -167,7 +168,9 @@ class Viewport(QWidget):
                 if not b:
                     b = ViewportButton(x, (200, 200))
                     b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-                    b.customContextMenuRequested.connect(partial(self.on_context_menu, b))
+                    b.customContextMenuRequested.connect(
+                        partial(self.on_context_menu, b)
+                    )
                     b.clicked.connect(partial(self.on_btn_click, x))
                     self.widgets[x.stem] = b
 
@@ -263,9 +266,10 @@ class Viewport(QWidget):
         if self.curr_view in ("models", "apic_models", "lightsets"):
             menu.addAction(reference_act)
 
-        menu.addAction(import_act)
+        if self.curr_view != "textures":
+            menu.addAction(import_act)
 
-        if self.curr_view == "hdris":
+        if self.curr_view in ("hdris", "textures"):
             menu.addAction(import_as_area)
             menu.addAction(delete_preview_act)
 
@@ -312,6 +316,8 @@ class Viewport(QWidget):
         file_dir = btn.file.parent
         for f in file_dir.iterdir():
             if f.suffix.lower() not in Asset.IMG_EXT:
+                continue
+            if not f.stem.endswith("-thumbnails"):
                 continue
             Logger.debug(f"Deleting preview: {f}")
             f.unlink()

@@ -21,3 +21,20 @@ def create_sdr_preview(
         return None
 
     return thumbnail_path
+
+
+def downscale_sdr_image(
+    img_path: Path, thumbnail_path: Path, width_size: int
+) -> Optional[Path]:
+    if not img_path.is_file() or thumbnail_path.exists():
+        return thumbnail_path
+
+    try:
+        rust_thumbnails.downscale_sdr_image(
+            str(img_path), str(thumbnail_path), width_size
+        )
+    except Exception as e:
+        Logger.exception(e)
+        return None
+
+    return thumbnail_path

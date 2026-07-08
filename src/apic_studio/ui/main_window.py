@@ -19,6 +19,7 @@ from apic_studio.ui.toolbar import (
     MultiToolbar,
     Sidebar,
     Statusbar,
+    TextureToolbar,
     ToolbarDirection,
 )
 from apic_studio.ui.viewport import Viewport
@@ -46,6 +47,7 @@ class MainWindow(QWidget):
             "apic_models": self.settings.ApicModelSettings,
             "lightsets": self.settings.LightsetSettings,
             "hdris": self.settings.HdriSettings,
+            "textures": self.settings.TextureSettings,
         }
 
         self.setWindowTitle(f"Apic Studio - {__version__}")
@@ -81,6 +83,9 @@ class MainWindow(QWidget):
         self.hdri_tb = HdriToolbar(pools.HdriPoolManager(), self.dcc)
         self.hdri_tb.set_current_pool(self.settings.HdriSettings.current_pool)
 
+        self.textures_tb = TextureToolbar(pools.TexturePoolManager(), self.dcc)
+        self.textures_tb.set_current_pool(self.settings.TextureSettings.current_pool)
+
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
             {
@@ -89,6 +94,7 @@ class MainWindow(QWidget):
                 "apic_models": self.apic_model_tb,
                 "lightsets": self.lightset_tb,
                 "hdris": self.hdri_tb,
+                "textures": self.textures_tb,
             },
         )
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
@@ -120,6 +126,7 @@ class MainWindow(QWidget):
 
     def init_signals(self):
         s = self.sidebar
+        s.textures.clicked.connect(lambda: self.set_view("textures"))
         s.models.clicked.connect(lambda: self.set_view("models"))
         s.apic_models.clicked.connect(lambda: self.set_view("apic_models"))
         s.materials.clicked.connect(lambda: self.set_view("materials"))

@@ -12,7 +12,7 @@ from shared.logger import Logger
 
 class Asset:
     IMG_EXT = (".jpg", ".png")
-    CG_EXT = (".c4d", ".hdr", ".exr")
+    ASSET_EXT = (".c4d", ".hdr", ".exr", ".jpg", ".png")
     __slots__ = (
         "path",
         "name",

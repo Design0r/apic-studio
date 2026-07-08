@@ -132,6 +132,7 @@ class Sidebar(Toolbar):
         super().__init__(ToolbarDirection.Vertical, width, parent)
         self.setStyleSheet(SIDEBAR_STYLE)
         self.buttons = (
+            self.textures,
             self.materials,
             self.models,
             self.apic_models,
@@ -148,6 +149,7 @@ class Sidebar(Toolbar):
             "apic_models": self.apic_models,
             "lightsets": self.lightsets,
             "hdris": self.hdris,
+            "textures": self.textures,
             "utilities": self.utilities,
         }
 
@@ -184,6 +186,11 @@ class Sidebar(Toolbar):
         self.hdris.set_tooltip("HDRIs")
         self.hdris.activated.connect(self.highlight_modes)
 
+        self.textures = SidebarButton(btn_size)
+        self.textures.set_icon(":icons/tabler-icon-texture.png", icon_size)
+        self.textures.set_tooltip("Textures")
+        self.textures.activated.connect(self.highlight_modes)
+
         self.utilities = SidebarButton(btn_size)
         self.utilities.set_icon(":icons/tabler-icon-script.png", icon_size)
         self.utilities.set_tooltip("Utilities")
@@ -213,6 +220,7 @@ class Sidebar(Toolbar):
         super().init_layouts()
         self.main_layout.setAlignment(Qt.AlignmentFlag.AlignHCenter)
 
+        self.main_layout.addWidget(self.textures)
         self.main_layout.addWidget(self.materials)
         self.main_layout.addWidget(self.models)
         self.main_layout.addWidget(self.apic_models)
@@ -795,6 +803,64 @@ class HdriToolbar(AssetToolbar):
             return
 
         prog = ProgressDialog("Copying HDRIs...", 0, len(files), self)
+        self.ac = AssetConverter(self.current_pool)
+        self.ac.progress.connect(prog.setValue)
+        self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+        prog.show()
+        self.ac.create_assets_from_files(files)
+
+    def on_search(self, text: str):
+        self.search_text_changed.emit((self.current_pool, text))
+
+
+class TextureToolbar(AssetToolbar):
+    def __init__(
+        self,
+        pool: PoolManager,
+        dcc: DCCBridge,
+        label: str = "Textures",
+        thickness: int = 40,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, pool, dcc, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+        self.import_btn = IconButton((30, 30))
+        self.import_btn.set_icon(":icons/tabler-icon-file-import.png")
+        self.import_btn.set_tooltip("Import Textures")
+
+        self.refresh_btn = IconButton((30, 30))
+        self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
+        self.refresh_btn.set_tooltip("Refresh pool")
+
+        self.searchbar = Searchbar()
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+        self.add_widgets(
+            [self.import_btn, VLine(), self.refresh_btn, VLine(), self.searchbar],
+            stretch=True,
+        )
+
+    @override
+    def init_signals(self):
+        super().init_signals()
+        self.import_btn.clicked.connect(self.on_import)
+        self.refresh_btn.clicked.connect(
+            lambda: self.force_refresh.emit(self.current_pool)
+        )
+        self.searchbar.text_changed.connect(self.on_search)
+
+    def on_import(self):
+        files, _ = files_dialog("Select Textures to import")
+        if not files:
+            return
+
+        prog = ProgressDialog("Copying Textures...", 0, len(files), self)
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))

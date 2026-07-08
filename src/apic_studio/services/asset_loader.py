@@ -56,7 +56,9 @@ class AssetLoaderWorker(QObject):
 
     def _get_default_icon(self) -> QIcon:
         if AssetLoaderWorker._default_icon_cache is None:
-            AssetLoaderWorker._default_icon_cache = self._create_icon(self._default_icon)
+            AssetLoaderWorker._default_icon_cache = self._create_icon(
+                self._default_icon
+            )
         return AssetLoaderWorker._default_icon_cache
 
     def load_asset(self, path: Path) -> Optional[Asset]:
@@ -70,7 +72,14 @@ class AssetLoaderWorker(QObject):
         if thumb == self._default_icon and model.suffix.lower() in {".hdr", ".exr"}:
             thumb = self._create_thumbnail(model)
 
-        icon = self._get_default_icon() if thumb == self._default_icon else self._create_icon(thumb)
+        if thumb == self._default_icon and model.suffix.lower() in {".jpg", ".png"}:
+            thumb = self._create_sdr_thumbnail(model)
+
+        icon = (
+            self._get_default_icon()
+            if thumb == self._default_icon
+            else self._create_icon(thumb)
+        )
 
         # Logger.debug(f"loaded asset from {model}")
         asset = Asset(model, icon, Path(thumb))
@@ -80,22 +89,35 @@ class AssetLoaderWorker(QObject):
 
     def _scan_asset(self, path: Path) -> tuple[Optional[Path], str]:
         if not path.is_dir():
-            if path.suffix.lower() in Asset.CG_EXT:
+            if path.suffix.lower() in Asset.ASSET_EXT:
                 return path, self._default_icon
             return None, self._default_icon
 
         model: Optional[Path] = None
         thumb = self._default_icon
 
-        for p in path.iterdir():
-            suffix = p.suffix.lower()
-            if model is None and suffix in Asset.CG_EXT:
-                model = p
-            if thumb == self._default_icon and suffix in Asset.IMG_EXT:
-                thumb = str(p)
+        asset_name = path.stem
+        thumb_name = f"{path.stem}-thumbnail"
 
-            if model is not None and thumb != self._default_icon:
+        for ext in Asset.ASSET_EXT:
+            asset_path = path / f"{asset_name}{ext}"
+
+            if asset_path.exists():
+                model = asset_path
                 break
+
+        for ext in Asset.IMG_EXT:
+            thumb_path = path / f"{thumb_name}{ext}"
+            if thumb_path.exists():
+                thumb = str(thumb_path)
+                break
+
+        # if thumb == self._default_icon:
+        #     for ext in Asset.IMG_EXT:
+        #         thumb_path = path / f"{asset_name}{ext}"
+        #         if thumb_path.exists():
+        #             thumb = str(thumb_path)
+        #             break
 
         return model, thumb
 
@@ -128,23 +150,34 @@ class AssetLoaderWorker(QObject):
 
     def _search_3d_model(self, path: Path) -> Optional[Path]:
         is_dir = path.is_dir()
-        if not is_dir and path.suffix.lower() in Asset.CG_EXT:
+        if not is_dir and path.suffix.lower() in Asset.ASSET_EXT:
             return path
 
         if not is_dir:
             return None
 
         for p in path.iterdir():
-            if p.suffix.lower() in Asset.CG_EXT:
+            if p.suffix.lower() in Asset.ASSET_EXT:
                 return p
 
         return None
 
     def _create_thumbnail(self, path: Path) -> str:
         size = self._settings.MaterialSettings.render_res_x
-        thumb_path = path.parent / f"{path.stem}.jpg"
+        thumb_path = path.parent / f"{path.stem}-thumbnail.jpg"
         try:
             img.create_sdr_preview(path, thumb_path, size)
+            if thumb_path.exists():
+                return str(thumb_path)
+        except Exception as e:
+            Logger.exception(e)
+        return self._default_icon
+
+    def _create_sdr_thumbnail(self, path: Path) -> str:
+        size = self._settings.MaterialSettings.render_res_x
+        thumb_path = path.parent / f"{path.stem}-thumbnail.jpg"
+        try:
+            img.downscale_sdr_image(path, thumb_path, size)
             if thumb_path.exists():
                 return str(thumb_path)
         except Exception as e:

@@ -61,5 +61,9 @@ class HdriPoolManager(_AssetPoolManager):
     POOL_TYPE = "hdris"
 
 
+class TexturePoolManager(_AssetPoolManager):
+    POOL_TYPE = "textures"
+
+
 class UtilityPoolManager(_AssetPoolManager):
     POOL_TYPE = "utilities"

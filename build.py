@@ -97,13 +97,33 @@ def main():
     b = Builder(CWD / "dist")
 
     b.set_namespace("apic_connector_plugin")
-    b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector_main.pyp")
+    b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector.pyp")
     b.add_ressource(CWD / "src" / "shared")
     b.add_ressource(CWD / "src" / "apic_connector")
 
     b.add_ext_copy(
         CWD / "src" / "apic_studio" / "scripts",
         CWD / "dist" / "Apic Studio" / "scripts",
+    )
+
+    b.add_ext_copy(
+        CWD / "dist" / "apic_connector_plugin" / "apic_connector",
+        Path(r"W:\Pipeline\Apic_Cinema_Pipeline\Dependencies\apic_connector"),
+    )
+
+    b.add_ext_copy(
+        CWD / "dist" / "apic_connector_plugin" / "shared",
+        Path(r"W:\Pipeline\Apic_Cinema_Pipeline\Dependencies\shared"),
+    )
+
+    b.add_ext_copy(
+        CWD / "dist" / "apic_connector_plugin" / "apic_connector.pyp",
+        Path(r"W:\Pipeline\Apic_Cinema_Pipeline\Plugins\apic_connector"),
+    )
+
+    b.add_ext_copy(
+        CWD / "dist" / "Apic Studio",
+        Path(r"W:\Pipeline\Apic Studio"),
     )
 
     b.build()
