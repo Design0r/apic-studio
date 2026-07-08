@@ -1,4 +1,5 @@
 from pathlib import Path
+from sys import stderr
 
 from apic_studio.core import db
 
@@ -27,4 +28,7 @@ def run():
                     ):
                         new_path = file.parent / f"{file.stem}-thumbnail{file.suffix}"
                         print("renaming", file, "to", new_path)
-                        path.rename(new_path)
+                        try:
+                            file.rename(new_path)
+                        except Exception as e:
+                            print(e, file=stderr)
