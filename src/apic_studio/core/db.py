@@ -121,14 +121,20 @@ def insert(table: Tables, data: DBSchema) -> None:
             Logger.exception(e)
 
 
-def select(table: Tables) -> dict[str, Path]:
+def select(table: Tables) -> dict[str, Path] | list[str]:
     data = {}
     with connection() as conn:
         try:
-            query = f"SELECT name, path FROM {table.name};"
-            cursor = conn.execute(query)
-            p = {name: Path(path) for name, path in cursor.fetchall()}
-            data = dict(sorted(p.items()))
+            if table.value == "TAGS":
+                query = f"SELECT name FROM {table.name};"
+                cursor = conn.execute(query)
+                p = [name for name in cursor.fetchall()]
+                data = p
+            else:
+                query = f"SELECT name, path FROM {table.name};"
+                cursor = conn.execute(query)
+                p = {name: Path(path) for name, path in cursor.fetchall()}
+                data = dict(sorted(p.items()))
         except Exception as e:
             Logger.exception(e)
 
@@ -152,8 +158,13 @@ def select_all() -> dict[str, DBRow]:
     with connection() as conn:
         try:
             for table in Tables.members():
-                cursor = conn.execute(f"SELECT name, path FROM {table}")
-                p = {name: Path(path) for name, path in cursor.fetchall()}
+                if table == "TAGS":
+                    cursor = conn.execute(f"SELECT name FROM {table}")
+                    p = {name: name for name in cursor.fetchall()}
+                else:
+                    cursor = conn.execute(f"SELECT name, path FROM {table}")
+                    p = {name: Path(path) for name, path in cursor.fetchall()}
+
                 data[table] = dict(sorted(p.items()))
 
         except Exception as e:
