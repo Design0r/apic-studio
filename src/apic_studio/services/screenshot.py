@@ -37,6 +37,8 @@ class Screenshot(QObject):
         x, y, w, h = geometry
         s = SettingsManager().MaterialSettings.render_res_x
 
+        path = path.parent / f"{path.stem}-thumbnail{path.suffix}"
+
         screen = QGuiApplication.screenAt(QPoint(x, y))
         dpr = screen.devicePixelRatio() if screen else 1.0
         width = screen.availableSize().width() * dpr

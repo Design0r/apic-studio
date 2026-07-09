@@ -147,7 +147,9 @@ def main():
     for mat in args.materials.split(","):
         mat_path = Path(mat)
         mat_name = mat_path.stem
-        output_path = str(Path(mat_path).parent / f"{mat_name}{args.extension}")
+        output_path = str(
+            Path(mat_path).parent / f"{mat_name}-thumbnail{args.extension}"
+        )
         if not core.import_file(mat):
             raise RuntimeError(f"Failed to load material file: {mat}")
 
