@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import shutil
 from pathlib import Path
-from queue import Empty, Queue
+from queue import Queue
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
@@ -15,6 +15,7 @@ from shared.logger import Logger
 
 class AssetLoaderWorker(QObject):
     asset_loaded = Signal(object)
+    pool_scanned = Signal(object, object)  # (pool: Path, assets: list[Path])
     _default_icon_cache: Optional[QIcon] = None
 
     def __init__(self, app_settings: SettingsManager, parent: Optional[QObject] = None):
@@ -22,7 +23,9 @@ class AssetLoaderWorker(QObject):
         self._cache: dict[Path, Asset] = {}
         self._settings = app_settings
 
-        self.task_queue: Queue[Path] = Queue()
+        # Each task is a (kind, path) pair: "load" a single asset, "scan" a
+        # pool directory, or "stop" the run loop.
+        self.task_queue: Queue[tuple[str, Path]] = Queue()
         self._running = True
         self._default_icon = ":icons/tabler-icon-photo.png"
 
@@ -36,23 +39,39 @@ class AssetLoaderWorker(QObject):
         return self._cache.get(path)
 
     def add_task(self, path: Path) -> None:
-        self.task_queue.put(path)
+        self.task_queue.put(("load", path))
+
+    def scan_pool(self, path: Path) -> None:
+        self.task_queue.put(("scan", path))
 
     def stop(self) -> None:
         self._running = False
-        self.task_queue.put(Path())
+        self.task_queue.put(("stop", Path()))
 
     def run(self) -> None:
         while self._running:
-            try:
-                path = self.task_queue.get()
-            except Empty:
-                Logger.debug("empty task queue")
+            kind, path = self.task_queue.get()
+
+            if kind == "stop":
+                break
+
+            if kind == "scan":
+                self.pool_scanned.emit(path, self._scan_pool(path))
                 continue
 
             asset = self.load_asset(path)
             if asset:
                 self.asset_loaded.emit(asset)
+
+    def _scan_pool(self, path: Path) -> list[Path]:
+        if not path.exists() or not path.is_dir():
+            return []
+
+        return [
+            x
+            for x in sorted(path.iterdir(), key=lambda p: p.stem.lower())
+            if self.is_asset(x)
+        ]
 
     def _get_default_icon(self) -> QIcon:
         if AssetLoaderWorker._default_icon_cache is None:
@@ -192,6 +211,7 @@ class AssetLoaderWorker(QObject):
 
 class AssetLoader(QObject):
     asset_loaded = Signal(Asset)
+    pool_scanned = Signal(object, object)  # (pool: Path, assets: list[Path])
 
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
@@ -201,13 +221,14 @@ class AssetLoader(QObject):
         self.worker.moveToThread(self.t)
         self.t.started.connect(self.worker.run)
         self.worker.asset_loaded.connect(self.on_asset_loaded)
+        self.worker.pool_scanned.connect(self.on_pool_scanned)
         self.t.start()
-
-    def is_asset(self, path: Path) -> bool:
-        return self.worker.is_asset(path)
 
     def get_asset(self, path: Path) -> Optional[Asset]:
         return self.worker.get_asset(path)
+
+    def scan_pool(self, path: Path) -> None:
+        self.worker.scan_pool(path)
 
     def load_asset(self, path: Path, refresh: bool = False):
         if refresh:
@@ -225,6 +246,9 @@ class AssetLoader(QObject):
 
     def on_asset_loaded(self, asset: Asset):
         self.asset_loaded.emit(asset)
+
+    def on_pool_scanned(self, pool: Path, assets: list[Path]):
+        self.pool_scanned.emit(pool, assets)
 
     def stop(self):
         self.worker.stop()

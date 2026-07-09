@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
 from apic_studio.core import Asset
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, BackupManager, DCCBridge, Screenshot
+from apic_studio.ui.buttons import STYLE as VIEWPORT_BUTTON_STYLE
 from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.dialogs import CreateBackupDialog, RenameAssetDialog
 from apic_studio.ui.flow_layout import FlowLayout
@@ -54,7 +55,13 @@ class Viewport(QWidget):
         self._load_force: bool = False
         self._loading_paths: set[Path] = set()  # prevents duplicate load requests
         self._load_generation: int = 0
-        self._pool_asset_index: dict[Path, tuple[int, list[Path]]] = {}
+        self._pool_asset_index: dict[Path, list[Path]] = {}
+
+        # Pool scanning happens on the loader's worker thread; these track the
+        # draw request that an incoming scan result must match to be applied.
+        self._pending_pool: Optional[Path] = None
+        self._draw_filter: Optional[str] = None
+        self._draw_force: bool = False
 
         self.init_widgets()
         self.init_layouts()
@@ -62,6 +69,9 @@ class Viewport(QWidget):
 
     def init_widgets(self):
         self.grid_widget = QWidget()
+        # Applied once here rather than per ViewportButton; the descendant
+        # selectors cascade to every button, avoiding per-instance CSS parsing.
+        self.grid_widget.setStyleSheet(VIEWPORT_BUTTON_STYLE)
         self.scroll_area = QScrollArea()
         self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         self.scroll_area.setWidgetResizable(True)
@@ -79,6 +89,7 @@ class Viewport(QWidget):
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
+        self.loader.pool_scanned.connect(self.on_pool_scanned)
 
         def load(x: Path):
             self.loader.load_asset(x, refresh=True)
@@ -95,6 +106,7 @@ class Viewport(QWidget):
             if w:
                 w.set_thumbnail(asset.icon, 185)
                 w.set_file(asset.file, asset.size, asset.suffix)
+                break
 
     def _clear_layout(self):
         self.grid_widget.setUpdatesEnabled(False)
@@ -108,32 +120,6 @@ class Viewport(QWidget):
                     widget.setParent(None)
         finally:
             self.grid_widget.setUpdatesEnabled(True)
-
-    def _scan_pool_assets(self, path: Path) -> list[Path]:
-        if not path.exists() or not path.is_dir():
-            return []
-
-        assets: list[Path] = []
-        for x in sorted(path.iterdir(), key=lambda x: x.stem.lower()):
-            if self.loader.is_asset(x):
-                assets.append(x)
-        return assets
-
-    @staticmethod
-    def _pool_mtime_ns(path: Path) -> int:
-        try:
-            return path.stat().st_mtime_ns
-        except OSError:
-            return -1
-
-    def _get_pool_assets(self, path: Path, force: bool) -> list[Path]:
-        mtime_ns = self._pool_mtime_ns(path)
-        cached = self._pool_asset_index.get(path)
-        if force or not cached or cached[0] != mtime_ns:
-            assets = self._scan_pool_assets(path)
-            self._pool_asset_index[path] = (mtime_ns, assets)
-            return assets
-        return cached[1]
 
     def _start_incremental_load(self, force: bool) -> None:
         self._load_force = force
@@ -153,6 +139,9 @@ class Viewport(QWidget):
         t.start()
         self.grid_widget.setUpdatesEnabled(False)
 
+        widgets = self.widgets
+        force = self._load_force
+
         try:
             while self._pending_assets and t.elapsed() < budget_ms:
                 x = self._pending_assets.popleft()
@@ -160,25 +149,24 @@ class Viewport(QWidget):
                 if gen != self._load_generation:
                     return
 
-                if not self._load_force and (cached_widget := self.widgets.get(x.stem)):
-                    self.flow_layout.addWidget(cached_widget)
-                    continue
-
-                b = self.widgets.get(x.stem)
-                if not b:
+                b = widgets.get(x.stem)
+                is_new = b is None
+                if b is None:
                     b = ViewportButton(x, (200, 200))
                     b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
                     b.customContextMenuRequested.connect(
                         partial(self.on_context_menu, b)
                     )
                     b.clicked.connect(partial(self.on_btn_click, x))
-                    self.widgets[x.stem] = b
+                    widgets[x.stem] = b
 
                 self.flow_layout.addWidget(b)
 
-                if x not in self._loading_paths or self._load_force:
+                # Reload the asset only for freshly created widgets or a forced
+                # refresh; already-built widgets keep their cached thumbnail.
+                if (force or is_new) and (x not in self._loading_paths or force):
                     self._loading_paths.add(x)
-                    self.loader.load_asset(x, refresh=self._load_force)
+                    self.loader.load_asset(x, refresh=force)
         finally:
             self.grid_widget.setUpdatesEnabled(True)
 
@@ -192,19 +180,41 @@ class Viewport(QWidget):
         self._loading_paths.clear()
 
         if not path or not path.exists():
+            self._pending_pool = None
             return
 
         self.curr_pool = path.parent
+        self._draw_filter = filter.lower() if filter else None
+        self._draw_force = force
+        self._pending_pool = path
 
-        needle = filter.lower() if filter else None
+        cached = self._pool_asset_index.get(path)
+        if cached is not None and not force:
+            self._populate_pending(cached)
+            return
 
-        for x in self._get_pool_assets(path, force):
+        # Scan the pool directory on the loader's worker thread; the result
+        # arrives asynchronously via on_pool_scanned so the UI never blocks.
+        self.loader.scan_pool(path)
+
+    def on_pool_scanned(self, path: Path, assets: list[Path]) -> None:
+        self._pool_asset_index[path] = assets
+        # Ignore results for a pool the user has already navigated away from.
+        if path != self._pending_pool:
+            return
+        self._populate_pending(assets)
+
+    def _populate_pending(self, assets: list[Path]) -> None:
+        needle = self._draw_filter
+        self._pending_assets.clear()
+
+        for x in assets:
             if needle and needle not in x.stem.lower():
                 continue
             self._pending_assets.append(x)
 
         if self._pending_assets:
-            self._start_incremental_load(force)
+            self._start_incremental_load(self._draw_force)
 
     def on_btn_click(self, x: Path):
         asset = self.loader.get_asset(x)
