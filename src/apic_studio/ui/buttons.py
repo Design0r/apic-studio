@@ -126,9 +126,6 @@ class ViewportButton(QWidget):
 
         self.setMinimumSize(*button_size)
         self.setToolTip(file.stem)
-        # NOTE: STYLE is applied once on the containing widget (see Viewport)
-        # instead of per-instance, which avoids re-parsing the sheet for every
-        # button. The selectors are descendant-qualified so they still match.
 
         self.init_widgets()
         self.init_layouts()
