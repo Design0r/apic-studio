@@ -125,7 +125,7 @@ class Viewport(QWidget):
         self._pending_pool = path
 
         cached = self._pool_asset_index.get(path)
-        if cached is not None and not force:
+        if cached and not force:
             self._render_assets(cached)
             return
 
@@ -167,7 +167,6 @@ class Viewport(QWidget):
                     self.loader.load_asset(x, refresh=force)
         finally:
             self.grid_widget.setUpdatesEnabled(True)
-            pass
 
         Logger.info(
             f"finished loading pool {self.curr_pool.stem} in {(time.perf_counter() - self._draw_timer):.2f}s"
@@ -283,7 +282,7 @@ class Viewport(QWidget):
     def on_del_preview(self, btn: ViewportButton):
         file_dir = btn.file.parent
         for f in file_dir.iterdir():
-            if f.suffix.lower() not in Asset.IMG_EXT:
+            if f.suffix.lower() not in Asset.SDR_IMG_EXT:
                 continue
             if not f.stem.endswith("-thumbnails"):
                 continue

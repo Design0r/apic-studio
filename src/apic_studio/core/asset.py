@@ -11,8 +11,9 @@ from shared.logger import Logger
 
 
 class Asset:
-    IMG_EXT = (".jpg", ".png")
-    ASSET_EXT = (".c4d", ".hdr", ".exr", ".jpg", ".png")
+    SDR_IMG_EXT = (".jpg", ".png")
+    HDR_IMG_EXT = (".hdr", ".exr")
+    ASSET_EXT = (".c4d",) + SDR_IMG_EXT + HDR_IMG_EXT
     __slots__ = (
         "path",
         "name",
