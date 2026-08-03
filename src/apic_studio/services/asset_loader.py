@@ -59,8 +59,7 @@ class AssetLoaderWorker(QObject):
                 self.pool_scanned.emit(path, self._scan_pool(path))
                 continue
 
-            asset = self.load_asset(path)
-            if asset:
+            if asset := self.load_asset(path):
                 self.asset_loaded.emit(asset)
 
     def _scan_pool(self, path: Path) -> list[Path]:
@@ -88,34 +87,27 @@ class AssetLoaderWorker(QObject):
         if not model:
             return None
 
-        if thumb == self._default_icon and model.suffix.lower() in {".hdr", ".exr"}:
-            thumb = self._create_thumbnail(model)
+        is_default_icon = thumb == self._default_icon
 
-        if thumb == self._default_icon and model.suffix.lower() in {".jpg", ".png"}:
-            thumb = self._create_sdr_thumbnail(model)
+        if is_default_icon:
+            s = model.suffix.lower()
+            if s in Asset.HDR_IMG_EXT:
+                thumb = self._create_thumbnail(model)
+            elif s in Asset.SDR_IMG_EXT:
+                thumb = self._create_sdr_thumbnail(model)
 
-        icon = (
-            self._get_default_icon()
-            if thumb == self._default_icon
-            else self._create_icon(thumb)
-        )
+        icon = self._get_default_icon() if is_default_icon else self._create_icon(thumb)
 
-        # Logger.debug(f"loaded asset from {model}")
         asset = Asset(model, icon, Path(thumb))
         self._cache[path] = asset
 
         return asset
 
     def _scan_asset(self, path: Path) -> tuple[Optional[Path], str]:
-        if not path.is_dir():
-            if path.suffix.lower() in Asset.ASSET_EXT:
-                return path, self._default_icon
-            return None, self._default_icon
-
         model: Optional[Path] = None
         thumb = self._default_icon
 
-        asset_name = path.stem
+        asset_name = path.name
         thumb_name = f"{path.stem}-thumbnail"
 
         for ext in Asset.ASSET_EXT:
@@ -125,18 +117,11 @@ class AssetLoaderWorker(QObject):
                 model = asset_path
                 break
 
-        for ext in Asset.IMG_EXT:
+        for ext in Asset.SDR_IMG_EXT:
             thumb_path = path / f"{thumb_name}{ext}"
             if thumb_path.exists():
                 thumb = str(thumb_path)
                 break
-
-        # if thumb == self._default_icon:
-        #     for ext in Asset.IMG_EXT:
-        #         thumb_path = path / f"{asset_name}{ext}"
-        #         if thumb_path.exists():
-        #             thumb = str(thumb_path)
-        #             break
 
         return model, thumb
 
@@ -156,18 +141,7 @@ class AssetLoaderWorker(QObject):
 
         return icon
 
-    def _search_thumbnail(self, path: Path) -> str:
-        if not path.is_dir():
-            return self._default_icon
-
-        for p in path.iterdir():
-            if p.suffix.lower() in Asset.IMG_EXT:
-                # Logger.debug(f"found thumbnail: {path / p.name}")
-                return str(p)
-
-        return self._default_icon
-
-    def _search_3d_model(self, path: Path) -> Optional[Path]:
+    def _search_asset(self, path: Path) -> Optional[Path]:
         is_dir = path.is_dir()
         if not is_dir and path.suffix.lower() in Asset.ASSET_EXT:
             return path
@@ -206,7 +180,8 @@ class AssetLoaderWorker(QObject):
     def is_asset(self, path: Path) -> bool:
         if path in self._cache:
             return True
-        return self._search_3d_model(path) is not None
+
+        return self._search_asset(path) is not None
 
 
 class AssetLoader(QObject):
