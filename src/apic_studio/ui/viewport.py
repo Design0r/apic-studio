@@ -54,6 +54,12 @@ class Viewport(QWidget):
         self._draw_force: bool = False
         self._draw_timer: float = 0.0
 
+        # pool currently laid out, with the widgets that make it up, so a
+        # search can re-filter by toggling visibility instead of reparenting
+        self._drawn_pool: Optional[Path] = None
+        self._laid_out: list[tuple[str, Path, ViewportButton]] = []
+        self._requested: set[Path] = set()
+
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
@@ -98,6 +104,10 @@ class Viewport(QWidget):
                 break
 
     def _clear_layout(self):
+        self._drawn_pool = None
+        self._laid_out.clear()
+        self._requested.clear()
+
         self.grid_widget.setUpdatesEnabled(False)
         try:
             while self.flow_layout.count():
@@ -110,9 +120,32 @@ class Viewport(QWidget):
         finally:
             self.grid_widget.setUpdatesEnabled(True)
 
+    def _apply_filter(self) -> None:
+        needle = self._draw_filter
+
+        self.grid_widget.setUpdatesEnabled(False)
+        try:
+            for key, path, widget in self._laid_out:
+                matches = not needle or needle in key.lower()
+                widget.setVisible(matches)
+
+                # a widget hidden on the previous pass never got a thumbnail
+                if matches and path not in self._requested:
+                    self._requested.add(path)
+                    self.loader.load_asset(path)
+        finally:
+            self.grid_widget.setUpdatesEnabled(True)
+
     def draw(
         self, path: Path, force: bool = False, filter: Optional[str] = None
     ) -> None:
+        # Re-filtering the pool already on screen is just a visibility pass.
+        # Tearing the layout down and reparenting every widget costs ~100x more.
+        if not force and path and path == self._drawn_pool:
+            self._draw_filter = filter.lower() if filter else None
+            self._apply_filter()
+            return
+
         self._clear_layout()
 
         if not path or not path.exists():
@@ -147,10 +180,9 @@ class Viewport(QWidget):
         self.grid_widget.setUpdatesEnabled(False)
         try:
             for x in assets:
-                if needle and needle not in x.stem.lower():
-                    continue
+                key = x.stem
 
-                b = widgets.get(x.stem)
+                b = widgets.get(key)
                 is_new = b is None
                 if b is None:
                     b = ViewportButton(x, (200, 200))
@@ -159,14 +191,25 @@ class Viewport(QWidget):
                         partial(self.on_context_menu, b)
                     )
                     b.clicked.connect(partial(self.on_btn_click, x))
-                    widgets[x.stem] = b
+                    widgets[key] = b
 
+                # everything goes into the layout, the filter only decides what
+                # is visible, so later searches stay a visibility pass
                 self.flow_layout.addWidget(b)
+                self._laid_out.append((key, x, b))
 
+                matches = not needle or needle in key.lower()
+                b.setVisible(matches)
+                if not matches:
+                    continue
+
+                self._requested.add(x)
                 if force or is_new:
                     self.loader.load_asset(x, refresh=force)
         finally:
             self.grid_widget.setUpdatesEnabled(True)
+
+        self._drawn_pool = self._pending_pool
 
         Logger.info(
             f"finished loading pool {self.curr_pool.stem} in {(time.perf_counter() - self._draw_timer):.2f}s"
@@ -292,8 +335,15 @@ class Viewport(QWidget):
 
     def delete_widget(self, btn: ViewportButton):
         del self.widgets[btn.file.stem]
+        self._invalidate_layout_cache()
         btn.setParent(None)
         btn.deleteLater()
+
+    def _invalidate_layout_cache(self) -> None:
+        # the widget set changed under us, so the visibility fast path can no
+        # longer trust its list; force the next draw to rebuild the layout
+        self._drawn_pool = None
+        self._laid_out.clear()
 
     def shutdown(self):
         # Nothing to tear down: asset drawing is synchronous and the loader
@@ -320,5 +370,6 @@ class Viewport(QWidget):
         old_btn_key = btn.file.stem
         del self.widgets[old_btn_key]
         self.widgets[name] = btn
+        self._invalidate_layout_cache()
 
         self.loader.load_asset(new_asset.path)

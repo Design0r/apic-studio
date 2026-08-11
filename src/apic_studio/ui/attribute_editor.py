@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QImage
 from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
@@ -123,7 +123,7 @@ class AttributeEditor(QWidget):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self.current_asset = Asset(Path(), QIcon(), Path())
+        self.current_asset = Asset(Path(), QImage(), Path())
 
         self.init_widgets()
         self.init_layouts()

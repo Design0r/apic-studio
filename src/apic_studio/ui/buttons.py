@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Optional, override
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QImage, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -186,8 +186,10 @@ class ViewportButton(QWidget):
         self.file = file
         self.label.setText(file.stem)
 
-    def set_thumbnail(self, icon: QIcon, size: int):
-        self.icon.setIcon(icon)
+    def set_thumbnail(self, image: QImage, size: int):
+        # the loader decodes to a QImage off-thread, pixmaps are built here on
+        # the GUI thread where Qt allows it
+        self.icon.setIcon(QIcon(QPixmap.fromImage(image)))
         self.icon.setIconSize(QSize(size, size))
 
     @override

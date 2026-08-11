@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional, Self
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QImage
 
 from shared.logger import Logger
 
@@ -25,7 +25,7 @@ class Asset:
         "icon_path",
     )
 
-    def __init__(self, file: Path, icon: QIcon, icon_path: Path) -> None:
+    def __init__(self, file: Path, icon: QImage, icon_path: Path) -> None:
         self.file = file
         self.path = file.parent
         self.name = file.stem
@@ -46,7 +46,7 @@ class Asset:
         return filesize
 
     def rename(
-        self, name: str, create_icon: Optional[Callable[[str], QIcon]] = None
+        self, name: str, create_icon: Optional[Callable[[str], QImage]] = None
     ) -> Self:
         old_file_path = self.file
         new_file_path = self.file.parent / (name + self.file.suffix)

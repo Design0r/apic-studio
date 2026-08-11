@@ -1,22 +1,26 @@
 from __future__ import annotations
 
+import os
 import shutil
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from queue import Queue
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QImage, QImageReader
 
 from apic_studio.core import Asset, img, settings
 from apic_studio.core.settings import SettingsManager
 from shared.logger import Logger
 
+ICON_SIZE = 185
+
 
 class AssetLoaderWorker(QObject):
     asset_loaded = Signal(object)
     pool_scanned = Signal(object, object)  # (pool: Path, assets: list[Path])
-    _default_icon_cache: Optional[QIcon] = None
+    _default_icon_cache: Optional[QImage] = None
 
     def __init__(self, app_settings: SettingsManager, parent: Optional[QObject] = None):
         super().__init__(parent)
@@ -49,18 +53,36 @@ class AssetLoaderWorker(QObject):
         self.task_queue.put(("stop", Path()))
 
     def run(self) -> None:
-        while self._running:
-            kind, path = self.task_queue.get()
+        # Decoding thumbnails is the bulk of a pool load and releases the GIL,
+        # so fan the work out instead of handling one asset at a time.
+        pool = ThreadPoolExecutor(
+            max_workers=min(8, (os.cpu_count() or 4)),
+            thread_name_prefix="asset-loader",
+        )
+        try:
+            while self._running:
+                kind, path = self.task_queue.get()
 
-            if kind == "stop":
-                break
+                if kind == "stop":
+                    break
 
-            if kind == "scan":
-                self.pool_scanned.emit(path, self._scan_pool(path))
-                continue
+                if kind == "scan":
+                    self.pool_scanned.emit(path, self._scan_pool(path))
+                    continue
 
+                pool.submit(self._load_and_emit, path)
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
+
+    def _load_and_emit(self, path: Path) -> None:
+        # BaseException, not Exception: a panic raised by the Rust thumbnailer
+        # derives straight from BaseException and would otherwise vanish into
+        # the future's result and take this asset down silently.
+        try:
             if asset := self.load_asset(path):
                 self.asset_loaded.emit(asset)
+        except BaseException as e:
+            Logger.exception(e)  # type: ignore[arg-type]
 
     def _scan_pool(self, path: Path) -> list[Path]:
         if not path.exists() or not path.is_dir():
@@ -72,7 +94,7 @@ class AssetLoaderWorker(QObject):
             if self.is_asset(x)
         ]
 
-    def _get_default_icon(self) -> QIcon:
+    def _get_default_icon(self) -> QImage:
         if AssetLoaderWorker._default_icon_cache is None:
             AssetLoaderWorker._default_icon_cache = self._create_icon(
                 self._default_icon
@@ -125,21 +147,24 @@ class AssetLoaderWorker(QObject):
 
         return model, thumb
 
-    def _create_icon(self, thumbnail: str, size: int = 185) -> QIcon:
-        icon = QIcon(thumbnail)
+    def _create_icon(self, thumbnail: str, size: int = ICON_SIZE) -> QImage:
+        # QImage, not QIcon/QPixmap: pixmaps may only be touched on the GUI
+        # thread, and asking the decoder for the reduced size up front beats
+        # decoding at full resolution and scaling afterwards.
+        reader = QImageReader(thumbnail)
+        reader.setAutoTransform(True)
 
-        available_sizes = icon.availableSizes()
-        if available_sizes and available_sizes[0].width() != size:
-            pixmap = icon.pixmap(available_sizes[0])
-            scaled_pixmap = pixmap.scaled(
-                size,
-                size,
-                Qt.AspectRatioMode.KeepAspectRatio,
-                Qt.TransformationMode.FastTransformation,
+        source = reader.size()
+        if source.isValid() and (source.width() > size or source.height() > size):
+            reader.setScaledSize(
+                source.scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio)
             )
-            icon = QIcon(scaled_pixmap)
 
-        return icon
+        image = reader.read()
+        if image.isNull():
+            Logger.warning(f"could not decode {thumbnail}: {reader.errorString()}")
+
+        return image
 
     def _search_asset(self, path: Path) -> Optional[Path]:
         is_dir = path.is_dir()
@@ -148,6 +173,13 @@ class AssetLoaderWorker(QObject):
 
         if not is_dir:
             return None
+
+        # assets are named after their folder, so probing the expected names is
+        # far cheaper than listing the directory
+        for ext in Asset.ASSET_EXT:
+            candidate = path / f"{path.name}{ext}"
+            if candidate.exists():
+                return candidate
 
         for p in path.iterdir():
             if p.suffix.lower() in Asset.ASSET_EXT:
