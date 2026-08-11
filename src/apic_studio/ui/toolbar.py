@@ -251,6 +251,11 @@ class Status:
 
 
 class Statusbar(Toolbar):
+    # Logger callbacks fire from worker threads (connection, ping, copy tasks).
+    # Emitting a signal hands the update back to the GUI thread instead of
+    # touching widgets directly.
+    log_received = Signal(str, str)
+
     def __init__(
         self,
         thickness: int,
@@ -289,7 +294,8 @@ class Statusbar(Toolbar):
     @override
     def init_signals(self) -> None:
         super().init_signals()
-        Logger.register_callback(self.update_info)
+        self.log_received.connect(self.update_info)
+        Logger.register_callback(self.log_received.emit)
         self.clear_btn.clicked.connect(lambda: self.update_info("Clear", ""))
         self.logs_btn.clicked.connect(self.show_logs)
 
@@ -441,24 +447,26 @@ class AssetToolbar(LabledToolbar):
 
     def load_pools(self):
         self.blockSignals(True)
-        self.dropdown.clear()
+        try:
+            self.dropdown.clear()
 
-        items = self.pool.get()
-        items_list = tuple(items.keys())
-        self.dropdown.addItems(items_list)
-        self._pools = items
+            items = self.pool.get()
+            items_list = tuple(items.keys())
+            self.dropdown.addItems(items_list)
+            self._pools = items
 
-        if self.dropdown.count() == 0:
-            return
+            if self.dropdown.count() == 0:
+                return
 
-        max_item_width = max(
-            self.dropdown.fontMetrics().horizontalAdvance(item)
-            for item in [
-                self.dropdown.itemText(i) for i in range(self.dropdown.count())
-            ]
-        )
-        self.dropdown.setMinimumWidth(max_item_width + 50)
-        self.blockSignals(False)
+            max_item_width = max(
+                self.dropdown.fontMetrics().horizontalAdvance(item)
+                for item in [
+                    self.dropdown.itemText(i) for i in range(self.dropdown.count())
+                ]
+            )
+            self.dropdown.setMinimumWidth(max_item_width + 50)
+        finally:
+            self.blockSignals(False)
 
     def set_current_pool(self, pool: str, blockSignals: bool = False):
         if blockSignals:
@@ -805,9 +813,15 @@ class HdriToolbar(AssetToolbar):
         prog = ProgressDialog("Copying HDRIs...", 0, len(files), self)
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
+        self.ac.finished.connect(prog.close)
         self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+
+        task = self.ac.create_assets_from_files(files)
+        if not task:
+            return
+
+        prog.canceled.connect(task.stop)
         prog.show()
-        self.ac.create_assets_from_files(files)
 
     def on_search(self, text: str):
         self.search_text_changed.emit((self.current_pool, text))
@@ -863,9 +877,15 @@ class TextureToolbar(AssetToolbar):
         prog = ProgressDialog("Copying Textures...", 0, len(files), self)
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
+        self.ac.finished.connect(prog.close)
         self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+
+        task = self.ac.create_assets_from_files(files)
+        if not task:
+            return
+
+        prog.canceled.connect(task.stop)
         prog.show()
-        self.ac.create_assets_from_files(files)
 
     def on_search(self, text: str):
         self.search_text_changed.emit((self.current_pool, text))

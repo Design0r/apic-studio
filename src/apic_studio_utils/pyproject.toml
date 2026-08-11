@@ -16,5 +16,16 @@ dynamic = ["version"]
 features = ["pyo3/extension-module"]
 profile = "release"
 
+# uv only rebuilds a local package when one of these changes. Without the Rust
+# entries it keys off pyproject.toml alone, so edits to the crate never make it
+# into the venv (or into the PyInstaller bundle, which collects site-packages).
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "Cargo.toml" },
+    { file = "Cargo.lock" },
+    { file = "src/**/*.rs" },
+]
+
 [dependency-groups]
 dev = ["maturin>=1.9.4", "tomli>=2.0.1"]

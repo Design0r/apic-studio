@@ -228,11 +228,12 @@ class AttributeEditor(QWidget):
 
     def on_load(self, asset: Asset):
         self.current_asset = asset
+        asset.metadata.load()
+
         self.icon.set_icon(str(asset.icon_path))
         self.asset_name.setText(asset.name)
         self.asset_ext.setText(asset.suffix)
         self.asset_size.setText(asset.format_size())
         self.asset_path.setText(str(asset.path))
         self.asset_notes.setText(asset.metadata.notes)
-        asset.metadata.load()
         self.create_tags(asset.metadata.tags)

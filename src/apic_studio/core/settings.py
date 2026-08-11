@@ -25,11 +25,15 @@ class Settings(ABC):
     def __init__(self):
         self.pools = {}
 
+    @staticmethod
+    def is_persistent(key: str) -> bool:
+        return not key.startswith("pools") and not key.startswith("_")
+
     def to_dict(self) -> dict[str, Any]:
         return {
             key: value if not isinstance(value, Path) else str(value)
             for key, value in self.__dict__.items()
-            if not key.startswith("pools") or not key.startswith("_")
+            if self.is_persistent(key)
         }
 
     def from_dict(self, data: dict[str, Any]):
@@ -37,7 +41,7 @@ class Settings(ABC):
             return
 
         for key, default in self.__dict__.items():
-            if not hasattr(self, key):
+            if not self.is_persistent(key):
                 continue
             setattr(self, key, data.get(key, default))
 

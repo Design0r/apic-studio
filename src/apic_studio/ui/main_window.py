@@ -73,7 +73,9 @@ class MainWindow(QWidget):
         self.apic_model_tb = ModelToolbar(
             pools.ApicModelPoolManager(), self.dcc, label="Apic Models"
         )
-        self.apic_model_tb.set_current_pool(self.settings.ModelSettings.current_pool)
+        self.apic_model_tb.set_current_pool(
+            self.settings.ApicModelSettings.current_pool
+        )
         self.material_tb = MaterialToolbar(pools.MaterialPoolManager(), self.dcc)
         self.material_tb.set_current_pool(self.settings.MaterialSettings.current_pool)
         self.lightset_tb = ModelToolbar(

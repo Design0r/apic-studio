@@ -40,24 +40,37 @@ class Connection:
         response = self.recv()
         return response
 
-    def recv(self) -> dict[str, Any]:
-        ready, _, _ = select.select([self.socket], [], [], self.timeout)
-        if not ready:
-            Logger.warning(f"recv() timed out after {self.timeout}s")
-            raise TimeoutError(f"no data in {self.timeout}s")
+    def _recv_exactly(self, size: int) -> bytes:
+        # TCP is a stream: a single recv() can return a short read, so keep
+        # pulling until the full frame is here.
+        buffer = bytearray()
+        while len(buffer) < size:
+            ready, _, _ = select.select([self.socket], [], [], self.timeout)
+            if not ready:
+                Logger.warning(f"recv() timed out after {self.timeout}s")
+                raise TimeoutError(f"no data in {self.timeout}s")
 
-        header = self.socket.recv(4)
+            chunk = self.socket.recv(size - len(buffer))
+            if not chunk:
+                raise ConnectionError("connection closed while receiving message")
+
+            buffer += chunk
+
+        return bytes(buffer)
+
+    def recv(self) -> dict[str, Any]:
+        header = self._recv_exactly(4)
         body_size = int.from_bytes(header, "big")
-        response = self.socket.recv(body_size).decode("utf-8")
+        if not body_size:
+            raise ConnectionError("received an empty message")
+
+        response = self._recv_exactly(body_size).decode("utf-8")
 
         try:
             rjson = json.loads(response)
         except json.JSONDecodeError as e:
             Logger.error("failed to decode message")
             raise e
-        except TimeoutError:
-            Logger.error("message timed out")
-            return {}
 
         Logger.debug(f"receiving message: {rjson.get('message')}")
         return rjson

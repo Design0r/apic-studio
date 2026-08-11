@@ -110,7 +110,8 @@ class Cinema4D:
             if callback:
                 Logger.info("Finished c4dpy process")
                 callback()
-            self._renders.clear()
+            if rt in self._renders:
+                self._renders.remove(rt)
             rt.deleteLater()
 
         rt.finished.connect(on_finished)

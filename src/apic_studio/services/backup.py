@@ -52,11 +52,7 @@ class BackupManager:
         backup_dir = path.parent / "backups"
         backup_dir.mkdir(exist_ok=True)
 
-        versions: list[Path] = []
-        for b in backup_dir.iterdir():
-            versions.append(b)
-
-        next_version = len(versions) + 1
+        next_version = self._next_version(backup_dir)
 
         backup_path = (
             path.parent
@@ -69,6 +65,20 @@ class BackupManager:
         Logger.info(f"created backup {backup_path.name}")
 
         return backup
+
+    def _next_version(self, backup_dir: Path) -> int:
+        latest = 0
+        for b in backup_dir.iterdir():
+            if b.is_dir():
+                continue
+
+            version = b.stem.split("_")[-1]
+            if not version.isdecimal():
+                continue
+
+            latest = max(latest, int(version))
+
+        return latest + 1
 
     def _left_pad(self, value: str, pad_value: str, pad: int = 3) -> str:
         if len(value) > pad:

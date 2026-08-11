@@ -111,8 +111,8 @@ fn hdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
 #[pyfunction]
 fn screenshot(
     output: &str,
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
     width: u32,
     height: u32,
     resize_width: u32,
@@ -121,8 +121,8 @@ fn screenshot(
     use std::path::PathBuf;
 
     // Work in signed space so negative monitor origins are handled.
-    let shot_x = x as i32;
-    let shot_y = y as i32;
+    let shot_x = x;
+    let shot_y = y;
     let shot_w = width as i32;
     let shot_h = height as i32;
 

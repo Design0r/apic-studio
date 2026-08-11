@@ -108,7 +108,7 @@ class AssetLoaderWorker(QObject):
         thumb = self._default_icon
 
         asset_name = path.name
-        thumb_name = f"{path.stem}-thumbnail"
+        thumb_name = f"{path.name}-thumbnail"
 
         for ext in Asset.ASSET_EXT:
             asset_path = path / f"{asset_name}{ext}"
@@ -269,9 +269,11 @@ class CopyTask(QRunnable):
             asset_dir.mkdir(parents=True, exist_ok=True)
             try:
                 shutil.copy2(file, new_asset_path)
-                self.notifier.progress.emit(i + 1)
             except Exception as e:
                 Logger.exception(e)
+
+            # always advance, a stalled counter leaves the progress dialog open
+            self.notifier.progress.emit(i + 1)
 
         self.notifier.finished.emit()
 

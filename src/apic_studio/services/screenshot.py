@@ -40,12 +40,18 @@ class Screenshot(QObject):
         path = path.parent / f"{path.stem}-thumbnail{path.suffix}"
 
         screen = QGuiApplication.screenAt(QPoint(x, y))
-        dpr = screen.devicePixelRatio() if screen else 1.0
-        width = screen.availableSize().width() * dpr
-        height = screen.availableSize().height() * dpr
+        if not screen:
+            screen = QGuiApplication.primaryScreen()
 
-        phys_x = int((x - width) * dpr + width) if x > width else int(x * dpr)
-        phys_y = int((y - height) * dpr + height) if y > height else int(y * dpr)
+        dpr = screen.devicePixelRatio() if screen else 1.0
+
+        # Qt hands out logical coordinates on the virtual desktop, the capture
+        # backend wants physical ones. Scale the offset inside the screen the
+        # region sits on, so screens left of / above the primary keep their
+        # negative origin instead of wrapping around.
+        origin = screen.geometry().topLeft() if screen else QPoint(0, 0)
+        phys_x = int(origin.x() + (x - origin.x()) * dpr)
+        phys_y = int(origin.y() + (y - origin.y()) * dpr)
         phys_w = int(w * dpr)
         phys_h = int(h * dpr)
 

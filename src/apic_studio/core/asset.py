@@ -59,9 +59,14 @@ class Asset:
         try:
             if not str(self.icon_path).startswith(":icons"):
                 old_icon_path = new_folder_path / self.icon_path.name
-                new_icon_path = old_icon_path.rename(
-                    new_folder_path / (name + self.icon_path.suffix)
+                # keep the "-thumbnail" marker, it is how previews are found
+                marker = (
+                    "-thumbnail" if old_icon_path.stem.endswith("-thumbnail") else ""
                 )
+                new_icon_path = old_icon_path.rename(
+                    new_folder_path / f"{name}{marker}{self.icon_path.suffix}"
+                )
+                self.icon_path = new_icon_path
                 if create_icon:
                     self.icon = create_icon(str(new_icon_path))
         except Exception as e:

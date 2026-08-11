@@ -284,7 +284,7 @@ class Viewport(QWidget):
         for f in file_dir.iterdir():
             if f.suffix.lower() not in Asset.SDR_IMG_EXT:
                 continue
-            if not f.stem.endswith("-thumbnails"):
+            if not f.stem.endswith("-thumbnail"):
                 continue
             Logger.debug(f"Deleting preview: {f}")
             f.unlink()

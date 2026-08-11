@@ -680,15 +680,23 @@ class BackupDialog(QDialog):
         return level
 
     def get_selected_path(self) -> Optional[Path]:
-        selected = self.tree_widget.selectedItems()[0]
-        item_name = selected.text(0)
+        selection = self.tree_widget.selectedItems()
+        if not selection:
+            Logger.error("select an archived version first")
+            return None
 
-        _, backup = self.elements[item_name]
-
+        selected = selection[0]
         if not self.get_item_level(selected) == 1:
             Logger.error("select an archived version instead of the group")
             return None
 
+        item_name = selected.text(0)
+        element = self.elements.get(item_name)
+        if not element:
+            Logger.error(f"no archived version found for {item_name}")
+            return None
+
+        _, backup = element
         return backup.path
 
 

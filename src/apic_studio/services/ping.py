@@ -25,6 +25,7 @@ class PingWorker:
                 status = self._conn.status()
             except Exception:
                 if self.retry():
+                    time.sleep(self._sleep_duration)
                     continue
                 else:
                     self._conn._disconnect()  # type: ignore
@@ -41,10 +42,10 @@ class PingWorker:
             time.sleep(self._sleep_duration)
 
     def retry(self) -> bool:
-        if self._retry_counter == self._retries:
+        if self._retry_counter >= self._retries:
             return False
 
-        self._retries += 1
+        self._retry_counter += 1
         return True
 
 
