@@ -11,7 +11,6 @@ from apic_studio import __version__
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, DCCBridge, Screenshot, pools
 from apic_studio.ui.attribute_editor import AttributeEditor
-from apic_studio.ui.buttons import ViewportButton
 from apic_studio.ui.toolbar import (
     HdriToolbar,
     MaterialToolbar,
@@ -35,7 +34,6 @@ class MainWindow(QWidget):
         parent: Optional[QWidget] = None,
     ):
         super().__init__(parent)
-        self._widgets: dict[Path, ViewportButton] = {}
         self.settings = settings
         self.loader = AssetLoader()
         self.screenshot = Screenshot()
@@ -182,7 +180,7 @@ class MainWindow(QWidget):
         if not curr_pool:
             curr_pool = self.toolbar.current.current_pool
             if not curr_pool:
-                self.viewport._clear_layout()
+                self.viewport.clear()
                 return
 
         self.viewport.draw(curr_pool, force=force, filter=filter)
@@ -194,7 +192,7 @@ class MainWindow(QWidget):
         self.draw()
 
     def render_previews(self):
-        materials = [m for w in self.viewport.widgets.values() if (m := w.file)]
+        materials = self.viewport.asset_files()
         self.dcc.materials_preview_create_all(
             materials, callback=lambda: self.draw(force=True)
         )

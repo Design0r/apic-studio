@@ -242,6 +242,9 @@ class AssetLoader(QObject):
             self.worker.remove_from_cache(path)
         self.worker.add_task(path)
 
+    def forget(self, path: Path) -> None:
+        self.worker.remove_from_cache(path)
+
     def rename_asset(self, path: Path, name: str) -> Optional[Asset]:
         asset = self.worker.get_asset(path)
         if not asset:

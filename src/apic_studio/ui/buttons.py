@@ -1,40 +1,8 @@
-import shutil
-from pathlib import Path
-from typing import Optional, override
+from typing import Optional
 
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QIcon, QImage, QPixmap
-from PySide6.QtWidgets import (
-    QApplication,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QVBoxLayout,
-    QWidget,
-)
-
-STYLE = """
-ViewportButton QPushButton{
-    background-color: rgb(60,60,60);
-    border: 1px solid black;
-    border-bottom: none;
-    border-bottom: none;
-}
-ViewportButton QLabel{
-    font-size: 10pt;
-    background-color: rgb(60,60,60);
-    border: 1px solid black;
-    border-top: none;
-    border-bottom: 0.5px solid black;
-}
-ViewportButton QPushButton::hover{
-    background-color: rgb(128,128,128);
-}
-
-ViewportButton QPushButton::checked{
-    background-color: rgb(235, 177, 52);
-}
-"""
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import QApplication, QPushButton, QWidget
 
 
 class IconButton(QPushButton):
@@ -105,100 +73,6 @@ class SidebarButton(QPushButton):
 
     def set_tooltip(self, text: str) -> None:
         self.setToolTip(text)
-
-
-class ViewportButton(QWidget):
-    clicked = Signal()
-
-    def __init__(
-        self,
-        file: Path,
-        button_size: tuple[int, int],
-        checkable: bool = False,
-        parent: Optional[QWidget] = None,
-    ):
-        super().__init__(parent)
-        self.button_size = button_size
-        self.name = file.stem
-        self.suffix = file.suffix
-        self.checkable = checkable
-        self.file = file
-
-        self.setMinimumSize(*button_size)
-        self.setToolTip(file.stem)
-
-        self.init_widgets()
-        self.init_layouts()
-        self.init_signals()
-
-    def init_widgets(self):
-        self.icon = IconButton(self.button_size, self.checkable)
-        self.label = QLabel(self.name)
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.label.setContentsMargins(0, 3, 0, 5)
-        self.label.setMaximumWidth(self.button_size[0])
-
-        self.file_size = QLabel("Size: ")
-        self.file_size.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.file_size.setContentsMargins(0, 5, 0, 5)
-        self.file_size.setStyleSheet(
-            "border-right: none;border-bottom:1px solid black; font-size: 8pt;"
-        )
-        self.file_type = QLabel("Type: ")
-        self.file_type.setStyleSheet(
-            "border-left: none;border-bottom:1px solid black;font-size: 8pt;"
-        )
-        self.file_type.setContentsMargins(0, 5, 0, 5)
-        self.file_type.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-    def init_layouts(self):
-        self.main_layout = QVBoxLayout(self)
-        self.info_layout = QHBoxLayout()
-
-        self.main_layout.setContentsMargins(0, 0, 0, 0)
-
-        self.info_layout.addWidget(self.file_size)
-        self.info_layout.addWidget(self.file_type)
-
-        self.main_layout.setSpacing(0)
-        self.main_layout.addWidget(self.icon)
-        self.main_layout.addWidget(self.label)
-        self.main_layout.addLayout(self.info_layout)
-
-    def init_signals(self):
-        self.icon.clicked.connect(self.clicked.emit)
-
-    @staticmethod
-    def _format_filesize(size: int) -> str:
-        # bytes
-        filesize = f"{size / 1_000:.2f}KB"
-        if size >= 100_000_000:
-            filesize = f"{size / 1_000_000_000:.2f}GB"
-        elif size >= 100_000:
-            filesize = f"{size / 1_000_000:.2f}MB"
-
-        return filesize
-
-    def set_file(self, file: Path, size: int, filetype: str):
-        filesize = self._format_filesize(size)
-        self.file_size.setText(f"Size: {filesize}")
-        self.file_type.setText(f"Type: {filetype}")
-        self.file = file
-        self.label.setText(file.stem)
-
-    def set_thumbnail(self, image: QImage, size: int):
-        # the loader decodes to a QImage off-thread, pixmaps are built here on
-        # the GUI thread where Qt allows it
-        self.icon.setIcon(QIcon(QPixmap.fromImage(image)))
-        self.icon.setIconSize(QSize(size, size))
-
-    @override
-    def deleteLater(self):
-        if self.file.is_dir():
-            shutil.rmtree(self.file, ignore_errors=True)
-        else:
-            shutil.rmtree(self.file.parent, ignore_errors=True)
-        super().deleteLater()
 
 
 class ConnectionButton(QPushButton):

@@ -1,22 +1,40 @@
 from __future__ import annotations
 
+import shutil
 import time
-from functools import partial
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QPoint, Qt, Signal
+from PySide6.QtCore import QPoint, QSize, QSortFilterProxyModel, Qt, Signal
 from PySide6.QtGui import QAction
-from PySide6.QtWidgets import QHBoxLayout, QMenu, QScrollArea, QWidget
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QHBoxLayout,
+    QListView,
+    QMenu,
+    QWidget,
+)
 
 from apic_studio.core import Asset
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, BackupManager, DCCBridge, Screenshot
-from apic_studio.ui.buttons import STYLE as VIEWPORT_BUTTON_STYLE
-from apic_studio.ui.buttons import ViewportButton
+from apic_studio.ui.asset_view import (
+    KEY_ROLE,
+    AssetDelegate,
+    AssetModel,
+    AssetRow,
+)
 from apic_studio.ui.dialogs import CreateBackupDialog, RenameAssetDialog
-from apic_studio.ui.flow_layout import FlowLayout
 from shared.logger import Logger
+
+VIEWS = ("textures", "models", "apic_models", "materials", "hdris", "lightsets")
+
+VIEW_STYLE = """
+QListView {
+    background-color: rgb(68,68,68);
+    border: none;
+}
+"""
 
 
 class Viewport(QWidget):
@@ -35,14 +53,19 @@ class Viewport(QWidget):
         self.settings = settings
         self.screenshot = screenshot
         self.dcc = dcc
-        self._widgets: dict[str, dict[str, ViewportButton]] = {
-            "textures": {},
-            "models": {},
-            "apic_models": {},
-            "materials": {},
-            "hdris": {},
-            "lightsets": {},
-        }
+
+        # one model per view so switching views keeps each pool's contents
+        self._models: dict[str, AssetModel] = {}
+        self._proxies: dict[str, QSortFilterProxyModel] = {}
+        for name in VIEWS:
+            model = AssetModel(self)
+            proxy = QSortFilterProxyModel(self)
+            proxy.setSourceModel(model)
+            proxy.setFilterRole(KEY_ROLE)
+            proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
+            self._models[name] = model
+            self._proxies[name] = proxy
+
         self.curr_view = "materials"
         self.curr_pool: Path
         self.backup = BackupManager()
@@ -50,41 +73,51 @@ class Viewport(QWidget):
         self._pool_asset_index: dict[Path, list[Path]] = {}
 
         self._pending_pool: Optional[Path] = None
+        self._drawn_pool: Optional[Path] = None
         self._draw_filter: Optional[str] = None
         self._draw_force: bool = False
         self._draw_timer: float = 0.0
-
-        # pool currently laid out, with the widgets that make it up, so a
-        # search can re-filter by toggling visibility instead of reparenting
-        self._drawn_pool: Optional[Path] = None
-        self._laid_out: list[tuple[str, Path, ViewportButton]] = []
-        self._requested: set[Path] = set()
 
         self.init_widgets()
         self.init_layouts()
         self.init_signals()
 
     def init_widgets(self):
-        self.grid_widget = QWidget()
-        self.grid_widget.setStyleSheet(VIEWPORT_BUTTON_STYLE)
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setVerticalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOn
-        )
-        self.scroll_area.setWidget(self.grid_widget)
+        self.view = QListView()
+        self.view.setModel(self.proxy)
+        self.view.setItemDelegate(AssetDelegate(self.view))
+        self.view.setViewMode(QListView.ViewMode.IconMode)
+        self.view.setFlow(QListView.Flow.LeftToRight)
+        self.view.setWrapping(True)
+        self.view.setResizeMode(QListView.ResizeMode.Adjust)
+        self.view.setMovement(QListView.Movement.Static)
+        # only visible tiles are ever painted, so the pool size stops mattering
+        self.view.setUniformItemSizes(True)
+        self.view.setLayoutMode(QListView.LayoutMode.Batched)
+        self.view.setBatchSize(128)
+        self.view.setSpacing(3)
+        self.view.setGridSize(QSize(206, 256))
+        self.view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        self.view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        self.view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.view.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.view.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.view.setStyleSheet(VIEW_STYLE)
+        # Fusion does not enable hover on item views the way the native Windows
+        # styles do, so ask for the hover events the delegate paints with
+        self.view.viewport().setAttribute(Qt.WidgetAttribute.WA_Hover, True)
 
     def init_layouts(self):
-        self.flow_layout = FlowLayout(self.grid_widget)
-
         self.main_layout = QHBoxLayout(self)
         self.main_layout.setContentsMargins(5, 5, 0, 0)
-        self.main_layout.addWidget(self.scroll_area)
+        self.main_layout.addWidget(self.view)
 
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
         self.loader.pool_scanned.connect(self.on_pool_scanned)
+        self.view.clicked.connect(self.on_item_clicked)
+        self.view.customContextMenuRequested.connect(self.on_context_menu)
 
         def load(x: Path):
             self.loader.load_asset(x, refresh=True)
@@ -92,68 +125,42 @@ class Viewport(QWidget):
         self.screenshot.created.connect(load)
 
     @property
-    def widgets(self) -> dict[str, ViewportButton]:
-        return self._widgets[self.curr_view]
+    def model(self) -> AssetModel:
+        return self._models[self.curr_view]
+
+    @property
+    def proxy(self) -> QSortFilterProxyModel:
+        return self._proxies[self.curr_view]
+
+    def asset_files(self) -> list[Path]:
+        return self.model.files()
 
     def on_asset_load(self, asset: Asset):
-        for view_widgets in self._widgets.values():
-            w = view_widgets.get(asset.path.stem)
-            if w:
-                w.set_thumbnail(asset.icon, 185)
-                w.set_file(asset.file, asset.size, asset.suffix)
+        for model in self._models.values():
+            if model.update_asset(asset):
                 break
 
-    def _clear_layout(self):
+    def clear(self) -> None:
         self._drawn_pool = None
-        self._laid_out.clear()
-        self._requested.clear()
-
-        self.grid_widget.setUpdatesEnabled(False)
-        try:
-            while self.flow_layout.count():
-                item = self.flow_layout.takeAt(self.flow_layout.count() - 1)
-                if not item:
-                    continue
-                widget = item.widget()
-                if widget:
-                    widget.setParent(None)
-        finally:
-            self.grid_widget.setUpdatesEnabled(True)
-
-    def _apply_filter(self) -> None:
-        needle = self._draw_filter
-
-        self.grid_widget.setUpdatesEnabled(False)
-        try:
-            for key, path, widget in self._laid_out:
-                matches = not needle or needle in key.lower()
-                widget.setVisible(matches)
-
-                # a widget hidden on the previous pass never got a thumbnail
-                if matches and path not in self._requested:
-                    self._requested.add(path)
-                    self.loader.load_asset(path)
-        finally:
-            self.grid_widget.setUpdatesEnabled(True)
+        self.model.set_assets([])
 
     def draw(
         self, path: Path, force: bool = False, filter: Optional[str] = None
     ) -> None:
-        # Re-filtering the pool already on screen is just a visibility pass.
-        # Tearing the layout down and reparenting every widget costs ~100x more.
+        self._draw_filter = filter.lower() if filter else None
+        # filtering is a proxy pass over the model, no widgets are touched
+        self.proxy.setFilterFixedString(self._draw_filter or "")
+
         if not force and path and path == self._drawn_pool:
-            self._draw_filter = filter.lower() if filter else None
-            self._apply_filter()
             return
 
-        self._clear_layout()
+        self.clear()
 
         if not path or not path.exists():
             self._pending_pool = None
             return
 
         self.curr_pool = path.parent
-        self._draw_filter = filter.lower() if filter else None
         self._draw_force = force
         self._pending_pool = path
 
@@ -173,100 +180,97 @@ class Viewport(QWidget):
         self._render_assets(assets)
 
     def _render_assets(self, assets: list[Path]) -> None:
-        needle = self._draw_filter
         force = self._draw_force
-        widgets = self.widgets
+        model = self.model
 
-        self.grid_widget.setUpdatesEnabled(False)
-        try:
-            for x in assets:
-                key = x.stem
-
-                b = widgets.get(key)
-                is_new = b is None
-                if b is None:
-                    b = ViewportButton(x, (200, 200))
-                    b.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-                    b.customContextMenuRequested.connect(
-                        partial(self.on_context_menu, b)
-                    )
-                    b.clicked.connect(partial(self.on_btn_click, x))
-                    widgets[key] = b
-
-                # everything goes into the layout, the filter only decides what
-                # is visible, so later searches stay a visibility pass
-                self.flow_layout.addWidget(b)
-                self._laid_out.append((key, x, b))
-
-                matches = not needle or needle in key.lower()
-                b.setVisible(matches)
-                if not matches:
-                    continue
-
-                self._requested.add(x)
-                if force or is_new:
-                    self.loader.load_asset(x, refresh=force)
-        finally:
-            self.grid_widget.setUpdatesEnabled(True)
-
+        model.set_assets(assets)
         self._drawn_pool = self._pending_pool
 
-        Logger.info(
-            f"finished loading pool {self.curr_pool.stem} in {(time.perf_counter() - self._draw_timer):.2f}s"
-        )
-        self._draw_timer = 0.0
+        for x in assets:
+            cached = None if force else self.loader.get_asset(x)
+            if cached is not None:
+                # already decoded, no need to go through the loader thread
+                model.update_asset(cached)
+                continue
 
-    def on_btn_click(self, x: Path):
-        asset = self.loader.get_asset(x)
+            self.loader.load_asset(x, refresh=force)
+
+        if self._draw_timer:
+            Logger.info(
+                f"finished loading pool {self.curr_pool.stem} in "
+                f"{(time.perf_counter() - self._draw_timer):.2f}s"
+            )
+            self._draw_timer = 0.0
+
+    def _row_at(self, point: QPoint) -> Optional[AssetRow]:
+        index = self.view.indexAt(point)
+        if not index.isValid():
+            return None
+
+        return self.model.row_at(self.proxy.mapToSource(index))
+
+    def on_item_clicked(self, index) -> None:
+        row = self.model.row_at(self.proxy.mapToSource(index))
+        if not row:
+            return
+
+        asset = self.loader.get_asset(row.asset)
         if asset:
             self.asset_clicked.emit(asset)
 
     def set_current_view(self, view: str):
-        if view not in self._widgets:
+        if view not in self._models:
             return
 
         self.curr_view = view
-        self._clear_layout()
+        self._drawn_pool = None
+        self.view.setModel(self.proxy)
 
-    def on_context_menu(self, btn: ViewportButton, point: QPoint):
+    def on_context_menu(self, point: QPoint):
+        row = self._row_at(point)
+        if not row:
+            return
+
+        file = row.file
+
         open_act = QAction("Open")
-        open_act.triggered.connect(lambda: self.on_open_dialog(btn.file))
+        open_act.triggered.connect(lambda: self.on_open_dialog(file))
 
         import_act = QAction("Import")
         import_as_area = QAction("Import as Arealight")
-        import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(btn.file))
+        import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(file))
 
         reference_act = QAction("Reference")
 
         backup_act = QAction("Create Backup")
-        backup_act.triggered.connect(lambda: self.on_backup(btn.file))
+        backup_act.triggered.connect(lambda: self.on_backup(file))
 
         repath_act = QAction("Repath Textures")
-        repath_act.triggered.connect(lambda: self.dcc.repath_textures(btn.file))
+        repath_act.triggered.connect(lambda: self.dcc.repath_textures(file))
 
         if self.curr_view in ("models", "apic_models", "lightsets"):
-            import_act.triggered.connect(lambda: self.dcc.models_import(btn.file))
-            reference_act.triggered.connect(lambda: self.dcc.models_reference(btn.file))
+            import_act.triggered.connect(lambda: self.dcc.models_import(file))
+            reference_act.triggered.connect(lambda: self.dcc.models_reference(file))
         elif self.curr_view == "materials":
-            import_act.triggered.connect(lambda: self.dcc.materials_import(btn.file))
+            import_act.triggered.connect(lambda: self.dcc.materials_import(file))
         elif self.curr_view == "hdris":
             import_act.setText("Import as Domelight")
-            import_act.triggered.connect(lambda: self.dcc.hdri_import_as_dome(btn.file))
+            import_act.triggered.connect(lambda: self.dcc.hdri_import_as_dome(file))
 
         render_act = QAction("Render Preview")
-        render_act.triggered.connect(lambda: self.on_render(btn))
+        render_act.triggered.connect(lambda: self.on_render(file))
 
         delete_preview_act = QAction("Delete Preview")
-        delete_preview_act.triggered.connect(lambda: self.on_del_preview(btn))
+        delete_preview_act.triggered.connect(lambda: self.on_del_preview(file))
 
         screenshot_act = QAction("Create Screenshot")
-        screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(btn.file))
+        screenshot_act.triggered.connect(lambda: self.screenshot.show_dialog(file))
 
         rename_act = QAction("Rename")
-        rename_act.triggered.connect(lambda: self.rename_asset(btn))
+        rename_act.triggered.connect(lambda: self.rename_asset(file))
 
         delete_act = QAction("Delete")
-        delete_act.triggered.connect(lambda: self.delete_widget(btn))
+        delete_act.triggered.connect(lambda: self.delete_asset(file))
 
         menu = QMenu()
 
@@ -301,12 +305,12 @@ class Viewport(QWidget):
         menu.addAction(rename_act)
         menu.addAction(delete_act)
 
-        menu.exec_(btn.mapToGlobal(point))
+        menu.exec_(self.view.viewport().mapToGlobal(point))
 
-    def on_render(self, btn: ViewportButton):
+    def on_render(self, file: Path):
         self.dcc.materials_preview_create(
-            btn.file,
-            callback=lambda: self.loader.load_asset(btn.file.parent, refresh=True),
+            file,
+            callback=lambda: self.loader.load_asset(file.parent, refresh=True),
         )
 
     def on_backup(self, path: Path):
@@ -322,8 +326,8 @@ class Viewport(QWidget):
         backup.rejected.connect(lambda: self.dcc.file_open(path))
         backup.exec()
 
-    def on_del_preview(self, btn: ViewportButton):
-        file_dir = btn.file.parent
+    def on_del_preview(self, file: Path):
+        file_dir = file.parent
         for f in file_dir.iterdir():
             if f.suffix.lower() not in Asset.SDR_IMG_EXT:
                 continue
@@ -333,33 +337,31 @@ class Viewport(QWidget):
             f.unlink()
         self.loader.load_asset(file_dir, refresh=True)
 
-    def delete_widget(self, btn: ViewportButton):
-        del self.widgets[btn.file.stem]
-        self._invalidate_layout_cache()
-        btn.setParent(None)
-        btn.deleteLater()
+    def delete_asset(self, file: Path):
+        asset_dir = file if file.is_dir() else file.parent
 
-    def _invalidate_layout_cache(self) -> None:
-        # the widget set changed under us, so the visibility fast path can no
-        # longer trust its list; force the next draw to rebuild the layout
-        self._drawn_pool = None
-        self._laid_out.clear()
+        self.model.remove(asset_dir)
+        self._forget(asset_dir)
+        shutil.rmtree(asset_dir, ignore_errors=True)
+
+        Logger.info(f"deleted asset {asset_dir.name}")
 
     def shutdown(self):
-        # Nothing to tear down: asset drawing is synchronous and the loader
-        # thread is owned/stopped by the application.
+        # Nothing to tear down: the view is model driven and the loader thread
+        # is owned/stopped by the application.
         pass
 
-    def rename_asset(self, btn: ViewportButton):
-        dialog = RenameAssetDialog(btn.file.stem)
-        dialog.asset_renamed.connect(lambda x: self.on_rename_asset(btn, x))  # type: ignore
+    def rename_asset(self, file: Path):
+        dialog = RenameAssetDialog(file.stem)
+        dialog.asset_renamed.connect(lambda x: self.on_rename_asset(file, x))  # type: ignore
         dialog.exec()
 
-    def on_rename_asset(self, btn: ViewportButton, name: str):
-        if not name or not btn.file.exists():
+    def on_rename_asset(self, file: Path, name: str):
+        if not name or not file.exists():
             return
 
-        new_asset = self.loader.rename_asset(btn.file.parent, name)
+        asset_dir = file.parent
+        new_asset = self.loader.rename_asset(asset_dir, name)
         if not new_asset:
             return
 
@@ -367,9 +369,23 @@ class Viewport(QWidget):
 
         self.backup.rename_from_asset(new_asset.path, name)
 
-        old_btn_key = btn.file.stem
-        del self.widgets[old_btn_key]
-        self.widgets[name] = btn
-        self._invalidate_layout_cache()
+        self.model.rename(asset_dir, new_asset)
+        self._forget(asset_dir, replacement=new_asset.path)
 
         self.loader.load_asset(new_asset.path)
+
+    def _forget(self, asset_dir: Path, replacement: Optional[Path] = None) -> None:
+        """Drop a path the pool no longer holds, so a redraw cannot resurrect it."""
+        self.loader.forget(asset_dir)
+
+        for pool, assets in self._pool_asset_index.items():
+            if asset_dir not in assets:
+                continue
+
+            if replacement:
+                assets[assets.index(asset_dir)] = replacement
+            else:
+                assets.remove(asset_dir)
+
+            self._pool_asset_index[pool] = assets
+            break
