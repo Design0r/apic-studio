@@ -25,7 +25,7 @@ class Application:
         self.settings.load_settings()
 
         Logger.write_to_file(
-            Path(self.settings.CoreSettings.logging_path), level=logging.DEBUG
+            Path(self.settings.CoreSettings._logging_path), level=logging.DEBUG
         )
         Logger.set_propagate(False)
         Logger.info("initializing Apic Studio...")

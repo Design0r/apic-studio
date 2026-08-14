@@ -3,7 +3,6 @@ from __future__ import annotations
 import shutil
 import time
 from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import QPoint, QSize, QSortFilterProxyModel, Qt, Signal
 from PySide6.QtGui import QAction
@@ -24,7 +23,11 @@ from apic_studio.ui.asset_view import (
     AssetModel,
     AssetRow,
 )
-from apic_studio.ui.dialogs import CreateBackupDialog, RenameAssetDialog
+from apic_studio.ui.dialogs import (
+    CreateBackupDialog,
+    DeleteAssetDialog,
+    RenameAssetDialog,
+)
 from shared.logger import Logger
 
 VIEWS = ("textures", "models", "apic_models", "materials", "hdris", "lightsets")
@@ -37,6 +40,20 @@ QListView {
 """
 
 
+class AssetListView(QListView):
+    """Icon-mode list with a wheel tick that moves less than a row of tiles.
+
+    QListView re-pins the vertical single step to a full item height on every
+    geometry update, so the step has to be restored after each one.
+    """
+
+    SCROLL_STEP = 40
+
+    def updateGeometries(self) -> None:
+        super().updateGeometries()
+        self.verticalScrollBar().setSingleStep(self.SCROLL_STEP)
+
+
 class Viewport(QWidget):
     asset_clicked = Signal(Asset)
 
@@ -46,7 +63,7 @@ class Viewport(QWidget):
         settings: SettingsManager,
         loader: AssetLoader,
         screenshot: Screenshot,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.loader = loader
@@ -72,9 +89,9 @@ class Viewport(QWidget):
 
         self._pool_asset_index: dict[Path, list[Path]] = {}
 
-        self._pending_pool: Optional[Path] = None
-        self._drawn_pool: Optional[Path] = None
-        self._draw_filter: Optional[str] = None
+        self._pending_pool: Path | None = None
+        self._drawn_pool: Path | None = None
+        self._draw_filter: str | None = None
         self._draw_force: bool = False
         self._draw_timer: float = 0.0
 
@@ -83,7 +100,7 @@ class Viewport(QWidget):
         self.init_signals()
 
     def init_widgets(self):
-        self.view = QListView()
+        self.view = AssetListView()
         self.view.setModel(self.proxy)
         self.view.setItemDelegate(AssetDelegate(self.view))
         self.view.setViewMode(QListView.ViewMode.IconMode)
@@ -144,9 +161,7 @@ class Viewport(QWidget):
         self._drawn_pool = None
         self.model.set_assets([])
 
-    def draw(
-        self, path: Path, force: bool = False, filter: Optional[str] = None
-    ) -> None:
+    def draw(self, path: Path, force: bool = False, filter: str | None = None) -> None:
         self._draw_filter = filter.lower() if filter else None
         # filtering is a proxy pass over the model, no widgets are touched
         self.proxy.setFilterFixedString(self._draw_filter or "")
@@ -202,7 +217,7 @@ class Viewport(QWidget):
             )
             self._draw_timer = 0.0
 
-    def _row_at(self, point: QPoint) -> Optional[AssetRow]:
+    def _row_at(self, point: QPoint) -> AssetRow | None:
         index = self.view.indexAt(point)
         if not index.isValid():
             return None
@@ -270,7 +285,7 @@ class Viewport(QWidget):
         rename_act.triggered.connect(lambda: self.rename_asset(file))
 
         delete_act = QAction("Delete")
-        delete_act.triggered.connect(lambda: self.delete_asset(file))
+        delete_act.triggered.connect(lambda: self.on_del_asset(file))
 
         menu = QMenu()
 
@@ -337,6 +352,11 @@ class Viewport(QWidget):
             f.unlink()
         self.loader.load_asset(file_dir, refresh=True)
 
+    def on_del_asset(self, file: Path):
+        dialog = DeleteAssetDialog(file.stem)
+        dialog.accepted.connect(lambda: self.delete_asset(file))
+        dialog.exec()
+
     def delete_asset(self, file: Path):
         asset_dir = file if file.is_dir() else file.parent
 
@@ -347,8 +367,6 @@ class Viewport(QWidget):
         Logger.info(f"deleted asset {asset_dir.name}")
 
     def shutdown(self):
-        # Nothing to tear down: the view is model driven and the loader thread
-        # is owned/stopped by the application.
         pass
 
     def rename_asset(self, file: Path):
@@ -374,7 +392,7 @@ class Viewport(QWidget):
 
         self.loader.load_asset(new_asset.path)
 
-    def _forget(self, asset_dir: Path, replacement: Optional[Path] = None) -> None:
+    def _forget(self, asset_dir: Path, replacement: Path | None = None) -> None:
         """Drop a path the pool no longer holds, so a redraw cannot resurrect it."""
         self.loader.forget(asset_dir)
 

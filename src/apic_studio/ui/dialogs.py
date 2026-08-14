@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal, NamedTuple, Optional
+from typing import Literal, NamedTuple
 
 from PySide6.QtCore import QPoint, Qt, Signal
 from PySide6.QtGui import QCursor, QIcon, QMouseEvent
@@ -39,7 +39,7 @@ from .buttons import IconButton
 class CreatePoolDialog(QDialog):
     pool_created = Signal(tuple)
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Create new Pool")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
@@ -100,7 +100,7 @@ class CreatePoolDialog(QDialog):
 class DeletePoolDialog(QDialog):
     pool_deleted = Signal()
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.setWindowTitle("Delete current Pool")
@@ -138,6 +138,49 @@ class DeletePoolDialog(QDialog):
         super().accept()
 
 
+class DeleteAssetDialog(QDialog):
+    accepted = Signal()
+
+    def __init__(self, asset_name: str, parent: QWidget | None = None):
+        super().__init__(parent)
+
+        self.asset_name = asset_name
+
+        self.setWindowTitle(f"Delete {asset_name}")
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.label = QLabel(f"Do you want to delete {self.asset_name}?")
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.buttons_layout = QHBoxLayout()
+
+        self.buttons_layout.addStretch()
+        self.buttons_layout.addWidget(self.button_box)
+
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addLayout(self.buttons_layout)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+    def accept(self) -> None:
+        self.accepted.emit()
+        super().accept()
+
+
 class ExportModelDialog(QDialog):
     class ExportType(StrEnum):
         SAVE = "Save current Scene"
@@ -153,7 +196,7 @@ class ExportModelDialog(QDialog):
 
     finished = Signal(Data)
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.setWindowTitle("Export")
@@ -223,7 +266,7 @@ class ExportMaterialDialog(QDialog):
 
     finished = Signal(Data)
 
-    def __init__(self, materials: list[str], parent: Optional[QWidget] = None):
+    def __init__(self, materials: list[str], parent: QWidget | None = None):
         super().__init__(parent)
         self.materials = materials
         self._widgets: list[tuple[QCheckBox, QLabel]] = []
@@ -330,7 +373,7 @@ class ScreenshotResult(NamedTuple):
 class ScreenshotDialog(QDialog):
     accepted = Signal(ScreenshotResult)
 
-    def __init__(self, model_path: Path, parent: Optional[QWidget] = None):
+    def __init__(self, model_path: Path, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
         self.setStyleSheet("border: 2px solid black;")
@@ -415,7 +458,7 @@ class ScreenshotDialog(QDialog):
 
 
 class SettingsDialog(QDialog):
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Settings")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
@@ -597,7 +640,7 @@ class BackupDialog(QDialog):
     def __init__(
         self,
         archive_path: Path,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.archive_path = archive_path
@@ -679,7 +722,7 @@ class BackupDialog(QDialog):
             level += 1
         return level
 
-    def get_selected_path(self) -> Optional[Path]:
+    def get_selected_path(self) -> Path | None:
         selection = self.tree_widget.selectedItems()
         if not selection:
             Logger.error("select an archived version first")
@@ -701,7 +744,7 @@ class BackupDialog(QDialog):
 
 
 class CreateBackupDialog(QDialog):
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowTitle("Create Backup")
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
@@ -734,7 +777,7 @@ class CreateBackupDialog(QDialog):
 class ImportModelsDialog(QDialog):
     finished = Signal(list)
 
-    def __init__(self, models: dict[str, Path], parent: Optional[QWidget] = None):
+    def __init__(self, models: dict[str, Path], parent: QWidget | None = None):
         super().__init__(parent)
         self.models = models
         self._widgets: list[tuple[QCheckBox, QLabel]] = []
@@ -825,7 +868,7 @@ class ProgressDialog(QProgressDialog):
         labelText: str,
         minimum: int,
         maximum: int,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(
             labelText,
@@ -845,7 +888,7 @@ class TagDialog(QDialog):
     tags_selected = Signal(list)
     tag_created = Signal(str)
 
-    def __init__(self, tags: list[str], parent: Optional[QWidget] = None):
+    def __init__(self, tags: list[str], parent: QWidget | None = None):
         super().__init__(parent)
         self.setWindowIcon(QIcon(":icons/apic_logo.png"))
         self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
@@ -923,7 +966,7 @@ class TagDialog(QDialog):
 class RenameAssetDialog(QDialog):
     asset_renamed = Signal(str)
 
-    def __init__(self, old_name: str, parent: Optional[QWidget] = None):
+    def __init__(self, old_name: str, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.old_name = old_name

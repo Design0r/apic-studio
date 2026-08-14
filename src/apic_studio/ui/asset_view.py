@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional, Union
+from typing import Union
 
 from PySide6.QtCore import (
     QAbstractListModel,
@@ -31,7 +31,7 @@ Index = Union[QModelIndex, QPersistentModelIndex]
 class AssetRow:
     """One tile's worth of data. `file` is the asset folder until it loads."""
 
-    __slots__ = ("key", "asset", "file", "size", "type", "image")
+    __slots__ = ("asset", "file", "image", "key", "size", "type")
 
     def __init__(self, path: Path) -> None:
         self.key = path.stem
@@ -39,11 +39,11 @@ class AssetRow:
         self.file = path
         self.size = ""
         self.type = ""
-        self.image: Optional[QImage] = None
+        self.image: QImage | None = None
 
 
 class AssetModel(QAbstractListModel):
-    def __init__(self, parent: Optional[QObject] = None) -> None:
+    def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
         self._rows: list[AssetRow] = []
         self._by_key: dict[str, int] = {}
@@ -80,7 +80,7 @@ class AssetModel(QAbstractListModel):
 
     # --- lookups ---
 
-    def row_at(self, index: Index) -> Optional[AssetRow]:
+    def row_at(self, index: Index) -> AssetRow | None:
         if not index.isValid():
             return None
 
@@ -181,8 +181,8 @@ class AssetDelegate(QStyledItemDelegate):
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
-        rect = option.rect  # type: ignore[attr-defined]
-        state = option.state  # type: ignore[attr-defined]
+        rect = option.rect
+        state = option.state
         hovered = bool(state & QStyle.StateFlag.State_MouseOver)
         selected = bool(state & QStyle.StateFlag.State_Selected)
 

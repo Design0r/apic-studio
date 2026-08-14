@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
 from enum import StrEnum
 from pathlib import Path
-from typing import Generator, NamedTuple, Optional
+from typing import NamedTuple
 
 from shared.logger import Logger
 
@@ -80,7 +81,7 @@ class Tables(StrEnum):
 
 @contextmanager
 def connection() -> Generator[sqlite3.Connection]:
-    conn: Optional[sqlite3.Connection] = None
+    conn: sqlite3.Connection | None = None
     try:
         conn = _create_connection()
         yield conn
@@ -92,7 +93,7 @@ def connection() -> Generator[sqlite3.Connection]:
 
 
 def _create_connection() -> sqlite3.Connection:
-    path = SettingsManager().CoreSettings.db_path
+    path = SettingsManager().CoreSettings._db_path
     conn = sqlite3.connect(path)
     conn.executescript("""
         PRAGMA synchronous = NORMAL;
@@ -183,7 +184,7 @@ def run_migration(conn: sqlite3.Connection, migration: str) -> None:
 
 def init_db():
     Logger.info("initializing DB...")
-    path = Path(SettingsManager().CoreSettings.db_path)
+    path = Path(SettingsManager().CoreSettings._db_path)
 
     if path.exists():
         Logger.info(f"detected existing DB {path}")

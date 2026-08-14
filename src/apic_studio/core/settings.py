@@ -120,14 +120,19 @@ class CoreSettings(Settings):
         super().__init__()
         self._macos_local = Path.home() / "ApicStudio"
         self._win_local = Path.home() / "AppData" / "Local" / "ApicStudio"
-        self._local = self._win_local if sys.platform == "win32" else self._win_local
+        self._local = self._win_local if sys.platform == "win32" else self._macos_local
+        self.config_path = str(self._local / f"config-{gethostname()}.json")
+
         self.socket_addr = "localhost"
         self.socket_port = 1337
-        self.root_path = str(Path(__file__).parent.parent.parent)
-        self.config_path = str(self._local / f"config-{gethostname()}.json")
-        self.db_path = str(Path(self.root_path, "apic_studio.db"))
-        self.logs = str(Path(self.root_path, "logs"))
-        self.logging_path = str(Path(self.logs, f"{datetime.now().date()}.log"))
+
+        root = Path(__file__).parent.parent.parent
+        self.root_path = str(root)
+        self._db_path = str(root / "apic_studio.db")
+        self._logs = str(root / "logs")
+        self._logging_path = str(root / "logs" / f"{datetime.now().date()}.log")
+
+        self.set_root_path(str(Path(__file__).parent.parent.parent))
 
     @property
     def address(self) -> tuple[str, int]:
@@ -135,9 +140,10 @@ class CoreSettings(Settings):
 
     def set_root_path(self, value: str):
         self.root_path = value
-        self.db_path = str(Path(value, "apic_studio.db"))
-        self.logs = str(Path(value, "logs"))
-        self.logging_path = str(Path(value, "logs", f"{datetime.now().date()}.log"))
+        root = Path(value)
+        self._db_path = str(root / "apic_studio.db")
+        self._logs = str(root / "logs")
+        self._logging_path = str(root / "logs" / f"{datetime.now().date()}.log")
 
 
 class SettingsManager:
@@ -206,3 +212,5 @@ class SettingsManager:
         for k, v in data.items():
             setting = getattr(self, k)
             setting.from_dict(v or {})
+
+        self.CoreSettings.set_root_path(self.CoreSettings.root_path)

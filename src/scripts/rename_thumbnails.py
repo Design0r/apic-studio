@@ -8,7 +8,7 @@ def run():
     s = settings.SettingsManager()
     s.load_settings()
 
-    s.CoreSettings.db_path = (
+    s.CoreSettings._db_path = (
         "\\\\apicnas\\Produktion\\Pipeline\\Apic Studio\\apic_studio.db"
     )
 

@@ -1,6 +1,6 @@
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Union, override
+from typing import override
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -85,7 +85,7 @@ class Toolbar(QWidget):
         self,
         direction: ToolbarDirection,
         thickness: int,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.direction = direction
@@ -128,7 +128,7 @@ class Toolbar(QWidget):
 
 
 class Sidebar(Toolbar):
-    def __init__(self, width: int, parent: Optional[QWidget] = None):
+    def __init__(self, width: int, parent: QWidget | None = None):
         super().__init__(ToolbarDirection.Vertical, width, parent)
         self.setStyleSheet(SIDEBAR_STYLE)
         self.buttons = (
@@ -234,7 +234,7 @@ class Sidebar(Toolbar):
         self.main_layout.addWidget(HLine())
         self.main_layout.addWidget(self.conn_btn)
 
-    def highlight_modes(self, button: Union[SidebarButton, str]):
+    def highlight_modes(self, button: SidebarButton | str):
         for btn in self.buttons:
             btn.setChecked(False)
 
@@ -260,7 +260,7 @@ class Statusbar(Toolbar):
         self,
         thickness: int,
         direction: ToolbarDirection = ToolbarDirection.Horizontal,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(direction, thickness, parent)
         self.thickness = thickness
@@ -439,11 +439,14 @@ class AssetToolbar(LabledToolbar):
 
     def open_delete_dialog(self):
         dialog = DeletePoolDialog()
-        dialog.pool_deleted.connect(lambda: self.pool.delete(self.current_pool))
-        dialog.exec()
 
-        self.load_pools()
-        self.pool_changed.emit(self.current_pool)
+        def on_delete():
+            self.pool.delete(self.current_pool)
+            self.load_pools()
+            self.pool_changed.emit(self.current_pool)
+
+        dialog.pool_deleted.connect(on_delete)
+        dialog.exec()
 
     def load_pools(self):
         self.blockSignals(True)
@@ -481,7 +484,7 @@ class MultiToolbar(QWidget):
         self,
         direction: ToolbarDirection,
         multibars: dict[str, AssetToolbar],
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.multibars = multibars
@@ -513,7 +516,7 @@ class MultiToolbar(QWidget):
             widget = self.main_layout.takeAt(0).widget()
             widget.setParent(None)
 
-    def set_current_view(self, toolbar_id: str) -> Optional[Toolbar]:
+    def set_current_view(self, toolbar_id: str) -> Toolbar | None:
         if toolbar_id not in self.multibars.keys():
             return None
 
@@ -617,7 +620,7 @@ class ModelToolbar(AssetToolbar):
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(prog.close)
-        self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+        self.ac.finished.connect(lambda: self.force_refresh.emit(self.current_pool))
 
         task = self.ac.create_assets_from_files(assets)
         if not task:
@@ -650,7 +653,7 @@ class ModelToolbar(AssetToolbar):
                 file_path, globalize_textures=data.globalize_textures
             )
 
-        self.pool_changed.emit(self.current_pool)
+        self.force_refresh.emit(self.current_pool)
 
         if copy_textures:
             self.dcc.repath_textures(file_path)
@@ -754,7 +757,7 @@ class MaterialToolbar(AssetToolbar):
             globalize_tetxures=data.globalize_textures,
         )
 
-        self.pool_changed.emit(self.current_pool)
+        self.force_refresh.emit(self.current_pool)
 
         if data.copy_textures:
             self.dcc.batch_repath_textures(mtl_paths)
@@ -814,7 +817,7 @@ class HdriToolbar(AssetToolbar):
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(prog.close)
-        self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+        self.ac.finished.connect(lambda: self.force_refresh.emit(self.current_pool))
 
         task = self.ac.create_assets_from_files(files)
         if not task:
@@ -878,7 +881,7 @@ class TextureToolbar(AssetToolbar):
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(prog.close)
-        self.ac.finished.connect(lambda: self.pool_changed.emit(self.current_pool))
+        self.ac.finished.connect(lambda: self.force_refresh.emit(self.current_pool))
 
         task = self.ac.create_assets_from_files(files)
         if not task:

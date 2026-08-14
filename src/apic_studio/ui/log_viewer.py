@@ -209,13 +209,13 @@ class LogViewer(QWidget):
     def _load_initial_tail(self):
         try:
             tail = read_last_lines(
-                str(self.settings.CoreSettings.logging_path), num_lines=500
+                str(self.settings.CoreSettings._logging_path), num_lines=500
             )
             self.text.setPlainText(tail)
             self._open_file_for_tail()
             self._scroll_to_bottom()
             self.status_label.setText(
-                f"Loaded tail of {os.path.basename(self.settings.CoreSettings.logging_path)}"
+                f"Loaded tail of {os.path.basename(self.settings.CoreSettings._logging_path)}"
             )
         except Exception as e:
             self.status_label.setText(f"Error loading log: {e}")
@@ -225,7 +225,7 @@ class LogViewer(QWidget):
             if self._file:
                 self._file.close()
             self._file = open(
-                self.settings.CoreSettings.logging_path,
+                self.settings.CoreSettings._logging_path,
                 "r",
                 encoding="utf-8",
                 errors="replace",
@@ -250,7 +250,7 @@ class LogViewer(QWidget):
         self._timer.stop()
 
     def _check_updates(self):
-        path = self.settings.CoreSettings.logging_path
+        path = self.settings.CoreSettings._logging_path
         try:
             if not os.path.exists(path):
                 return
