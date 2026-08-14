@@ -132,8 +132,8 @@ class MainWindow(QWidget):
         s.materials.clicked.connect(lambda: self.set_view("materials"))
         s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
         s.hdris.clicked.connect(lambda: self.set_view("hdris"))
-        self.dcc.on_connect(s.conn_btn.set_connected)
-        self.dcc.on_disconnect(s.conn_btn.set_disconnected)
+        self.dcc.on_connect(s.conn_btn.connected.emit)
+        self.dcc.on_disconnect(s.conn_btn.disconnected.emit)
         s.conn_btn.clicked.connect(
             lambda: self.dcc.connect(self.settings.CoreSettings.address)
         )

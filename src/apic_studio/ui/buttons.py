@@ -76,11 +76,23 @@ class SidebarButton(QPushButton):
 
 
 class ConnectionButton(QPushButton):
+    # Connection fires its callbacks on whichever thread noticed the state
+    # change (the connect thread, the ping thread), and a widget may only be
+    # touched on the GUI thread. Emit these instead of calling the setters
+    # directly: the queued connections hop the change back onto the GUI thread.
+    connected = Signal()
+    disconnected = Signal()
+
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
         self.setFixedWidth(30)
         self.setFixedHeight(30)
         self.setIconSize(QSize(28, 28))
+
+        self.connected.connect(self.set_connected, Qt.ConnectionType.QueuedConnection)
+        self.disconnected.connect(
+            self.set_disconnected, Qt.ConnectionType.QueuedConnection
+        )
 
         self.set_disconnected()
 

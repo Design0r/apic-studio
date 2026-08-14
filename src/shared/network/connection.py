@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import select
 import socket
+import threading
 from typing import Any, Callable, Optional, Self
 
 from shared.logger import Logger
@@ -18,7 +19,18 @@ class Connection:
         self._on_disconnect: list[Callable[[], None]] = []
         self.is_connected = False
 
+        # More than one thread talks over this socket (the GUI thread for every
+        # DCC call, the ping thread every few seconds). The wire is a stream of
+        # length prefixed frames with no request ids, so a send/recv pair has to
+        # stay atomic, otherwise one thread reads the other's reply and both
+        # ends desync. Reentrant: send_recv() holds it across send() and recv().
+        self._io_lock = threading.RLock()
+
     def send(self, data: bytes | Message) -> Self:
+        with self._io_lock:
+            return self._send(data)
+
+    def _send(self, data: bytes | Message) -> Self:
         if isinstance(data, Message):
             Logger.debug(f"sending message: {data.message}")
             data = data.as_json()
@@ -36,9 +48,9 @@ class Connection:
         return self
 
     def send_recv(self, data: bytes | Message) -> dict[str, Any]:
-        self.send(data)
-        response = self.recv()
-        return response
+        with self._io_lock:
+            self._send(data)
+            return self._recv()
 
     def _recv_exactly(self, size: int) -> bytes:
         # TCP is a stream: a single recv() can return a short read, so keep
@@ -59,6 +71,10 @@ class Connection:
         return bytes(buffer)
 
     def recv(self) -> dict[str, Any]:
+        with self._io_lock:
+            return self._recv()
+
+    def _recv(self) -> dict[str, Any]:
         header = self._recv_exactly(4)
         body_size = int.from_bytes(header, "big")
         if not body_size:
@@ -76,11 +92,14 @@ class Connection:
         return rjson
 
     def close(self) -> None:
+        # deliberately not holding _io_lock: closing the socket is how a peer
+        # blocked in select() gets woken, so waiting on that thread first would
+        # stall shutdown for a whole timeout
+        self.is_connected = False
         try:
             self.socket.close()
         except Exception:
             pass
-        self.is_connected = False
 
     def status(self) -> bool:
         msg = Message("core.status")
@@ -104,39 +123,50 @@ class Connection:
 
         return status == 200
 
+    def _notify(self, callbacks: list[Callable[[], None]]) -> None:
+        # These run on whatever thread noticed the state change, so a listener
+        # that has gone away must not take that thread down with it.
+        for c in callbacks:
+            try:
+                c()
+            except Exception as e:
+                Logger.exception(e)
+
     def _disconnect(self):
         self.is_connected = False
         Logger.error("lost connection to apic studio connector")
-        for c in self._on_disconnect:
-            c()
+        self._notify(self._on_disconnect)
 
     def connect(self, address: tuple[str, int]) -> Self:
         Logger.info("connecting to apic studio connector...")
         if self.is_connected and self.status():
             return self
 
-        try:
-            self.socket.connect(address)
-        except ConnectionRefusedError:
-            self._disconnect()
-            Logger.error(
-                f"connection refused, disconnecting from socket {address}, apic studio connector is not available"
-            )
-            return self
-        except OSError as e:
-            Logger.exception(e)
-            self.close()
-            self.socket = self.client_connection().socket
-            return self.connect(address)
-        except Exception as e:
-            Logger.exception(e)
-            self._disconnect()
-            return self
+        # the lock covers rebinding self.socket below: swapping it under a
+        # thread that is mid frame would leave that read hanging on a dead fd
+        with self._io_lock:
+            try:
+                self.socket.connect(address)
+            except ConnectionRefusedError:
+                self._disconnect()
+                Logger.error(
+                    f"connection refused, disconnecting from socket {address}, apic studio connector is not available"
+                )
+                return self
+            except OSError as e:
+                Logger.exception(e)
+                self.close()
+                self.socket = self.client_connection().socket
+                return self.connect(address)
+            except Exception as e:
+                Logger.exception(e)
+                self._disconnect()
+                return self
 
-        Logger.info("connected to apic studio connector")
-        self.is_connected = True
-        for c in self._on_connect:
-            c()
+            Logger.info("connected to apic studio connector")
+            self.is_connected = True
+
+        self._notify(self._on_connect)
 
         return self
 
