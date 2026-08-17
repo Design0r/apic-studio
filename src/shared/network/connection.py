@@ -19,18 +19,19 @@ class Connection:
         self._on_disconnect: list[Callable[[], None]] = []
         self.is_connected = False
 
-        # More than one thread talks over this socket (the GUI thread for every
-        # DCC call, the ping thread every few seconds). The wire is a stream of
-        # length prefixed frames with no request ids, so a send/recv pair has to
-        # stay atomic, otherwise one thread reads the other's reply and both
-        # ends desync. Reentrant: send_recv() holds it across send() and recv().
-        self._io_lock = threading.RLock()
+        # Guards a request/response pair, nothing else. On the studio side more
+        # than one thread talks over this socket (the GUI thread for every DCC
+        # call, the ping thread every few seconds), and the wire is a stream of
+        # length prefixed frames with no request ids, so an interleaved pair
+        # leaves each thread holding the other's reply and both ends desync.
+        #
+        # Deliberately NOT taken by send() or recv() on their own: the connector
+        # parks a reader thread in recv() until the next message arrives, while
+        # replies are sent from C4D's main thread. A lock spanning that read
+        # would block the host UI until the client disconnects.
+        self._txn_lock = threading.RLock()
 
     def send(self, data: bytes | Message) -> Self:
-        with self._io_lock:
-            return self._send(data)
-
-    def _send(self, data: bytes | Message) -> Self:
         if isinstance(data, Message):
             Logger.debug(f"sending message: {data.message}")
             data = data.as_json()
@@ -48,9 +49,9 @@ class Connection:
         return self
 
     def send_recv(self, data: bytes | Message) -> dict[str, Any]:
-        with self._io_lock:
-            self._send(data)
-            return self._recv()
+        with self._txn_lock:
+            self.send(data)
+            return self.recv()
 
     def _recv_exactly(self, size: int) -> bytes:
         # TCP is a stream: a single recv() can return a short read, so keep
@@ -71,10 +72,6 @@ class Connection:
         return bytes(buffer)
 
     def recv(self) -> dict[str, Any]:
-        with self._io_lock:
-            return self._recv()
-
-    def _recv(self) -> dict[str, Any]:
         header = self._recv_exactly(4)
         body_size = int.from_bytes(header, "big")
         if not body_size:
@@ -92,9 +89,6 @@ class Connection:
         return rjson
 
     def close(self) -> None:
-        # deliberately not holding _io_lock: closing the socket is how a peer
-        # blocked in select() gets woken, so waiting on that thread first would
-        # stall shutdown for a whole timeout
         self.is_connected = False
         try:
             self.socket.close()
@@ -123,6 +117,21 @@ class Connection:
 
         return status == 200
 
+    def try_status(self) -> Optional[bool]:
+        """status(), but never queues behind an in flight call.
+
+        Returns None when another thread holds the line. A DCC operation can run
+        for far longer than the ping timeout, so waiting for it would both delay
+        that operation and report a healthy connector as dead.
+        """
+        if not self._txn_lock.acquire(blocking=False):
+            return None
+
+        try:
+            return self.status()
+        finally:
+            self._txn_lock.release()
+
     def _notify(self, callbacks: list[Callable[[], None]]) -> None:
         # These run on whatever thread noticed the state change, so a listener
         # that has gone away must not take that thread down with it.
@@ -142,9 +151,9 @@ class Connection:
         if self.is_connected and self.status():
             return self
 
-        # the lock covers rebinding self.socket below: swapping it under a
-        # thread that is mid frame would leave that read hanging on a dead fd
-        with self._io_lock:
+        # client side only, the connector never dials out: holding the lock
+        # keeps a DCC call from racing the socket being rebound below
+        with self._txn_lock:
             try:
                 self.socket.connect(address)
             except ConnectionRefusedError:

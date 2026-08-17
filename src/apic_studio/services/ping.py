@@ -22,7 +22,7 @@ class PingWorker:
             Logger.debug("pinging apic studio connector...")
 
             try:
-                status = self._conn.status()
+                status = self._conn.try_status()
             except Exception:
                 if self.retry():
                     time.sleep(self._sleep_duration)
@@ -30,6 +30,11 @@ class PingWorker:
                 else:
                     self._conn._disconnect()  # type: ignore
                     break
+
+            if status is None:
+                Logger.debug("connection busy, skipping ping")
+                time.sleep(self._sleep_duration)
+                continue
 
             if not status and not self.retry():
                 self._conn._disconnect()  # type: ignore
