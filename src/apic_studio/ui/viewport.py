@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from apic_studio.core import Asset
+from apic_studio.core.fs import open_dir
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, BackupManager, DCCBridge, Screenshot
 from apic_studio.ui.asset_view import (
@@ -251,6 +252,9 @@ class Viewport(QWidget):
         open_act = QAction("Open")
         open_act.triggered.connect(lambda: self.on_open_dialog(file))
 
+        open_exp_act = QAction("Open in Explorer")
+        open_exp_act.triggered.connect(lambda: open_dir(file.parent))
+
         import_act = QAction("Import")
         import_as_area = QAction("Import as Arealight")
         import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(file))
@@ -317,6 +321,7 @@ class Viewport(QWidget):
             menu.addAction(repath_act)
 
         menu.addSeparator()
+        menu.addAction(open_exp_act)
         menu.addAction(rename_act)
         menu.addAction(delete_act)
 
