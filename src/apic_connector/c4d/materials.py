@@ -36,7 +36,7 @@ def import_file(conn: Connection, msg: Message):
         conn.send(Message("error", "File path is empty."))
         return
 
-    Logger.debug(f"importing materials from {path}")
+    Logger.info(f"importing materials from {path}")
     core.import_file(path)
 
     conn.send(Message("success"))

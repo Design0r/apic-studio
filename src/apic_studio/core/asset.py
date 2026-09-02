@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Optional, Self
+from typing import Any, Self
 
 from PySide6.QtGui import QImage
 
@@ -15,14 +16,14 @@ class Asset:
     HDR_IMG_EXT = (".hdr", ".exr")
     ASSET_EXT = (".c4d",) + SDR_IMG_EXT + HDR_IMG_EXT
     __slots__ = (
-        "path",
-        "name",
-        "suffix",
-        "size",
-        "icon",
         "file",
-        "metadata",
+        "icon",
         "icon_path",
+        "metadata",
+        "name",
+        "path",
+        "size",
+        "suffix",
     )
 
     def __init__(self, file: Path, icon: QImage, icon_path: Path) -> None:
@@ -46,7 +47,7 @@ class Asset:
         return filesize
 
     def rename(
-        self, name: str, create_icon: Optional[Callable[[str], QImage]] = None
+        self, name: str, create_icon: Callable[[str], QImage] | None = None
     ) -> Self:
         old_file_path = self.file
         new_file_path = self.file.parent / (name + self.file.suffix)
@@ -105,7 +106,7 @@ class Metadata:
             self.notes = res.get("notes", "")
             self.tags = res.get("tags", [])
 
-        Logger.debug(f"loaded metadata for {self.path}")
+        Logger.info(f"loaded metadata for {self.path}")
 
     def save(self) -> None:
         with open(self.path, "w") as f:

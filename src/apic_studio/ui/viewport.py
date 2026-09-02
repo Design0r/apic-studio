@@ -353,7 +353,7 @@ class Viewport(QWidget):
                 continue
             if not f.stem.endswith("-thumbnail"):
                 continue
-            Logger.debug(f"Deleting preview: {f}")
+            Logger.info(f"Deleting preview: {f}")
             f.unlink()
         self.loader.load_asset(file_dir, refresh=True)
 
