@@ -11,8 +11,10 @@ from PySide6.QtCore import (
     QRect,
     QSize,
     Qt,
+    QTimer,
+    Signal,
 )
-from PySide6.QtGui import QColor, QFontMetrics, QImage, QPainter, QPen
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QImage, QPainter, QPen
 from PySide6.QtWidgets import QStyle, QStyledItemDelegate, QStyleOptionViewItem
 
 from apic_studio.core import Asset
@@ -24,14 +26,34 @@ FILE_ROLE = KEY_ROLE + 2
 SIZE_ROLE = KEY_ROLE + 3
 TYPE_ROLE = KEY_ROLE + 4
 IMAGE_ROLE = KEY_ROLE + 5
+# the whole row in one call, so painting a tile crosses the proxy once
+ROW_ROLE = KEY_ROLE + 6
 
 Index = Union[QModelIndex, QPersistentModelIndex]
 
 
 class AssetRow:
-    """One tile's worth of data. `file` is the asset folder until it loads."""
+    """One tile's worth of data. `file` is the asset folder until it loads.
 
-    __slots__ = ("asset", "file", "image", "key", "size", "type")
+    Everything the delegate draws is kept ready to paint: the labels are built
+    once here rather than per frame, and the elided name is cached until either
+    the tile width or the delegate's font generation changes.
+    """
+
+    __slots__ = (
+        "asset",
+        "elided",
+        "elided_gen",
+        "elided_width",
+        "file",
+        "image",
+        "key",
+        "requested",
+        "size",
+        "size_text",
+        "type",
+        "type_text",
+    )
 
     def __init__(self, path: Path) -> None:
         self.key = path.stem
@@ -39,7 +61,30 @@ class AssetRow:
         self.file = path
         self.size = ""
         self.type = ""
+        self.size_text = "Size: "
+        self.type_text = "Type: "
         self.image: QImage | None = None
+        # the viewport sets this when it asks the loader for the thumbnail, so
+        # a tile is never queued twice while it waits
+        self.requested = False
+
+        self.elided = ""
+        self.elided_width = -1
+        self.elided_gen = -1
+
+    def set_asset(self, asset: Asset) -> None:
+        self.key = asset.path.stem
+        self.asset = asset.path
+        self.file = asset.file
+        self.size = asset.format_size()
+        self.type = asset.suffix
+        self.size_text = f"Size: {self.size}"
+        self.type_text = f"Type: {self.type}"
+        self.image = asset.icon
+        self.requested = True
+
+        # the name may have changed, drop the elision cached for the old one
+        self.elided_width = -1
 
 
 class AssetModel(QAbstractListModel):
@@ -61,6 +106,8 @@ class AssetModel(QAbstractListModel):
         if row is None:
             return None
 
+        if role == ROW_ROLE:
+            return row
         if role in (Qt.ItemDataRole.DisplayRole, KEY_ROLE):
             return row.key
         if role == Qt.ItemDataRole.ToolTipRole:
@@ -90,8 +137,8 @@ class AssetModel(QAbstractListModel):
 
         return self._rows[i]
 
-    def files(self) -> list[Path]:
-        return [row.file for row in self._rows]
+    def assets(self) -> list[Path]:
+        return [row.asset for row in self._rows]
 
     # --- mutations ---
 
@@ -101,33 +148,25 @@ class AssetModel(QAbstractListModel):
         self._reindex()
         self.endResetModel()
 
-    def update_asset(self, asset: Asset) -> bool:
+    def update_asset(self, asset: Asset) -> AssetRow | None:
         i = self._by_key.get(asset.path.stem)
         if i is None:
-            return False
+            return None
 
         row = self._rows[i]
-        row.file = asset.file
-        row.size = asset.format_size()
-        row.type = asset.suffix
-        row.image = asset.icon
+        row.set_asset(asset)
 
         idx = self.index(i, 0)
         self.dataChanged.emit(idx, idx)
 
-        return True
+        return row
 
     def rename(self, asset_dir: Path, asset: Asset) -> bool:
         for i, row in enumerate(self._rows):
             if row.asset != asset_dir:
                 continue
 
-            row.key = asset.path.stem
-            row.asset = asset.path
-            row.file = asset.file
-            row.size = asset.format_size()
-            row.type = asset.suffix
-            row.image = asset.icon
+            row.set_asset(asset)
             self._reindex()
 
             idx = self.index(i, 0)
@@ -156,7 +195,15 @@ class AssetModel(QAbstractListModel):
 
 
 class AssetDelegate(QStyledItemDelegate):
-    """Paints an asset tile: thumbnail, name, then size and type."""
+    """Paints an asset tile: thumbnail, name, then size and type.
+
+    A tile is only painted when it is on screen, which makes the delegate the
+    one place that knows what the user is actually looking at. It reports the
+    span of rows each repaint covered so the viewport can load those thumbnails
+    and leave the rest of the pool alone.
+    """
+
+    rows_painted = Signal(int, int)  # first, last row of the repaint that ended
 
     ICON_AREA = 200
     NAME_HEIGHT = 26
@@ -172,12 +219,73 @@ class AssetDelegate(QStyledItemDelegate):
     TEXT = QColor(255, 255, 255)
     HOVER_OUTLINE = 2
 
+    NAME_POINT_SIZE = 10
+    INFO_POINT_SIZE = 8
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        # building a QFont and its metrics is far too expensive to redo for
+        # every tile of every frame, so they are cached until the font changes
+        self._base_font: QFont | None = None
+        self._name_font = QFont()
+        self._name_metrics = QFontMetrics(self._name_font)
+        self._info_font = QFont()
+        # bumped on a font change, which is what stales the rows' cached elision
+        self._font_gen = 0
+
+        self._painted_first = -1
+        self._painted_last = -1
+
+    def _note_painted(self, row: int) -> None:
+        """Widen the span this repaint has covered, reported once it finishes."""
+        if self._painted_first < 0:
+            self._painted_first = self._painted_last = row
+            # a zero timer, so the span goes out after the paint event rather
+            # than from inside it, where touching the model would re-enter
+            QTimer.singleShot(0, self._flush_painted)
+            return
+
+        if row < self._painted_first:
+            self._painted_first = row
+        elif row > self._painted_last:
+            self._painted_last = row
+
+    def _flush_painted(self) -> None:
+        first, last = self._painted_first, self._painted_last
+        self._painted_first = self._painted_last = -1
+
+        if first >= 0:
+            self.rows_painted.emit(first, last)
+
+    def _sync_fonts(self, base: QFont) -> None:
+        if self._base_font is not None and self._base_font == base:
+            return
+
+        self._base_font = QFont(base)
+
+        self._name_font = QFont(base)
+        self._name_font.setPointSize(self.NAME_POINT_SIZE)
+        self._name_metrics = QFontMetrics(self._name_font)
+
+        self._info_font = QFont(base)
+        self._info_font.setPointSize(self.INFO_POINT_SIZE)
+
+        self._font_gen += 1
+
     def sizeHint(self, option: QStyleOptionViewItem, index: Index) -> QSize:
         return QSize(self.WIDTH, self.ICON_AREA + self.NAME_HEIGHT + self.INFO_HEIGHT)
 
     def paint(
         self, painter: QPainter, option: QStyleOptionViewItem, index: Index
     ) -> None:
+        row = index.data(ROW_ROLE)
+        if not isinstance(row, AssetRow):
+            painter.fillRect(option.rect, self.BACKGROUND)
+            return
+
+        self._note_painted(index.row())
+        self._sync_fonts(option.font)
+
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
 
@@ -200,8 +308,8 @@ class AssetDelegate(QStyledItemDelegate):
         elif hovered:
             painter.fillRect(icon_rect, self.HOVER)
 
-        image = index.data(IMAGE_ROLE)
-        if isinstance(image, QImage) and not image.isNull():
+        image = row.image
+        if image is not None and not image.isNull():
             # the loader already decoded to the display size, so just centre it
             x = icon_rect.x() + (icon_rect.width() - image.width()) // 2
             y = icon_rect.y() + (icon_rect.height() - image.height()) // 2
@@ -219,31 +327,28 @@ class AssetDelegate(QStyledItemDelegate):
         painter.drawLine(middle, info_rect.top(), middle, info_rect.bottom())
 
         painter.setPen(self.TEXT)
-        font = painter.font()
+        painter.setFont(self._name_font)
 
-        font.setPointSize(10)
-        painter.setFont(font)
-        name = QFontMetrics(font).elidedText(
-            str(index.data(Qt.ItemDataRole.DisplayRole) or ""),
-            Qt.TextElideMode.ElideRight,
-            name_rect.width() - 8,
-        )
-        painter.drawText(name_rect, Qt.AlignmentFlag.AlignCenter, name)
+        width = name_rect.width()
+        if row.elided_width != width or row.elided_gen != self._font_gen:
+            # elidedText has to shape the string, so keep the result around
+            row.elided = self._name_metrics.elidedText(
+                row.key, Qt.TextElideMode.ElideRight, width - 8
+            )
+            row.elided_width = width
+            row.elided_gen = self._font_gen
 
-        font.setPointSize(8)
-        painter.setFont(font)
+        painter.drawText(name_rect, Qt.AlignmentFlag.AlignCenter, row.elided)
+
+        painter.setFont(self._info_font)
         size_rect = QRect(
             info_rect.x(), info_rect.y(), rect.width() // 2, info_rect.height()
         )
         type_rect = QRect(
             middle, info_rect.y(), rect.width() - rect.width() // 2, info_rect.height()
         )
-        painter.drawText(
-            size_rect, Qt.AlignmentFlag.AlignCenter, f"Size: {index.data(SIZE_ROLE)}"
-        )
-        painter.drawText(
-            type_rect, Qt.AlignmentFlag.AlignCenter, f"Type: {index.data(TYPE_ROLE)}"
-        )
+        painter.drawText(size_rect, Qt.AlignmentFlag.AlignCenter, row.size_text)
+        painter.drawText(type_rect, Qt.AlignmentFlag.AlignCenter, row.type_text)
 
         if hovered:
             # outline the whole tile, a thumbnail can cover most of the fill

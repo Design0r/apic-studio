@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import shutil
 import time
+from collections import OrderedDict
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, QSize, QSortFilterProxyModel, Qt, Signal
@@ -58,6 +59,15 @@ class AssetListView(QListView):
 class Viewport(QWidget):
     asset_clicked = Signal(Asset)
 
+    # tile rows loaded on each side of the ones on screen, so scrolling meets
+    # thumbnails that are already there
+    PREFETCH_ROWS = 2
+
+    # decoded tiles held by the models at once. Well past a screenful, so this
+    # only bites after a long scroll; anything dropped is re-requested when it
+    # comes back into view and usually still sits in the loader's own cache.
+    MAX_LOADED_TILES = 400
+
     def __init__(
         self,
         dcc: DCCBridge,
@@ -90,6 +100,9 @@ class Viewport(QWidget):
 
         self._pool_asset_index: dict[Path, list[Path]] = {}
 
+        # tiles holding a decoded thumbnail, least recently seen first
+        self._loaded: OrderedDict[int, AssetRow] = OrderedDict()
+
         self._pending_pool: Path | None = None
         self._drawn_pool: Path | None = None
         self._draw_filter: str | None = None
@@ -103,7 +116,8 @@ class Viewport(QWidget):
     def init_widgets(self):
         self.view = AssetListView()
         self.view.setModel(self.proxy)
-        self.view.setItemDelegate(AssetDelegate(self.view))
+        self.delegate = AssetDelegate(self.view)
+        self.view.setItemDelegate(self.delegate)
         self.view.setViewMode(QListView.ViewMode.IconMode)
         self.view.setFlow(QListView.Flow.LeftToRight)
         self.view.setWrapping(True)
@@ -134,6 +148,7 @@ class Viewport(QWidget):
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
         self.loader.pool_scanned.connect(self.on_pool_scanned)
+        self.delegate.rows_painted.connect(self.on_rows_painted)
         self.view.clicked.connect(self.on_item_clicked)
         self.view.customContextMenuRequested.connect(self.on_context_menu)
 
@@ -151,12 +166,35 @@ class Viewport(QWidget):
         return self._proxies[self.curr_view]
 
     def asset_files(self) -> list[Path]:
-        return self.model.files()
+        """Every asset's model file, including tiles that have not loaded yet."""
+        files = []
+        for asset in self.model.assets():
+            file = self.loader.asset_file(asset)
+            if file is not None:
+                files.append(file)
+
+        return files
 
     def on_asset_load(self, asset: Asset):
         for model in self._models.values():
-            if model.update_asset(asset):
+            row = model.update_asset(asset)
+            if row is not None:
+                self._touch(row)
                 break
+
+    def _touch(self, row: AssetRow) -> None:
+        """Mark a tile as freshly seen, releasing whatever fell off the end."""
+        key = id(row)
+        if key in self._loaded:
+            self._loaded.move_to_end(key)
+            return
+
+        self._loaded[key] = row
+
+        while len(self._loaded) > self.MAX_LOADED_TILES:
+            _, dropped = self._loaded.popitem(last=False)
+            dropped.image = None
+            dropped.requested = False
 
     def clear(self) -> None:
         self._drawn_pool = None
@@ -169,6 +207,9 @@ class Viewport(QWidget):
 
         if not force and path and path == self._drawn_pool:
             return
+
+        # whatever is still queued belongs to the pool being left behind
+        self.loader.cancel_pending()
 
         self.clear()
 
@@ -196,41 +237,86 @@ class Viewport(QWidget):
         self._render_assets(assets)
 
     def _render_assets(self, assets: list[Path]) -> None:
-        force = self._draw_force
-        model = self.model
-
-        model.set_assets(assets)
+        # the tiles are empty until they are painted, at which point the
+        # delegate reports them and on_rows_painted asks for the thumbnails
+        self.model.set_assets(assets)
         self._drawn_pool = self._pending_pool
-
-        for x in assets:
-            cached = None if force else self.loader.get_asset(x)
-            if cached is not None:
-                # already decoded, no need to go through the loader thread
-                model.update_asset(cached)
-                continue
-
-            self.loader.load_asset(x, refresh=force)
 
         if self._draw_timer:
             Logger.info(
-                f"finished loading pool {self.curr_pool.stem} in "
-                f"{(time.perf_counter() - self._draw_timer):.2f}s"
+                f"scanned pool {self.curr_pool.stem} in "
+                f"{(time.perf_counter() - self._draw_timer):.2f}s, "
+                f"{len(assets)} assets"
             )
             self._draw_timer = 0.0
+
+    def on_rows_painted(self, first: int, last: int) -> None:
+        margin = self._prefetch_margin()
+        self._request_range(first - margin, last + margin + 1)
+
+    def _prefetch_margin(self) -> int:
+        """How many tiles either side of the visible ones to load ahead."""
+        width = self.view.gridSize().width()
+        if width <= 0:
+            return self.PREFETCH_ROWS
+
+        columns = max(1, self.view.viewport().width() // width)
+
+        return columns * self.PREFETCH_ROWS
+
+    def _request_range(self, start: int, end: int) -> None:
+        """Load the thumbnails for a span of tiles, skipping the ones in hand."""
+        proxy = self.proxy
+        model = self.model
+        force = self._draw_force
+
+        for i in range(max(0, start), min(proxy.rowCount(), end)):
+            row = model.row_at(proxy.mapToSource(proxy.index(i, 0)))
+            if row is None:
+                continue
+
+            if row.image is not None:
+                # on screen, so it should be the last thing released
+                self._touch(row)
+                continue
+
+            if row.requested:
+                continue
+
+            row.requested = True
+
+            cached = None if force else self.loader.get_asset(row.asset)
+            if cached is not None:
+                # already decoded, no need to go through the loader thread
+                model.update_asset(cached)
+                self._touch(row)
+                continue
+
+            self.loader.load_asset(row.asset, refresh=force)
 
     def _row_at(self, point: QPoint) -> AssetRow | None:
         index = self.view.indexAt(point)
         if not index.isValid():
             return None
 
-        return self.model.row_at(self.proxy.mapToSource(index))
+        row = self.model.row_at(self.proxy.mapToSource(index))
+        if row is not None and row.file == row.asset:
+            # the tile is on screen but its thumbnail has not arrived, so it is
+            # still holding the folder - resolve before acting on the file
+            file = self.loader.asset_file(row.asset)
+            if file is not None:
+                row.file = file
+
+        return row
 
     def on_item_clicked(self, index) -> None:
         row = self.model.row_at(self.proxy.mapToSource(index))
         if not row:
             return
 
-        asset = self.loader.get_asset(row.asset)
+        # the cache is bounded, so a tile can outlive its asset on a long
+        # scroll: decode the one the user actually clicked rather than skip it
+        asset = self.loader.get_asset(row.asset) or self.loader.load_now(row.asset)
         if asset:
             self.asset_clicked.emit(asset)
 
