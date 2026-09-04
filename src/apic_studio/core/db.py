@@ -174,12 +174,15 @@ def select_all() -> dict[str, DBRow]:
     return data
 
 
-def run_migration(conn: sqlite3.Connection, migration: str) -> None:
+def run_migration(conn: sqlite3.Connection, migration: str) -> bool:
     try:
         conn.execute(migration)
     except Exception as e:
         Logger.error("migration Failed:")
         Logger.exception(e)
+        return False
+
+    return True
 
 
 def init_db():
@@ -191,11 +194,28 @@ def init_db():
     else:
         Logger.info("creating new DB")
 
-    Logger.info("running migrations...")
     with connection() as conn:
-        for i, migration in enumerate(MIGRATIONS, start=1):
+        # how many migrations this database has already seen, so an up to date
+        # one costs a single pragma instead of re-running every CREATE TABLE
+        applied: int = conn.execute("PRAGMA user_version;").fetchone()[0]
+
+        if applied >= len(MIGRATIONS):
+            Logger.info(f"DB schema up to date ({applied} migrations)")
+            return
+
+        Logger.info(f"running migrations {applied + 1}-{len(MIGRATIONS)}...")
+        for i, migration in enumerate(MIGRATIONS[applied:], start=applied + 1):
             Logger.info(f"migration {i}/{len(MIGRATIONS)}")
-            run_migration(conn, migration)
+
+            if not run_migration(conn, migration):
+                # stop on the first failure rather than recording the ones
+                # behind it as applied, so the next launch retries from here
+                break
+
+            applied = i
+
+        # pragmas take no parameters, applied is an int off the loop counter
+        conn.execute(f"PRAGMA user_version = {applied};")
         conn.commit()
 
     Logger.info("initialized DB")
