@@ -2,17 +2,19 @@ from enum import Enum
 from pathlib import Path
 from typing import override
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
+from apic_studio import __version__
 from apic_studio.services import AssetConverter, DCCBridge, PoolManager
 from apic_studio.ui.dialogs import (
     BackupDialog,
@@ -21,6 +23,7 @@ from apic_studio.ui.dialogs import (
     ExportMaterialDialog,
     ExportModelDialog,
     ExportRenderSettingsDialog,
+    HelpDialog,
     ImportModelsDialog,
     ProgressDialog,
     SettingsDialog,
@@ -200,10 +203,12 @@ class Sidebar(Toolbar):
         self.help = SidebarButton(btn_size, checkable=False)
         self.help.set_icon(":icons/tabler-icon-help.png", icon_size)
         self.help.set_tooltip("Help")
+        self.help.clicked.connect(self.open_help)
 
         self.about = SidebarButton(btn_size, checkable=False)
         self.about.set_icon(":icons/tabler-icon-info-circle.png", icon_size)
-        self.about.set_tooltip("About Render Vault")
+        self.about.set_tooltip("About Apic Studio")
+        self.about.clicked.connect(self.open_about)
 
         self.settings_btn = SidebarButton(btn_size, checkable=False)
         self.settings_btn.set_icon(":icons/tabler-icon-settings.png", icon_size)
@@ -212,9 +217,20 @@ class Sidebar(Toolbar):
 
         # self.conn_btn = QPushButton("D")
         self.conn_btn = ConnectionButton()
+        self.conn_btn.setToolTip("Cinema 4D connection, click to reconnect")
 
     def open_settings(self):
-        SettingsDialog().exec()
+        SettingsDialog(self.window()).exec()
+
+    def open_help(self):
+        HelpDialog(self.window()).exec()
+
+    def open_about(self):
+        QMessageBox.about(
+            self.window(),
+            "About Apic Studio",
+            f"<b>Apic Studio</b> {__version__}<br>An asset browser for Cinema 4D.",
+        )
 
     @override
     def init_layouts(self) -> None:
@@ -257,6 +273,10 @@ class Statusbar(Toolbar):
     # touching widgets directly.
     log_received = Signal(str, str)
 
+    # info messages clear themselves, warnings and errors stay until dismissed
+    CLEAR_AFTER_MS = 6000
+    STICKY_LEVELS = ("Warning", "Error", "Exception", "Critical Error")
+
     def __init__(
         self,
         thickness: int,
@@ -278,9 +298,14 @@ class Statusbar(Toolbar):
         self.info.setMinimumWidth(20)
 
         self.logs_btn = QPushButton("Logs")
+        self.logs_btn.setToolTip("Show the log viewer")
 
-        self.clear_btn = QPushButton("x")
+        self.clear_btn = QPushButton("×")
         self.clear_btn.setFixedWidth(20)
+        self.clear_btn.setToolTip("Clear message")
+
+        self._clear_timer = QTimer(self)
+        self._clear_timer.setSingleShot(True)
 
     @override
     def init_layouts(self) -> None:
@@ -298,6 +323,7 @@ class Statusbar(Toolbar):
         self.log_received.connect(self.update_info)
         Logger.register_callback(self.log_received.emit)
         self.clear_btn.clicked.connect(lambda: self.update_info("Clear", ""))
+        self._clear_timer.timeout.connect(lambda: self.update_info("Clear", ""))
         self.logs_btn.clicked.connect(self.show_logs)
 
     def update_info(self, level: str, text: str) -> None:
@@ -305,6 +331,13 @@ class Statusbar(Toolbar):
             return
 
         self.info.setText(text)
+        # long messages get cut off in the bar
+        self.info.setToolTip(text)
+
+        if level == "Clear" or level in self.STICKY_LEVELS:
+            self._clear_timer.stop()
+        else:
+            self._clear_timer.start(self.CLEAR_AFTER_MS)
 
         try:
             if level == "Info":
@@ -425,7 +458,7 @@ class AssetToolbar(LabledToolbar):
         return self._pools.get(text, Path())
 
     def open_add_dialog(self):
-        create_dialog = CreatePoolDialog()
+        create_dialog = CreatePoolDialog(self.window())
         create_dialog.pool_created.connect(self.new_pool)
         create_dialog.exec()
 
@@ -439,7 +472,12 @@ class AssetToolbar(LabledToolbar):
         self.pool_changed.emit(self.current_pool)
 
     def open_delete_dialog(self):
-        dialog = DeletePoolDialog()
+        pool_name = self.dropdown.currentText()
+        if not pool_name:
+            Logger.warning("No pool selected to delete.")
+            return
+
+        dialog = DeletePoolDialog(pool_name, self.window())
 
         def on_delete():
             self.pool.delete(self.current_pool)
@@ -591,25 +629,25 @@ class ModelToolbar(AssetToolbar):
         self.searchbar.text_changed.connect(self.on_search)
 
     def backup_dialog(self):
-        dialog = BackupDialog(self.current_pool)
+        dialog = BackupDialog(self.current_pool, self.window())
         dialog.imported.connect(lambda x: self.dcc.models_import(x))
         dialog.opened.connect(lambda x: self.dcc.file_open(x))
         dialog.referenced.connect(lambda x: self.dcc.models_reference(x))
         dialog.exec()
 
     def export_dialog(self):
-        dialog = ExportModelDialog()
+        dialog = ExportModelDialog(self.window())
         dialog.finished.connect(self.on_export_dialog_finished)
         dialog.exec()
 
     def import_dialog(self):
-        folder = folder_dialog("Select Folder to search for .c4d")
+        folder = folder_dialog("Select Folder to search for .c4d", self.window())
         if not folder:
             return
 
         assets = AssetConverter.crawl_assets(Path(folder))
 
-        dialog = ImportModelsDialog(assets)
+        dialog = ImportModelsDialog(assets, self.window())
         dialog.finished.connect(self.on_import)
         dialog.exec()
 
@@ -617,7 +655,7 @@ class ModelToolbar(AssetToolbar):
         if not assets:
             return
 
-        prog = ProgressDialog("Copying Models...", 0, len(assets), self)
+        prog = ProgressDialog("Copying Models...", 0, len(assets), self.window())
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(prog.close)
@@ -729,12 +767,12 @@ class MaterialToolbar(AssetToolbar):
             Logger.error("Failed to get materials.list")
             return
 
-        dialog = ExportMaterialDialog(res.data.get("materials", []))
+        dialog = ExportMaterialDialog(res.data.get("materials", []), self.window())
         dialog.finished.connect(self.on_export_dialog_finished)
         dialog.exec()
 
     def backup_dialog(self):
-        dialog = BackupDialog(self.current_pool)
+        dialog = BackupDialog(self.current_pool, self.window(), allow_reference=False)
         dialog.imported.connect(lambda x: self.dcc.models_import(x))  # type: ignore
         dialog.opened.connect(lambda x: self.dcc.file_open(x))  # type: ignore
         dialog.exec()
@@ -810,11 +848,11 @@ class HdriToolbar(AssetToolbar):
         self.searchbar.text_changed.connect(self.on_search)
 
     def on_import(self):
-        files, _ = files_dialog("Select HDRIs to import")
+        files, _ = files_dialog("Select HDRIs to import", self.window())
         if not files:
             return
 
-        prog = ProgressDialog("Copying HDRIs...", 0, len(files), self)
+        prog = ProgressDialog("Copying HDRIs...", 0, len(files), self.window())
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(prog.close)
@@ -874,11 +912,11 @@ class TextureToolbar(AssetToolbar):
         self.searchbar.text_changed.connect(self.on_search)
 
     def on_import(self):
-        files, _ = files_dialog("Select Textures to import")
+        files, _ = files_dialog("Select Textures to import", self.window())
         if not files:
             return
 
-        prog = ProgressDialog("Copying Textures...", 0, len(files), self)
+        prog = ProgressDialog("Copying Textures...", 0, len(files), self.window())
         self.ac = AssetConverter(self.current_pool)
         self.ac.progress.connect(prog.setValue)
         self.ac.finished.connect(prog.close)
@@ -945,7 +983,7 @@ class UtilityToolbar(AssetToolbar):
         self.searchbar.text_changed.connect(self.on_search)
 
     def export_dialog(self):
-        dialog = ExportRenderSettingsDialog()
+        dialog = ExportRenderSettingsDialog(self.window())
         dialog.finished.connect(self.on_export_dialog_finished)
         dialog.exec()
 

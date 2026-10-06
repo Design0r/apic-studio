@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QWidget
 
 
@@ -9,7 +10,7 @@ class Searchbar(QWidget):
         self,
         height: int = 30,
         max_width: int = 300,
-        placeholder: str = "  Search",
+        placeholder: str = "Search",
         delay_ms: int = 300,
         parent: QWidget | None = None,
     ) -> None:
@@ -30,12 +31,29 @@ class Searchbar(QWidget):
         self.searchbar.setPlaceholderText(self._placeholder)
         self.searchbar.setFixedHeight(self._height)
         self.searchbar.setMaximumWidth(self._max_width)
-        self.searchbar.setStyleSheet("border: 1px solid black;border-radius: 5px")
+        self.searchbar.setClearButtonEnabled(True)
+        self.searchbar.setToolTip("Search (Ctrl+F), Esc clears")
+        self.searchbar.setStyleSheet(
+            "border: 1px solid black;border-radius: 5px; padding-left: 4px"
+        )
 
         # debounce timer
         self._debounce_timer = QTimer(self)
         self._debounce_timer.setSingleShot(True)
         self._debounce_timer.timeout.connect(self._emit_debounced)
+
+        # Every toolbar has its own searchbar, but only the one on screen is
+        # visible, and shortcuts of hidden widgets don't fire
+        self._focus_shortcut = QShortcut(
+            QKeySequence(QKeySequence.StandardKey.Find),
+            self,
+            context=Qt.ShortcutContext.WindowShortcut,
+        )
+        self._clear_shortcut = QShortcut(
+            QKeySequence(Qt.Key.Key_Escape),
+            self.searchbar,
+            context=Qt.ShortcutContext.WidgetShortcut,
+        )
 
     def init_layouts(self):
         self.main_layout = QHBoxLayout(self)
@@ -50,6 +68,20 @@ class Searchbar(QWidget):
         # Optional: emit immediately on Enter or when editing finishes (focus out)
         self.searchbar.returnPressed.connect(self._emit_now)
         self.searchbar.editingFinished.connect(self._emit_now)
+
+        # the clear button empties the field without a textEdited
+        self.searchbar.textChanged.connect(lambda text: text or self._emit_now())
+
+        self._focus_shortcut.activated.connect(self.focus_search)
+        self._clear_shortcut.activated.connect(self.clear_search)
+
+    def focus_search(self):
+        self.searchbar.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        self.searchbar.selectAll()
+
+    def clear_search(self):
+        self.searchbar.clear()
+        self.searchbar.clearFocus()
 
     # --- internals ---
 

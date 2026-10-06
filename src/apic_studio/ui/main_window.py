@@ -163,6 +163,7 @@ class MainWindow(QWidget):
             geo.width(),
             geo.height(),
         ]
+        self.attrib_editor.flush()
         self.loader.stop()
         self.viewport.shutdown()
         self.settings.WindowSettings.current_viewport = self.viewport.curr_view

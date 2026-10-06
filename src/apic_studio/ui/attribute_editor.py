@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QImage
+from PySide6.QtGui import QImage, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QFormLayout,
     QHBoxLayout,
@@ -36,8 +36,9 @@ class Tag(QWidget):
 
     def init_widgets(self):
         self.label = QLabel(self.text)
-        self.delete_btn = QPushButton("X")
+        self.delete_btn = QPushButton("×")
         self.delete_btn.setFixedWidth(20)
+        self.delete_btn.setToolTip(f"Remove tag {self.text}")
 
     def init_layouts(self):
         self.main_layout = QHBoxLayout(self)
@@ -66,7 +67,7 @@ class TagCollection(QWidget):
 
     def init_widgets(self):
         self.label = QLabel(self.text)
-        self.add_btn = QPushButton("Add Tag")
+        self.add_btn = QPushButton("Edit Tags")
 
     def init_layouts(self):
         self.main_layout = FlowLayout(self)
@@ -76,7 +77,7 @@ class TagCollection(QWidget):
         self.add_btn.clicked.connect(self.add_tag_dialog)
 
     def add_tag_dialog(self):
-        dialog = TagDialog(self.tag_svc.get_all())
+        dialog = TagDialog(self.tag_svc.get_all(), list(self.tags), self.window())
         dialog.tags_selected.connect(self.on_tags_selected)
         dialog.tag_created.connect(self.on_tag_created)
         dialog.exec()
@@ -85,9 +86,7 @@ class TagCollection(QWidget):
         self.tag_svc.create(tag)
 
     def on_tags_selected(self, tags: list[str]):
-        for t in tags:
-            self.add_tag(t)
-
+        # the dialog hands back the full set, the editor rebuilds the widgets
         self.tags_changed.emit(tags)
 
     def on_tag_delete(self, tag: str):
@@ -123,6 +122,9 @@ class AttributeEditor(QWidget):
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.current_asset = Asset(Path(), QImage(), Path())
+        self._has_asset = False
+        # notes edited but not saved yet
+        self._dirty = False
 
         self.init_widgets()
         self.init_layouts()
@@ -145,20 +147,32 @@ class AttributeEditor(QWidget):
         self.icon = IconButton(icon_size)
         self.icon.set_icon(":icons/tabler-icon-photo.png")
 
-        self.asset_name = QLineEdit("Asset Name")
+        self.asset_name = QLineEdit()
+        self.asset_name.setPlaceholderText("Select an asset")
         self.asset_name.setReadOnly(True)
-        self.asset_ext = QLineEdit("")
+        self.asset_ext = QLineEdit()
         self.asset_ext.setReadOnly(True)
-        self.asset_size = QLineEdit("0MB")
+        self.asset_size = QLineEdit()
         self.asset_size.setReadOnly(True)
-        self.asset_path = QLineEdit("/path/to/asset")
+        self.asset_path = QLineEdit()
         self.asset_path.setReadOnly(True)
+        # not stored per asset (yet), so it's display only
         self.asset_renderer = QLineEdit("Redshift")
+        self.asset_renderer.setReadOnly(True)
         self.tag_collection = TagCollection("")
-        self.asset_notes = QTextEdit("notes about asset...")
+        self.asset_notes = QTextEdit()
+        self.asset_notes.setPlaceholderText("Notes about this asset")
         self.asset_notes.setStyleSheet(" border: 1px solid #222;")
 
         self.save_btn = QPushButton("Save")
+        self.save_btn.setToolTip("Save notes (Ctrl+S)")
+        self.save_shortcut = QShortcut(
+            QKeySequence(QKeySequence.StandardKey.Save),
+            self,
+            context=Qt.ShortcutContext.WidgetWithChildrenShortcut,
+        )
+
+        self.set_editable(False)
 
     def init_layouts(self):
         self.another_layout = QVBoxLayout()
@@ -199,6 +213,8 @@ class AttributeEditor(QWidget):
 
     def init_signals(self):
         self.save_btn.clicked.connect(self.on_save)
+        self.save_shortcut.activated.connect(self.on_save)
+        self.asset_notes.textChanged.connect(self.on_notes_changed)
         self.load.connect(self.on_load)
         self.tag_collection.tags_changed.connect(self.on_tags_changed)
         self.tag_collection.tag_removed.connect(self.on_tag_removed)
@@ -207,9 +223,24 @@ class AttributeEditor(QWidget):
         self.current_asset.metadata.tags.remove(tag)
         self.current_asset.metadata.save()
 
+    def set_editable(self, editable: bool):
+        """Notes and tags only make sense once an asset is selected."""
+        self.asset_notes.setEnabled(editable)
+        self.tag_collection.add_btn.setEnabled(editable)
+        self.save_btn.setEnabled(editable and self._dirty)
+
+    def on_notes_changed(self):
+        self._dirty = True
+        self.save_btn.setEnabled(self._has_asset)
+
+    def flush(self):
+        """Save notes that were edited but not saved yet."""
+        if self._dirty:
+            self.on_save()
+
     def on_tags_changed(self, tags: list[str]):
-        tag_set = set(self.current_asset.metadata.tags).union(tags)
-        tag_list = list(tag_set)
+        # keep the order the tags were picked in, drop duplicates
+        tag_list = list(dict.fromkeys(tags))
         self.current_asset.metadata.tags = tag_list
         self.current_asset.metadata.save()
 
@@ -221,12 +252,21 @@ class AttributeEditor(QWidget):
             self.tag_collection.add_tag(t)
 
     def on_save(self):
+        if not self._has_asset:
+            return
+
         self.current_asset.metadata.notes = self.asset_notes.toPlainText()
         self.current_asset.metadata.save()
+        self._dirty = False
+        self.save_btn.setEnabled(False)
         self.save.emit(self.current_asset)
 
     def on_load(self, asset: Asset):
+        # switching assets would throw away unsaved notes
+        self.flush()
+
         self.current_asset = asset
+        self._has_asset = True
         asset.metadata.load()
 
         self.icon.set_icon(str(asset.icon_path))
@@ -234,5 +274,9 @@ class AttributeEditor(QWidget):
         self.asset_ext.setText(asset.suffix)
         self.asset_size.setText(asset.format_size())
         self.asset_path.setText(str(asset.path))
-        self.asset_notes.setText(asset.metadata.notes)
+        self.asset_notes.blockSignals(True)
+        self.asset_notes.setPlainText(asset.metadata.notes)
+        self.asset_notes.blockSignals(False)
+        self._dirty = False
+        self.set_editable(True)
         self.create_tags(asset.metadata.tags)

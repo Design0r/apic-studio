@@ -437,9 +437,9 @@ class Viewport(QWidget):
             self.backup.create(path)
             self.dcc.file_open(path)
 
-        backup = CreateBackupDialog()
+        backup = CreateBackupDialog(self.window())
         backup.accepted.connect(lambda: on_backup_open(path))
-        backup.rejected.connect(lambda: self.dcc.file_open(path))
+        backup.declined.connect(lambda: self.dcc.file_open(path))
         backup.exec()
 
     def on_del_preview(self, file: Path):
@@ -454,7 +454,7 @@ class Viewport(QWidget):
         self.loader.load_asset(file_dir, refresh=True)
 
     def on_del_asset(self, file: Path):
-        dialog = DeleteAssetDialog(file.stem)
+        dialog = DeleteAssetDialog(file.stem, self.window())
         dialog.accepted.connect(lambda: self.delete_asset(file))
         dialog.exec()
 
@@ -471,7 +471,7 @@ class Viewport(QWidget):
         pass
 
     def rename_asset(self, file: Path):
-        dialog = RenameAssetDialog(file.stem)
+        dialog = RenameAssetDialog(file.stem, self.window())
         dialog.asset_renamed.connect(lambda x: self.on_rename_asset(file, x))  # type: ignore
         dialog.exec()
 
