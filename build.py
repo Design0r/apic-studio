@@ -76,19 +76,25 @@ class Builder:
 def main():
     CWD = Path(__file__).parent
     icon = (
-        str(Path("./src/apic_studio/resources/icons/apic_logo.ico"))
+        str(CWD / "src/apic_studio/resources/icons/apic_logo.ico")
         if sys.platform == "win32"
-        else str(Path("./src/apic_studio/resources/icons/apic_logo.icns"))
+        else str(CWD / "src/apic_studio/resources/icons/apic_logo.icns")
     )
 
     PyInstaller.__main__.run(
         [
             "src/apic_studio.py",
             # "--onefile",
+            "--onedir",
+            "--noupx",
+            "--optimize",
+            "2",
             "--name",
             "Apic Studio",
             "--noconsole",
             "--noconfirm",
+            "--specpath",
+            str(CWD / "build/"),
             "--icon",
             icon,
         ]
@@ -108,22 +114,22 @@ def main():
 
     b.add_ext_copy(
         CWD / "dist" / "apic_connector_plugin" / "apic_connector",
-        Path(r"W:\Pipeline\Apic_Cinema_Pipeline\Dependencies\apic_connector"),
+        Path("W:/Pipeline/Apic_Cinema_Pipeline/Dependencies/apic_connector"),
     )
 
     b.add_ext_copy(
         CWD / "dist" / "apic_connector_plugin" / "shared",
-        Path(r"W:\Pipeline\Apic_Cinema_Pipeline\Dependencies\shared"),
+        Path("W:/Pipeline/Apic_Cinema_Pipeline/Dependencies/shared"),
     )
 
     b.add_ext_copy(
         CWD / "dist" / "apic_connector_plugin" / "apic_connector.pyp",
-        Path(r"W:\Pipeline\Apic_Cinema_Pipeline\Plugins\apic_connector"),
+        Path("W:/Pipeline/Apic_Cinema_Pipeline/Plugins/apic_connector"),
     )
 
     b.add_ext_copy(
         CWD / "dist" / "Apic Studio",
-        Path(r"W:\Pipeline\Apic Studio"),
+        Path("W:/Pipeline/Apic Studio"),
     )
 
     b.build()

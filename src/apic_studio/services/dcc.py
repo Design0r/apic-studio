@@ -1,8 +1,9 @@
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from subprocess import Popen
-from typing import Any, Callable, Optional, Protocol
+from typing import Any, Protocol
 
 from PySide6.QtCore import QObject, QThread
 
@@ -19,7 +20,7 @@ class CmdBuilder:
     def add_positional(self, value: str):
         self._cmd.append(f'"{value}"')
 
-    def add_flag(self, flag: str, value: Optional[Any] = None):
+    def add_flag(self, flag: str, value: Any | None = None):
         self._cmd.append(flag)
         if value:
             self._cmd.append(f'"{value}"')
@@ -40,7 +41,7 @@ class DCC(Protocol):
 
 
 class Cinema4D:
-    def __init__(self, install_location: Optional[Path] = None) -> None:
+    def __init__(self, install_location: Path | None = None) -> None:
         self.install_location = install_location
         self.default_locations = {
             "darwin": Path(""),
@@ -63,7 +64,7 @@ class Cinema4D:
         loc = self.install_location or self.default_location
         return list(loc.glob("Maxon Cinema 4D*"))
 
-    def _get_version_base(self, version: str) -> Optional[Path]:
+    def _get_version_base(self, version: str) -> Path | None:
         versions = self.get_versions()
         if not versions:
             Logger.error(
@@ -74,7 +75,7 @@ class Cinema4D:
             if version in v.stem:
                 return v
 
-    def get_exe(self, version: Optional[str] = None) -> Optional[Path]:
+    def get_exe(self, version: str | None = None) -> Path | None:
         exe = "Cinema 4D.exe"
         if not version:
             return self._get_base() / exe
@@ -82,7 +83,7 @@ class Cinema4D:
         if v := self._get_version_base(version):
             return v / exe
 
-    def get_batch(self, version: Optional[str] = None) -> Optional[Path]:
+    def get_batch(self, version: str | None = None) -> Path | None:
         exe = "Commandline.exe"
         if not version:
             return self._get_base() / exe
@@ -90,7 +91,7 @@ class Cinema4D:
         if v := self._get_version_base(version):
             return v / exe
 
-    def get_py(self, version: Optional[str] = None) -> Optional[Path]:
+    def get_py(self, version: str | None = None) -> Path | None:
         exe = "c4dpy.exe"
         if not version:
             return self._get_base() / exe
@@ -101,7 +102,7 @@ class Cinema4D:
     def run_exe(self, args: list[str]) -> None:
         raise NotImplementedError()
 
-    def run_py(self, args: list[str], callback: Optional[Callable[[], None]] = None):
+    def run_py(self, args: list[str], callback: Callable[[], None] | None = None):
         cmd = f"{self.get_py()} {' '.join(args)}"
         rt = RenderThread(cmd)
         self._renders.append(rt)
@@ -157,7 +158,7 @@ class DCCBridge:
 
         return False
 
-    def call(self, message: str, data: Optional[Any] = None) -> Message:
+    def call(self, message: str, data: Any | None = None) -> Message:
         msg = Message(message, data=data)
         res = self.ctx.send_recv(msg)
         return Message.from_dict(res)
@@ -237,12 +238,12 @@ class DCCBridge:
         return res
 
     def materials_preview_create(
-        self, path: Path, callback: Optional[Callable[[], None]] = None
+        self, path: Path, callback: Callable[[], None] | None = None
     ):
         render_material([path], callback=callback)
 
     def materials_preview_create_all(
-        self, path: list[Path], callback: Optional[Callable[[], None]] = None
+        self, path: list[Path], callback: Callable[[], None] | None = None
     ):
         render_material(path, callback=callback)
 
@@ -270,13 +271,13 @@ class DCCBridge:
     def repath_textures(
         self,
         path: Path,
-        callback: Optional[Callable[[], None]] = None,
+        callback: Callable[[], None] | None = None,
         nocopy: bool = False,
     ):
         repath_textures(path, callback=callback, nocopy=nocopy)
 
     def batch_repath_textures(
-        self, paths: list[Path], callback: Optional[Callable[[], None]] = None
+        self, paths: list[Path], callback: Callable[[], None] | None = None
     ):
         def _seq_repath():
             try:
@@ -293,10 +294,36 @@ class DCCBridge:
 
         _seq_repath()
 
+    def settings_export_all(self, path: Path) -> Message:
+        res = self.call("core.settings.export.all", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to open file: {path.name}: {res}")
 
-def render_material(
-    materials: list[Path], callback: Optional[Callable[[], None]] = None
-):
+        return res
+
+    def settings_export_redshift(self, path: Path) -> Message:
+        res = self.call("core.settings.export.redshift", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to open file: {path.name}: {res}")
+
+        return res
+
+    def settings_export_c4d(self, path: Path) -> Message:
+        res = self.call("core.settings.export.c4d", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to open file: {path.name}: {res}")
+
+        return res
+
+    def settings_import(self, path: Path) -> Message:
+        res = self.call("core.settings.import", {"path": str(path)})
+        if self.is_err(res):
+            Logger.error(f"failed to open file: {path.name}: {res}")
+
+        return res
+
+
+def render_material(materials: list[Path], callback: Callable[[], None] | None = None):
     builder = CmdBuilder()
     s = SettingsManager()
     m = s.MaterialSettings
@@ -317,7 +344,7 @@ def render_material(
     builder.add_flag("--camera", m.render_cam)
     builder.add_flag("--width", m.render_res_x)
     builder.add_flag("--height", m.render_res_y)
-    builder.add_flag("--materials", ",".join((str(m) for m in materials)))
+    builder.add_flag("--materials", ",".join(str(m) for m in materials))
 
     cmd = builder.build_list()
     c4d = Cinema4D()
@@ -327,7 +354,7 @@ def render_material(
 def repath_textures(
     scene_path: Path,
     nocopy: bool = False,
-    callback: Optional[Callable[[], None]] = None,
+    callback: Callable[[], None] | None = None,
 ):
     s = SettingsManager()
     builder = CmdBuilder()

@@ -50,7 +50,7 @@ class Logger:
 
     @classmethod
     def logger_exists(cls):
-        return cls.LOGGER_NAME in logging.Logger.manager.loggerDict.keys()
+        return cls.LOGGER_NAME in logging.Logger.manager.loggerDict
 
     @classmethod
     def set_level(cls, level: str):
@@ -92,7 +92,7 @@ class Logger:
         cls.exec_callbacks("Critical Error", msg)
 
     @classmethod
-    def log(cls, level: int, msg: str, *args: tuple[Any], **kwargs: dict[str, Any]):
+    def log(cls, level: int, msg: str, *args: Any, **kwargs: Any):
         lg = cls.logger_obj()
         lg.log(level, msg, *args, **kwargs)
 

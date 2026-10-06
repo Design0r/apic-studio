@@ -32,7 +32,15 @@ from apic_studio.ui.dialogs import (
 )
 from shared.logger import Logger
 
-VIEWS = ("textures", "models", "apic_models", "materials", "hdris", "lightsets")
+VIEWS = (
+    "textures",
+    "models",
+    "apic_models",
+    "materials",
+    "hdris",
+    "lightsets",
+    "utilities",
+)
 
 VIEW_STYLE = """
 QListView {
@@ -361,6 +369,8 @@ class Viewport(QWidget):
         elif self.curr_view == "hdris":
             import_act.setText("Import as Domelight")
             import_act.triggered.connect(lambda: self.dcc.hdri_import_as_dome(file))
+        elif self.curr_view == "utilities":
+            import_act.triggered.connect(lambda: self.dcc.settings_import(file))
 
         render_act = QAction("Render Preview")
         render_act.triggered.connect(lambda: self.on_render(file))
@@ -379,7 +389,7 @@ class Viewport(QWidget):
 
         menu = QMenu()
 
-        if self.curr_view not in ("hdris", "utils"):
+        if self.curr_view not in ("hdris", "utilities"):
             menu.addAction(open_act)
 
         if self.curr_view in ("models", "apic_models", "lightsets"):

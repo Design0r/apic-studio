@@ -1010,6 +1010,69 @@ class RenameAssetDialog(QDialog):
         super().accept()
 
 
+class ExportRenderSettingsDialog(QDialog):
+    @dataclass
+    class Data:
+        name: str
+        export_c4d: bool
+        export_rs: bool
+
+    finished = Signal(Data)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__(parent)
+
+        self.setWindowTitle("Export Render Settings")
+        self.setWindowIcon(QIcon(":icons/apic_logo.png"))
+        self.setStyleSheet("QWidget {background-color: #333; color: #fff}")
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+    def init_widgets(self):
+        self.name_edit = QLineEdit("")
+        self.name_edit.setFixedHeight(30)
+
+        self.c4d_settings = QCheckBox()
+        self.c4d_settings.setChecked(True)
+        self.rs_settings = QCheckBox()
+        self.rs_settings.setChecked(True)
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+
+        self.form_layout.addRow("Name", self.name_edit)
+        self.form_layout.addRow("Cinema 4D Settings", self.c4d_settings)
+        self.form_layout.addRow("Redshift Settings", self.rs_settings)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+
+    def accept(self) -> None:
+        name = self.name_edit.text()
+        if not name:
+            return
+
+        super().accept()
+
+        data = self.Data(
+            name, self.c4d_settings.isChecked(), self.rs_settings.isChecked()
+        )
+
+        self.finished.emit(data)
+
+
 def files_dialog(title: str = "Select Files") -> tuple[list[str], str]:
     folder = QFileDialog.getOpenFileNames(caption=title)
     return folder

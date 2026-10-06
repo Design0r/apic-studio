@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QImage
@@ -26,7 +25,7 @@ from .flow_layout import FlowLayout
 class Tag(QWidget):
     remove = Signal(str)
 
-    def __init__(self, label: str, parent: Optional[QWidget] = None):
+    def __init__(self, label: str, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.text = label
@@ -54,7 +53,7 @@ class TagCollection(QWidget):
     tags_changed = Signal(list)
     tag_removed = Signal(str)
 
-    def __init__(self, label: str, parent: Optional[QWidget] = None):
+    def __init__(self, label: str, parent: QWidget | None = None):
         super().__init__(parent)
 
         self.tag_svc = TagService()
@@ -121,7 +120,7 @@ class AttributeEditor(QWidget):
     save = Signal(Asset)
     load = Signal(Asset)
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         self.current_asset = Asset(Path(), QImage(), Path())
 

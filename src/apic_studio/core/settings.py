@@ -107,6 +107,13 @@ class TextureSettings(Settings):
 
 
 @register
+class UtilitySettings(Settings):
+    def __init__(self):
+        super().__init__()
+        self.current_pool = ""
+
+
+@register
 class WindowSettings(Settings):
     def __init__(self) -> None:
         super().__init__()
@@ -157,6 +164,7 @@ class SettingsManager:
     LightsetSettings: LightsetSettings
     HdriSettings: HdriSettings
     TextureSettings: TextureSettings
+    UtilitySettings: UtilitySettings
 
     def __new__(cls):
         if cls._instance is None:

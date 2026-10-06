@@ -1,3 +1,4 @@
+from apic_connector.c4d.services import render_settings
 from shared.messaging import Message, MessageRouter
 from shared.network import Connection
 
@@ -38,6 +39,74 @@ def save_file_as(conn: Connection, msg: Message):
     globalize = msg.data.get("globalize_textures", False)
 
     res = core.save_file_as(path, globalize)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))
+
+
+@router.register("settings.export.all")
+def export_all_settings(conn: Connection, msg: Message):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = render_settings.export_all_settings(path)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))
+
+
+@router.register("settings.export.redshift")
+def export_redshift_settings(conn: Connection, msg: Message):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = render_settings.export_redshift_settings(path)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))
+
+
+@router.register("settings.export.c4d")
+def export_c4d_settings(conn: Connection, msg: Message):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = render_settings.export_c4d_settings(path)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))
+
+
+@router.register("settings.import")
+def import_settings(conn: Connection, msg: Message):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = render_settings.import_settings(path)
     if res:
         conn.send(Message("success"))
     else:

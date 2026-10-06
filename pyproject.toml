@@ -1,17 +1,16 @@
 [project]
 name = "apic-studio"
-version = "0.6.0"
+version = "0.7.0"
 description = "An Asset Browser for Cinema4D"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = ["pyside6>=6.11.1", "rust-thumbnails"]
+dependencies = ["pyside6>=6.11.2", "rust-thumbnails"]
 
 [dependency-groups]
 dev = [
     "graphviz>=0.21",
-    "pyinstaller>=6.22.0",
-    "pyside6-stubs>=6.7.3.0",
-    "ruff>=0.16.2",
+    "pyinstaller>=6.22.3",
+    "ruff>=0.16.10",
     "snakeviz>=2.2.2",
 ]
 

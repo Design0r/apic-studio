@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional, override
+from typing import Any, override
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QCloseEvent, QIcon
@@ -20,6 +20,7 @@ from apic_studio.ui.toolbar import (
     Statusbar,
     TextureToolbar,
     ToolbarDirection,
+    UtilityToolbar,
 )
 from apic_studio.ui.viewport import Viewport
 
@@ -31,7 +32,7 @@ class MainWindow(QWidget):
         self,
         dcc: DCCBridge,
         settings: SettingsManager,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.settings = settings
@@ -46,6 +47,7 @@ class MainWindow(QWidget):
             "lightsets": self.settings.LightsetSettings,
             "hdris": self.settings.HdriSettings,
             "textures": self.settings.TextureSettings,
+            "utilities": self.settings.UtilitySettings,
         }
 
         self.setWindowTitle(f"Apic Studio - {__version__}")
@@ -86,6 +88,9 @@ class MainWindow(QWidget):
         self.textures_tb = TextureToolbar(pools.TexturePoolManager(), self.dcc)
         self.textures_tb.set_current_pool(self.settings.TextureSettings.current_pool)
 
+        self.utility_tb = UtilityToolbar(pools.UtilityPoolManager(), self.dcc)
+        self.utility_tb.set_current_pool(self.settings.UtilitySettings.current_pool)
+
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
             {
@@ -95,6 +100,7 @@ class MainWindow(QWidget):
                 "lightsets": self.lightset_tb,
                 "hdris": self.hdri_tb,
                 "textures": self.textures_tb,
+                "utilities": self.utility_tb,
             },
         )
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
@@ -132,6 +138,7 @@ class MainWindow(QWidget):
         s.materials.clicked.connect(lambda: self.set_view("materials"))
         s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
         s.hdris.clicked.connect(lambda: self.set_view("hdris"))
+        s.utilities.clicked.connect(lambda: self.set_view("utilities"))
         self.dcc.on_connect(s.conn_btn.connected.emit)
         self.dcc.on_disconnect(s.conn_btn.disconnected.emit)
         s.conn_btn.clicked.connect(
@@ -173,15 +180,19 @@ class MainWindow(QWidget):
 
     def draw(
         self,
-        curr_pool: Optional[Path] = None,
+        curr_pool: Path | None = None,
         force: bool = False,
-        filter: Optional[str] = None,
+        filter: str | None = None,
     ):
         if not curr_pool:
             curr_pool = self.toolbar.current.current_pool
             if not curr_pool:
                 self.viewport.clear()
                 return
+
+        if curr_pool == Path():
+            self.viewport.clear()
+            return
 
         self.viewport.draw(curr_pool, force=force, filter=filter)
         self.vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem

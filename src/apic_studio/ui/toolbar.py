@@ -20,6 +20,7 @@ from apic_studio.ui.dialogs import (
     DeletePoolDialog,
     ExportMaterialDialog,
     ExportModelDialog,
+    ExportRenderSettingsDialog,
     ImportModelsDialog,
     ProgressDialog,
     SettingsDialog,
@@ -517,7 +518,7 @@ class MultiToolbar(QWidget):
             widget.setParent(None)
 
     def set_current_view(self, toolbar_id: str) -> Toolbar | None:
-        if toolbar_id not in self.multibars.keys():
+        if toolbar_id not in self.multibars:
             return None
 
         self._clear_layout()
@@ -892,3 +893,81 @@ class TextureToolbar(AssetToolbar):
 
     def on_search(self, text: str):
         self.search_text_changed.emit((self.current_pool, text))
+
+
+class UtilityToolbar(AssetToolbar):
+    def __init__(
+        self,
+        pool: PoolManager,
+        dcc: DCCBridge,
+        label: str = "Utilities",
+        thickness: int = 40,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, pool, dcc, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+        self.export_btn = IconButton((30, 30))
+        self.export_btn.set_icon(":icons/tabler-icon-file-export.png")
+        self.export_btn.set_tooltip("Export settings")
+
+        self.refresh_btn = IconButton((30, 30))
+        self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
+        self.refresh_btn.set_tooltip("Refresh pool")
+
+        self.searchbar = Searchbar()
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+
+        self.add_widgets(
+            [
+                self.export_btn,
+                VLine(),
+                self.refresh_btn,
+                VLine(),
+                self.searchbar,
+            ],
+            stretch=True,
+        )
+
+    @override
+    def init_signals(self):
+        super().init_signals()
+        self.export_btn.clicked.connect(self.export_dialog)
+        self.refresh_btn.clicked.connect(
+            lambda: self.force_refresh.emit(self.current_pool)
+        )
+        self.searchbar.text_changed.connect(self.on_search)
+
+    def export_dialog(self):
+        dialog = ExportRenderSettingsDialog()
+        dialog.finished.connect(self.on_export_dialog_finished)
+        dialog.exec()
+
+    def on_search(self, text: str):
+        self.search_text_changed.emit((self.current_pool, text))
+
+    def on_export_dialog_finished(self, data: ExportRenderSettingsDialog.Data):
+        if not self.current_pool:
+            Logger.error("No current pool selected for export.")
+            return
+
+        name = data.name
+
+        file_dir = self.current_pool / name
+        file_dir.mkdir(parents=True, exist_ok=True)
+        file_path = file_dir / f"{name}.dat"
+
+        if data.export_c4d and data.export_rs:
+            self.dcc.settings_export_all(file_path)
+        elif data.export_c4d:
+            self.dcc.settings_export_c4d(file_path)
+        elif data.export_rs:
+            self.dcc.settings_export_redshift(file_path)
+
+        self.force_refresh.emit(self.current_pool)
