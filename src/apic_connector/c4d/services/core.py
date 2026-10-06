@@ -1,6 +1,42 @@
+from pathlib import Path
+
 import c4d
 
 from shared.logger import Logger
+
+
+def get_document_path() -> Path | None:
+    doc = c4d.documents.GetActiveDocument()
+
+    directory = doc.GetDocumentPath()
+    if not directory:
+        return None
+
+    return Path(directory, doc.GetDocumentName())
+
+
+PROJECT_ROOTS = (
+    Path(r"\\apicnas\Produktion\Projekte"),
+    Path(r"W:\Projekte"),
+)
+
+
+def get_project_path(document: Path) -> Path | None:
+    for folder in document.parents:
+        if folder.parent in PROJECT_ROOTS:
+            return folder
+    return None
+
+
+def get_default_render_path(document: Path | None) -> Path | None:
+    if not document:
+        return None
+
+    proj = get_project_path(document)
+    if proj is None:
+        return None
+
+    return proj / "400_3D/460_renderings/$prj/$take/$prj_$take"
 
 
 def import_file(file_path: str) -> bool:
