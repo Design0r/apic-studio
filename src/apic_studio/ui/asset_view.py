@@ -10,6 +10,7 @@ from PySide6.QtCore import (
     QPersistentModelIndex,
     QRect,
     QSize,
+    QSortFilterProxyModel,
     Qt,
     QTimer,
     Signal,
@@ -192,6 +193,78 @@ class AssetModel(QAbstractListModel):
 
     def _reindex(self) -> None:
         self._by_key = {row.key: i for i, row in enumerate(self._rows)}
+
+
+class AssetFilterProxy(QSortFilterProxyModel):
+    """Filters the tiles by name and by tags.
+
+    The tags come from an index the viewport fills in the background, see
+    AssetLoader.index_tags. While a tag filter is set but the index has not
+    arrived, nothing matches rather than everything.
+    """
+
+    def __init__(self, parent: QObject | None = None) -> None:
+        super().__init__(parent)
+        self._text = ""
+        self._tags: frozenset[str] = frozenset()
+        self._match_all = True
+        # asset path -> lowercased tags, None until indexed
+        self._tag_index: dict[Path, frozenset[str]] | None = None
+
+    @property
+    def filters_tags(self) -> bool:
+        return bool(self._tags)
+
+    @property
+    def has_tag_index(self) -> bool:
+        return self._tag_index is not None
+
+    def set_text(self, text: str) -> None:
+        text = text.strip().lower()
+        if text == self._text:
+            return
+        self._text = text
+        self.invalidateRowsFilter()
+
+    def set_tags(self, tags: list[str], match_all: bool) -> None:
+        lowered = frozenset(t.lower() for t in tags)
+        if lowered == self._tags and match_all == self._match_all:
+            return
+        self._tags = lowered
+        self._match_all = match_all
+        self.invalidateRowsFilter()
+
+    def set_tag_index(self, index: dict[Path, frozenset[str]] | None) -> None:
+        if index is None:
+            self._tag_index = None
+        else:
+            self._tag_index = {
+                path: frozenset(t.lower() for t in tags) for path, tags in index.items()
+            }
+        if self._tags:
+            self.invalidateRowsFilter()
+
+    def filterAcceptsRow(self, source_row: int, source_parent: Index) -> bool:
+        model = self.sourceModel()
+        if not isinstance(model, AssetModel):
+            return True
+
+        row = model.row_at(model.index(source_row, 0))
+        if row is None:
+            return False
+
+        if self._text and self._text not in row.key.lower():
+            return False
+
+        if self._tags:
+            if self._tag_index is None:
+                return False
+            tags = self._tag_index.get(row.asset, frozenset())
+            if self._match_all:
+                return self._tags <= tags
+            return bool(self._tags & tags)
+
+        return True
 
 
 class AssetDelegate(QStyledItemDelegate):

@@ -5,7 +5,7 @@ import time
 from collections import OrderedDict
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, QSize, QSortFilterProxyModel, Qt, Signal
+from PySide6.QtCore import QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -20,8 +20,8 @@ from apic_studio.core.fs import open_dir
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, BackupManager, DCCBridge, Screenshot
 from apic_studio.ui.asset_view import (
-    KEY_ROLE,
     AssetDelegate,
+    AssetFilterProxy,
     AssetModel,
     AssetRow,
 )
@@ -92,13 +92,11 @@ class Viewport(QWidget):
 
         # one model per view so switching views keeps each pool's contents
         self._models: dict[str, AssetModel] = {}
-        self._proxies: dict[str, QSortFilterProxyModel] = {}
+        self._proxies: dict[str, AssetFilterProxy] = {}
         for name in VIEWS:
             model = AssetModel(self)
-            proxy = QSortFilterProxyModel(self)
+            proxy = AssetFilterProxy(self)
             proxy.setSourceModel(model)
-            proxy.setFilterRole(KEY_ROLE)
-            proxy.setFilterCaseSensitivity(Qt.CaseSensitivity.CaseInsensitive)
             self._models[name] = model
             self._proxies[name] = proxy
 
@@ -107,6 +105,10 @@ class Viewport(QWidget):
         self.backup = BackupManager()
 
         self._pool_asset_index: dict[Path, list[Path]] = {}
+
+        # pool -> asset -> tags, only read once a tag filter needs them
+        self._pool_tag_index: dict[Path, dict[Path, frozenset[str]]] = {}
+        self._tag_index_pending: set[Path] = set()
 
         # tiles holding a decoded thumbnail, least recently seen first
         self._loaded: OrderedDict[int, AssetRow] = OrderedDict()
@@ -156,6 +158,7 @@ class Viewport(QWidget):
     def init_signals(self):
         self.loader.asset_loaded.connect(self.on_asset_load)
         self.loader.pool_scanned.connect(self.on_pool_scanned)
+        self.loader.tags_indexed.connect(self.on_tags_indexed)
         self.delegate.rows_painted.connect(self.on_rows_painted)
         self.view.clicked.connect(self.on_item_clicked)
         self.view.customContextMenuRequested.connect(self.on_context_menu)
@@ -170,7 +173,7 @@ class Viewport(QWidget):
         return self._models[self.curr_view]
 
     @property
-    def proxy(self) -> QSortFilterProxyModel:
+    def proxy(self) -> AssetFilterProxy:
         return self._proxies[self.curr_view]
 
     def asset_files(self) -> list[Path]:
@@ -211,10 +214,14 @@ class Viewport(QWidget):
     def draw(self, path: Path, force: bool = False, filter: str | None = None) -> None:
         self._draw_filter = filter.lower() if filter else None
         # filtering is a proxy pass over the model, no widgets are touched
-        self.proxy.setFilterFixedString(self._draw_filter or "")
+        self.proxy.set_text(self._draw_filter or "")
 
         if not force and path and path == self._drawn_pool:
             return
+
+        if force:
+            # tags may have been edited outside the app as well
+            self._pool_tag_index.pop(path, None)
 
         # whatever is still queued belongs to the pool being left behind
         self.loader.cancel_pending()
@@ -249,6 +256,7 @@ class Viewport(QWidget):
         # delegate reports them and on_rows_painted asks for the thumbnails
         self.model.set_assets(assets)
         self._drawn_pool = self._pending_pool
+        self._apply_tag_index()
 
         if self._draw_timer:
             Logger.info(
@@ -257,6 +265,50 @@ class Viewport(QWidget):
                 f"{len(assets)} assets"
             )
             self._draw_timer = 0.0
+
+    # --- tag filter ---
+
+    def set_tag_filter(self, tags: list[str], match_all: bool) -> None:
+        self.proxy.set_tags(tags, match_all)
+        self._apply_tag_index()
+
+    def _apply_tag_index(self) -> None:
+        """Hand the drawn pool's tags to the filter, reading them if needed."""
+        pool = self._drawn_pool
+        if pool is None:
+            return
+
+        index = self._pool_tag_index.get(pool)
+        self.proxy.set_tag_index(index)
+
+        if index is not None or not self.proxy.filters_tags:
+            return
+
+        if pool not in self._tag_index_pending:
+            self._tag_index_pending.add(pool)
+            Logger.info(f"reading tags of pool {pool.parent.stem}...")
+            self.loader.index_tags(pool, self.model.assets())
+
+    def on_tags_indexed(self, pool: Path, index: dict[Path, frozenset[str]]) -> None:
+        self._tag_index_pending.discard(pool)
+        self._pool_tag_index[pool] = index
+
+        if pool == self._drawn_pool:
+            self.proxy.set_tag_index(index)
+
+    def update_asset_tags(self, asset_dir: Path, tags: list[str]) -> None:
+        """Keep the index in step with tags edited in the attribute editor."""
+        for pool, index in self._pool_tag_index.items():
+            if asset_dir in index or asset_dir.parent == pool:
+                index[asset_dir] = frozenset(tags)
+                if pool == self._drawn_pool:
+                    self.proxy.set_tag_index(index)
+                break
+
+    def invalidate_tag_index(self) -> None:
+        """Forget every pool's tags, after a tag was renamed or deleted."""
+        self._pool_tag_index.clear()
+        self._apply_tag_index()
 
     def on_rows_painted(self, first: int, last: int) -> None:
         margin = self._prefetch_margin()
@@ -496,6 +548,15 @@ class Viewport(QWidget):
     def _forget(self, asset_dir: Path, replacement: Path | None = None) -> None:
         """Drop a path the pool no longer holds, so a redraw cannot resurrect it."""
         self.loader.forget(asset_dir)
+
+        for index in self._pool_tag_index.values():
+            if asset_dir in index:
+                tags = index.pop(asset_dir)
+                if replacement:
+                    index[replacement] = tags
+                if self.proxy.filters_tags:
+                    self._apply_tag_index()
+                break
 
         for pool, assets in self._pool_asset_index.items():
             if asset_dir not in assets:

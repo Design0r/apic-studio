@@ -6,13 +6,13 @@ from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from queue import LifoQueue
-from threading import Event, Lock
+from threading import Event, Lock, Thread
 from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
 from PySide6.QtGui import QImage, QImageReader
 
-from apic_studio.core import Asset, img, settings
+from apic_studio.core import Asset, img, read_tags, settings
 from apic_studio.core.settings import SettingsManager
 from shared.logger import Logger
 
@@ -356,6 +356,8 @@ class AssetLoaderWorker(QObject):
 class AssetLoader(QObject):
     asset_loaded = Signal(Asset)
     pool_scanned = Signal(object, object)  # (pool: Path, assets: list[Path])
+    # (pool: Path, tags: dict[Path, frozenset[str]]), keyed by asset path
+    tags_indexed = Signal(object, object)
 
     def __init__(self, parent: Optional[QObject] = None):
         super().__init__(parent)
@@ -391,6 +393,27 @@ class AssetLoader(QObject):
 
     def forget(self, path: Path) -> None:
         self.worker.remove_from_cache(path)
+
+    def index_tags(self, pool: Path, assets: list[Path]) -> None:
+        """Read every asset's tags in the background, see tags_indexed.
+
+        Kept off the thumbnail executor: it is one small file per asset, on a
+        network pool mostly round trip latency, and must not hold up the tiles.
+        """
+
+        def run():
+            try:
+                with ThreadPoolExecutor(
+                    max_workers=8, thread_name_prefix="tag-index"
+                ) as pool_exec:
+                    tags = dict(zip(assets, pool_exec.map(read_tags, assets)))
+            except Exception as e:
+                Logger.exception(e)
+                tags = {}
+
+            self.tags_indexed.emit(pool, tags)
+
+        Thread(target=run, name="tag-index", daemon=True).start()
 
     def rename_asset(self, path: Path, name: str) -> Optional[Asset]:
         asset = self.worker.get_asset(path)

@@ -119,3 +119,34 @@ class Metadata:
         self.path = old_path.rename(new_path)
         Logger.info(f"renamed metadata {old_path.name} to {new_path.name}")
         self.load()
+
+
+def normalize_tag(name: str) -> str:
+    """Trim a tag and collapse inner whitespace, "  dark   wood " -> "dark wood"."""
+    return " ".join(name.split())
+
+
+def metadata_path(asset: Path) -> Path:
+    """Where an asset keeps its notes and tags, see Asset.metadata.
+
+    `asset` is what the pool scan hands out: an asset folder, or a loose file
+    sitting directly in the pool. Decided by name so no stat is needed.
+    """
+    if asset.suffix.lower() in Asset.ASSET_EXT:
+        return asset.parent / f"{asset.stem}.json"
+    return asset / f"{asset.name}.json"
+
+
+def read_tags(asset: Path) -> frozenset[str]:
+    """An asset's tags straight from its metadata file, empty if it has none."""
+    try:
+        with open(metadata_path(asset), "r") as f:
+            data = json.load(f)
+    except OSError, ValueError:
+        return frozenset()
+
+    tags = data.get("tags") if isinstance(data, dict) else None
+    if not isinstance(tags, list):
+        return frozenset()
+
+    return frozenset(t for t in tags if isinstance(t, str))

@@ -30,8 +30,11 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
+    QMenu,
+    QMessageBox,
     QProgressDialog,
     QPushButton,
     QScrollArea,
@@ -42,6 +45,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from apic_studio.core import normalize_tag
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import Backup, BackupManager
 from shared.logger import Logger
@@ -1143,10 +1147,18 @@ class ProgressDialog(QProgressDialog):
         self.setStyleSheet(DIALOG_STYLE)
         self.setWindowTitle("Progress")
 
+    def finish(self, *_):
+        # reaching the maximum resets the dialog, which also stops the timer
+        # that would otherwise still pop it up after a quick operation
+        self.setValue(self.maximum())
+
 
 class TagDialog(BaseDialog):
     tags_selected = Signal(list)
     tag_created = Signal(str)
+    # a tag that was already saved got renamed / deleted, for every asset
+    tag_renamed = Signal(str, str)
+    tag_deleted = Signal(str)
 
     def __init__(
         self,
@@ -1158,6 +1170,7 @@ class TagDialog(BaseDialog):
 
         self.all_tags = tags
         self._button_cache: dict[str, QPushButton] = {}
+        # typed in this session, not in the tag table until OK
         self._new_tags: list[str] = []
 
         self.init_widgets()
@@ -1185,6 +1198,9 @@ class TagDialog(BaseDialog):
         self.scroll_area.setMinimumSize(350, 200)
         self.scroll_area.setWidget(self.scroll_widget)
 
+        self.manage_hint = QLabel("Right click a tag to rename or delete it.")
+        self.manage_hint.setObjectName("hint")
+
         buttons = (
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
@@ -1203,6 +1219,7 @@ class TagDialog(BaseDialog):
         self.main_layout.addWidget(self.name_edit)
         self.main_layout.addWidget(self.hint)
         self.main_layout.addWidget(self.scroll_area)
+        self.main_layout.addWidget(self.manage_hint)
         self.main_layout.addWidget(self.button_box)
 
     def init_signals(self):
@@ -1213,22 +1230,25 @@ class TagDialog(BaseDialog):
 
     def _find(self, text: str) -> str | None:
         """The existing tag matching `text`, ignoring case."""
-        text = text.strip().lower()
+        text = normalize_tag(text).lower()
         return next((t for t in self._button_cache if t.lower() == text), None)
 
+    def _tag_of(self, btn: QPushButton) -> str | None:
+        return next((t for t, b in self._button_cache.items() if b is btn), None)
+
     def on_text_changed(self, text: str):
-        needle = text.strip().lower()
+        needle = normalize_tag(text).lower()
         for tag, btn in self._button_cache.items():
             btn.setVisible(needle in tag.lower())
 
         if needle and self._find(needle) is None:
-            self.hint.setText(f"Press Enter to create the tag “{text.strip()}”.")
+            self.hint.setText(f"Press Enter to create the tag “{normalize_tag(text)}”.")
             self.hint.setVisible(True)
         else:
             self.hint.setVisible(False)
 
     def on_return(self):
-        text = self.name_edit.text().strip()
+        text = normalize_tag(self.name_edit.text())
         if not text:
             self.accept()
             return
@@ -1256,8 +1276,102 @@ class TagDialog(BaseDialog):
             btn = QPushButton(tag.replace("&", "&&"))
             btn.setCheckable(True)
             btn.setAutoDefault(False)
+            btn.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+            btn.customContextMenuRequested.connect(
+                lambda pos, b=btn: self.show_tag_menu(b, pos)
+            )
             self._button_cache[tag] = btn
             self.tag_layout.addWidget(btn)
+
+    def _remove_button(self, tag: str) -> None:
+        btn = self._button_cache.pop(tag)
+        self.tag_layout.removeWidget(btn)
+        btn.deleteLater()
+
+    # --- rename / delete ---
+
+    def show_tag_menu(self, btn: QPushButton, pos: QPoint):
+        tag = self._tag_of(btn)
+        if tag is None:
+            return
+
+        menu = QMenu(self)
+        menu.addAction("Rename…", lambda: self.rename_tag(tag))
+        menu.addAction("Delete…", lambda: self.delete_tag(tag))
+        menu.exec(btn.mapToGlobal(pos))
+
+    def rename_tag(self, old: str):
+        new, ok = QInputDialog.getText(
+            self, "Rename Tag", f"New name for “{old}”:", QLineEdit.EchoMode.Normal, old
+        )
+        new = normalize_tag(new)
+        if not ok or not new or new == old:
+            return
+
+        target = self._find(new)
+        if target is not None and target != old:
+            answer = QMessageBox.question(
+                self,
+                "Merge Tags",
+                f"“{target}” already exists.\n\nMerge “{old}” into it? Every "
+                f"asset tagged “{old}” is tagged “{target}” instead.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+
+        self.apply_rename(old, new)
+
+    def apply_rename(self, old: str, new: str):
+        """Rename (or merge into an existing tag) without asking first."""
+        new = normalize_tag(new)
+        target = self._find(new)
+        if target == old:
+            # only the case changes, it is still the same tag
+            target = None
+        name = target or new
+
+        if old in self._new_tags:
+            self._new_tags.remove(old)
+            if target is None:
+                self._new_tags.append(name)
+        else:
+            self.tag_renamed.emit(old, name)
+
+        if target is None:
+            btn = self._button_cache.pop(old)
+            btn.setText(name.replace("&", "&&"))
+            self._button_cache[name] = btn
+        else:
+            was_checked = self._button_cache[old].isChecked()
+            self._remove_button(old)
+            if was_checked:
+                self._button_cache[target].setChecked(True)
+
+    def delete_tag(self, tag: str):
+        if tag not in self._new_tags:
+            answer = QMessageBox.question(
+                self,
+                "Delete Tag",
+                f"Delete the tag “{tag}”?\n\nIt is removed from every asset in "
+                "all pools. This can't be undone.",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+
+        self.apply_delete(tag)
+
+    def apply_delete(self, tag: str):
+        """Delete without asking first."""
+        if tag in self._new_tags:
+            self._new_tags.remove(tag)
+        else:
+            self.tag_deleted.emit(tag)
+
+        self._remove_button(tag)
 
 
 class RenameAssetDialog(BaseDialog):
@@ -1411,6 +1525,8 @@ click it to reconnect.</li>
 <tr><td><b>Ctrl+F</b></td><td>Search the current pool</td></tr>
 <tr><td><b>Esc</b></td><td>Clear the search</td></tr>
 <tr><td><b>Ctrl+S</b></td><td>Save the asset notes</td></tr>
+<tr><td><b>Ctrl+I</b></td><td>Hide or show the details panel
+(or double click its divider)</td></tr>
 </table>
 <h3>Screenshot frame</h3>
 <table cellspacing="4">

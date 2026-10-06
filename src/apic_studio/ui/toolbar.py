@@ -38,6 +38,7 @@ from shared.utils import sanitize_string
 from .buttons import ConnectionButton, IconButton, SidebarButton
 from .lines import HLine
 from .searchbar import Searchbar
+from .tag_filter import TagFilterButton
 
 SIDEBAR_STYLE = """
 QWidget{
@@ -398,6 +399,7 @@ class AssetToolbar(LabledToolbar):
     asset_changed = Signal(Path)
     force_refresh = Signal(Path)
     search_text_changed = Signal(tuple)
+    tag_filter_changed = Signal(Path)
 
     def __init__(
         self,
@@ -430,6 +432,9 @@ class AssetToolbar(LabledToolbar):
         self.open_folder.set_icon(":icons/tabler-icon-folder-open.png")
         self.open_folder.set_tooltip("Open pool in explorer")
 
+        # subclasses place it next to their searchbar
+        self.tag_filter = TagFilterButton()
+
     @override
     def init_layouts(self):
         super().init_layouts()
@@ -451,6 +456,13 @@ class AssetToolbar(LabledToolbar):
         self.dropdown.currentTextChanged.connect(
             lambda: self.pool_changed.emit(self.current_pool)
         )
+        self.tag_filter.changed.connect(
+            lambda: self.tag_filter_changed.emit(self.current_pool)
+        )
+
+    def search_text(self) -> str:
+        searchbar = getattr(self, "searchbar", None)
+        return searchbar.searchbar.text() if searchbar else ""
 
     @property
     def current_pool(self) -> Path:
@@ -598,7 +610,7 @@ class ModelToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
-        self.searchbar = Searchbar()
+        self.searchbar = Searchbar(max_width=None)
 
     @override
     def init_layouts(self):
@@ -612,9 +624,10 @@ class ModelToolbar(AssetToolbar):
                 VLine(),
                 self.refresh_btn,
                 VLine(),
+                self.tag_filter,
                 self.searchbar,
             ],
-            stretch=True,
+            stretch=False,
         )
 
     @override
@@ -731,7 +744,7 @@ class MaterialToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
-        self.searchbar = Searchbar()
+        self.searchbar = Searchbar(max_width=None)
 
     @override
     def init_layouts(self):
@@ -745,9 +758,10 @@ class MaterialToolbar(AssetToolbar):
                 VLine(),
                 self.refresh_btn,
                 VLine(),
+                self.tag_filter,
                 self.searchbar,
             ],
-            stretch=True,
+            stretch=False,
         )
 
     @override
@@ -828,14 +842,21 @@ class HdriToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
-        self.searchbar = Searchbar()
+        self.searchbar = Searchbar(max_width=None)
 
     @override
     def init_layouts(self):
         super().init_layouts()
         self.add_widgets(
-            [self.import_btn, VLine(), self.refresh_btn, VLine(), self.searchbar],
-            stretch=True,
+            [
+                self.import_btn,
+                VLine(),
+                self.refresh_btn,
+                VLine(),
+                self.tag_filter,
+                self.searchbar,
+            ],
+            stretch=False,
         )
 
     @override
@@ -892,14 +913,21 @@ class TextureToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
-        self.searchbar = Searchbar()
+        self.searchbar = Searchbar(max_width=None)
 
     @override
     def init_layouts(self):
         super().init_layouts()
         self.add_widgets(
-            [self.import_btn, VLine(), self.refresh_btn, VLine(), self.searchbar],
-            stretch=True,
+            [
+                self.import_btn,
+                VLine(),
+                self.refresh_btn,
+                VLine(),
+                self.tag_filter,
+                self.searchbar,
+            ],
+            stretch=False,
         )
 
     @override
@@ -956,7 +984,7 @@ class UtilityToolbar(AssetToolbar):
         self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
         self.refresh_btn.set_tooltip("Refresh pool")
 
-        self.searchbar = Searchbar()
+        self.searchbar = Searchbar(max_width=None)
 
     @override
     def init_layouts(self):
@@ -968,9 +996,10 @@ class UtilityToolbar(AssetToolbar):
                 VLine(),
                 self.refresh_btn,
                 VLine(),
+                self.tag_filter,
                 self.searchbar,
             ],
-            stretch=True,
+            stretch=False,
         )
 
     @override

@@ -4,13 +4,15 @@ from pathlib import Path
 from typing import Any, override
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QCloseEvent, QIcon
-from PySide6.QtWidgets import QHBoxLayout, QSplitter, QVBoxLayout, QWidget
+from PySide6.QtGui import QCloseEvent, QIcon, QKeySequence, QShortcut
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
 
 from apic_studio import __version__
 from apic_studio.core.settings import SettingsManager
 from apic_studio.services import AssetLoader, DCCBridge, Screenshot, pools
+from apic_studio.services.tags import tag_events
 from apic_studio.ui.attribute_editor import AttributeEditor
+from apic_studio.ui.splitter import PanelSplitter
 from apic_studio.ui.toolbar import (
     HdriToolbar,
     MaterialToolbar,
@@ -106,10 +108,8 @@ class MainWindow(QWidget):
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
         self.attrib_editor = AttributeEditor()
 
-        self.splitter = QSplitter(Qt.Orientation.Horizontal)
-        self.splitter.setOpaqueResize(True)
-        self.splitter.addWidget(self.viewport)
-        self.splitter.addWidget(self.attrib_editor)
+        self.splitter = PanelSplitter(self.viewport, self.attrib_editor)
+        self.toggle_details = QShortcut(QKeySequence("Ctrl+I"), self)
 
         self.status = Statusbar(30)
 
@@ -127,8 +127,11 @@ class MainWindow(QWidget):
         self.main_layout.addWidget(self.sidebar)
         self.main_layout.addLayout(self.vp_layout)
 
-        self.splitter.setStretchFactor(0, 1)
-        self.splitter.setStretchFactor(1, 0)
+        # lay out now, so the restored width applies to the real window size
+        # rather than being scaled from the splitter's default one
+        self.main_layout.activate()
+        win = self.settings.WindowSettings
+        self.splitter.set_panel(win.details_visible, win.details_width or None)
 
     def init_signals(self):
         s = self.sidebar
@@ -146,6 +149,10 @@ class MainWindow(QWidget):
         )
         self.viewport.asset_clicked.connect(self.attrib_editor.load.emit)
         self.material_tb.render_previews.connect(self.render_previews)
+        self.toggle_details.activated.connect(self.splitter.toggle_panel)
+        self.attrib_editor.tags_updated.connect(self.viewport.update_asset_tags)
+        self.attrib_editor.tag_filter_requested.connect(self.filter_by_tag)
+        tag_events.rewritten.connect(self.on_tag_rewritten)
 
         for t in self.toolbar.multibars.values():
             t.pool_changed.connect(self.draw)
@@ -154,6 +161,7 @@ class MainWindow(QWidget):
             t.search_text_changed.connect(
                 lambda x: self.draw(x[0], filter=x[1])  # type: ignore
             )
+            t.tag_filter_changed.connect(lambda _: self.apply_tag_filter())
 
     def closeEvent(self, event: QCloseEvent) -> None:
         geo = self.geometry()
@@ -163,6 +171,8 @@ class MainWindow(QWidget):
             geo.width(),
             geo.height(),
         ]
+        self.settings.WindowSettings.details_width = self.splitter.panel_width
+        self.settings.WindowSettings.details_visible = self.splitter.is_panel_open()
         self.attrib_editor.flush()
         self.loader.stop()
         self.viewport.shutdown()
@@ -175,6 +185,7 @@ class MainWindow(QWidget):
         self.toolbar.current.set_current_pool(
             self.vp_map[view].current_pool, blockSignals=True
         )
+        self.apply_tag_filter()
 
         if draw:
             self.draw()
@@ -195,6 +206,10 @@ class MainWindow(QWidget):
             self.viewport.clear()
             return
 
+        if filter is None:
+            # a pool switch keeps whatever the searchbar still shows
+            filter = self.toolbar.current.search_text()
+
         self.viewport.draw(curr_pool, force=force, filter=filter)
         self.vp_map[self.viewport.curr_view].current_pool = curr_pool.parent.stem
 
@@ -202,6 +217,18 @@ class MainWindow(QWidget):
     def show(self):
         super().show()
         self.draw()
+
+    def apply_tag_filter(self):
+        tags, match_all = self.toolbar.current.tag_filter.selection()
+        self.viewport.set_tag_filter(tags, match_all)
+
+    def filter_by_tag(self, tag: str):
+        self.toolbar.current.tag_filter.set_selected([tag])
+
+    def on_tag_rewritten(self, old: str, new: str | None):
+        self.viewport.invalidate_tag_index()
+        for t in self.toolbar.multibars.values():
+            t.tag_filter.rename_tag(old, new)
 
     def render_previews(self):
         materials = self.viewport.asset_files()

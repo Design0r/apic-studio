@@ -119,6 +119,9 @@ class WindowSettings(Settings):
         super().__init__()
         self.window_geometry = [100, 100, 1000, 700]
         self.current_viewport = "materials"
+        # attribute editor next to the asset view, 0 means its natural width
+        self.details_width = 0
+        self.details_visible = True
 
 
 @register

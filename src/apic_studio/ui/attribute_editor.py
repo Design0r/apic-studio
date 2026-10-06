@@ -15,8 +15,8 @@ from PySide6.QtWidgets import (
 )
 
 from apic_studio.core import Asset
-from apic_studio.services.tags import TagService
-from apic_studio.ui.dialogs import TagDialog
+from apic_studio.services.tags import TagRewriter, TagService
+from apic_studio.ui.dialogs import ProgressDialog, TagDialog
 
 from .buttons import IconButton
 from .flow_layout import FlowLayout
@@ -24,6 +24,7 @@ from .flow_layout import FlowLayout
 
 class Tag(QWidget):
     remove = Signal(str)
+    clicked = Signal(str)
 
     def __init__(self, label: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -35,7 +36,10 @@ class Tag(QWidget):
         self.init_signals()
 
     def init_widgets(self):
-        self.label = QLabel(self.text)
+        self.label = QPushButton(self.text.replace("&", "&&"))
+        self.label.setFlat(True)
+        self.label.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.label.setToolTip(f"Show assets tagged {self.text}")
         self.delete_btn = QPushButton("×")
         self.delete_btn.setFixedWidth(20)
         self.delete_btn.setToolTip(f"Remove tag {self.text}")
@@ -48,11 +52,15 @@ class Tag(QWidget):
 
     def init_signals(self):
         self.delete_btn.clicked.connect(lambda: self.remove.emit(self.text))
+        self.label.clicked.connect(lambda: self.clicked.emit(self.text))
 
 
 class TagCollection(QWidget):
     tags_changed = Signal(list)
     tag_removed = Signal(str)
+    filter_requested = Signal(str)
+    # a tag was renamed (new name) or deleted (None) across all assets
+    tag_rewritten = Signal(str, object)
 
     def __init__(self, label: str, parent: QWidget | None = None):
         super().__init__(parent)
@@ -80,7 +88,34 @@ class TagCollection(QWidget):
         dialog = TagDialog(self.tag_svc.get_all(), list(self.tags), self.window())
         dialog.tags_selected.connect(self.on_tags_selected)
         dialog.tag_created.connect(self.on_tag_created)
+        dialog.tag_renamed.connect(
+            lambda old, new: self.rewrite(
+                self.tag_svc.rename_everywhere(old, new),
+                f"Renaming tag “{old}” in all pools...",
+                dialog,
+            )
+        )
+        dialog.tag_deleted.connect(
+            lambda tag: self.rewrite(
+                self.tag_svc.delete_everywhere(tag),
+                f"Removing tag “{tag}” from all pools...",
+                dialog,
+            )
+        )
         dialog.exec()
+
+    def rewrite(self, rewriter: TagRewriter, label: str, parent: QWidget):
+        """Run a tag rename / delete over every pool behind a progress bar."""
+        # the asset on screen follows right away, so saving its notes in the
+        # meantime can't write the old name back
+        self.tag_rewritten.emit(rewriter.old, rewriter.new)
+
+        prog = ProgressDialog(label, 0, max(1, rewriter.pool_count), parent)
+        prog.setCancelButton(None)
+        prog.setMinimumDuration(300)
+        rewriter.progress.connect(prog.setValue)
+        rewriter.finished.connect(prog.finish)
+        rewriter.start()
 
     def on_tag_created(self, tag: str):
         self.tag_svc.create(tag)
@@ -99,6 +134,7 @@ class TagCollection(QWidget):
     def add_tag(self, tag: str):
         t = Tag(tag)
         t.remove.connect(self.on_tag_delete)
+        t.clicked.connect(self.filter_requested)
         self.main_layout.addWidget(t)
         self.tags[tag] = t
 
@@ -118,6 +154,9 @@ class TagCollection(QWidget):
 class AttributeEditor(QWidget):
     save = Signal(Asset)
     load = Signal(Asset)
+    # (asset folder, tags) after the tags of the shown asset changed
+    tags_updated = Signal(object, list)
+    tag_filter_requested = Signal(str)
 
     def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
@@ -218,10 +257,25 @@ class AttributeEditor(QWidget):
         self.load.connect(self.on_load)
         self.tag_collection.tags_changed.connect(self.on_tags_changed)
         self.tag_collection.tag_removed.connect(self.on_tag_removed)
+        self.tag_collection.filter_requested.connect(self.tag_filter_requested)
+        self.tag_collection.tag_rewritten.connect(self.on_tag_rewritten)
 
     def on_tag_removed(self, tag: str):
         self.current_asset.metadata.tags.remove(tag)
         self.current_asset.metadata.save()
+        self.tags_updated.emit(
+            self.current_asset.path, self.current_asset.metadata.tags
+        )
+
+    def on_tag_rewritten(self, old: str, new: str | None):
+        """Follow a rename / delete, the file itself is rewritten elsewhere."""
+        if not self._has_asset or old not in self.current_asset.metadata.tags:
+            return
+
+        tags = [new if t == old else t for t in self.current_asset.metadata.tags]
+        tags = [t for t in dict.fromkeys(tags) if t]
+        self.current_asset.metadata.tags = tags
+        self.create_tags(tags)
 
     def set_editable(self, editable: bool):
         """Notes and tags only make sense once an asset is selected."""
@@ -243,6 +297,7 @@ class AttributeEditor(QWidget):
         tag_list = list(dict.fromkeys(tags))
         self.current_asset.metadata.tags = tag_list
         self.current_asset.metadata.save()
+        self.tags_updated.emit(self.current_asset.path, tag_list)
 
         self.create_tags(tag_list)
 

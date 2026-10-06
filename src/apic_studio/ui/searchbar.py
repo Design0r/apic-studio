@@ -1,6 +1,6 @@
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QLineEdit, QSizePolicy, QWidget
 
 
 class Searchbar(QWidget):
@@ -9,7 +9,7 @@ class Searchbar(QWidget):
     def __init__(
         self,
         height: int = 30,
-        max_width: int = 300,
+        max_width: int | None = 300,
         placeholder: str = "Search",
         delay_ms: int = 300,
         parent: QWidget | None = None,
@@ -30,7 +30,11 @@ class Searchbar(QWidget):
         self.searchbar = QLineEdit()
         self.searchbar.setPlaceholderText(self._placeholder)
         self.searchbar.setFixedHeight(self._height)
-        self.searchbar.setMaximumWidth(self._max_width)
+        if self._max_width is not None:
+            self.searchbar.setMaximumWidth(self._max_width)
+        else:
+            # take whatever room the surrounding layout leaves
+            self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.searchbar.setClearButtonEnabled(True)
         self.searchbar.setToolTip("Search (Ctrl+F), Esc clears")
         self.searchbar.setStyleSheet(
