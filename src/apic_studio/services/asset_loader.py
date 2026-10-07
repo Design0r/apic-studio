@@ -12,7 +12,14 @@ from typing import Callable, Optional
 from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
 from PySide6.QtGui import QImage, QImageReader
 
-from apic_studio.core import Asset, img, read_tags, settings
+from apic_studio.core import (
+    Asset,
+    find_model,
+    img,
+    is_thumbnail_stem,
+    read_tags,
+    settings,
+)
 from apic_studio.core.settings import SettingsManager
 from shared.logger import Logger
 
@@ -180,7 +187,9 @@ class AssetLoaderWorker(QObject):
             child = Path(entry.path)
 
             if not entry.is_dir():
-                if child.suffix.lower() in Asset.ASSET_EXT:
+                if child.suffix.lower() in Asset.ASSET_EXT and not is_thumbnail_stem(
+                    child.stem
+                ):
                     found.append(child)
                 continue
 
@@ -280,27 +289,21 @@ class AssetLoaderWorker(QObject):
         except OSError:
             return None, self._default_icon
 
-        model: Optional[Path] = None
-        for ext in Asset.ASSET_EXT:
-            name = f"{path.name}{ext}"
-            if name in names:
-                model = path / name
-                break
-        else:
-            # the file may have drifted from its folder name, take any match
-            for name in sorted(names):
-                if os.path.splitext(name)[1].lower() in Asset.ASSET_EXT:
-                    model = path / name
-                    break
+        model = find_model(path, names)
 
-        thumb = self._default_icon
-        for ext in Asset.SDR_IMG_EXT:
-            name = f"{path.name}-thumbnail{ext}"
-            if name in names:
-                thumb = str(path / name)
-                break
+        # previews are written next to the model under its own stem, so look
+        # for that first, then for one named after the folder
+        stems = [path.name]
+        if model is not None and model.stem != path.name:
+            stems.insert(0, model.stem)
 
-        return model, thumb
+        for stem in stems:
+            for ext in Asset.SDR_IMG_EXT:
+                name = f"{stem}-thumbnail{ext}"
+                if name in names:
+                    return model, str(path / name)
+
+        return model, self._default_icon
 
     def _create_icon(self, thumbnail: str, size: int = ICON_SIZE) -> QImage:
         # QImage, not QIcon/QPixmap: pixmaps may only be touched on the GUI

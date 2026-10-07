@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+import os
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Self
@@ -126,24 +127,84 @@ def normalize_tag(name: str) -> str:
     return " ".join(name.split())
 
 
+def is_thumbnail_stem(stem: str) -> bool:
+    """A generated preview, "<name>-thumbnail", never an asset of its own."""
+    return stem.lower().endswith("-thumbnail")
+
+
+def find_model(folder: Path, names: Iterable[str]) -> Path | None:
+    """Pick an asset folder's model file out of the folder's file names.
+
+    Normally it is named after the folder. When it has drifted from that, the
+    best match by extension priority wins: a .c4d beats a stray image. Never a
+    thumbnail, or its own thumbnail gets thumbnailed on every load and the
+    "-thumbnail-thumbnail..." copies pile up.
+    """
+    names = set(names)
+    for ext in Asset.ASSET_EXT:
+        name = f"{folder.name}{ext}"
+        if name in names:
+            return folder / name
+
+    rank = {ext: i for i, ext in enumerate(Asset.ASSET_EXT)}
+    candidates: list[tuple[int, str]] = []
+    for name in names:
+        stem, ext = os.path.splitext(name)
+        ext = ext.lower()
+        if ext in rank and not is_thumbnail_stem(stem):
+            candidates.append((rank[ext], name))
+
+    if not candidates:
+        return None
+
+    return folder / min(candidates)[1]
+
+
+def _is_loose_file(asset: Path) -> bool:
+    return asset.suffix.lower() in Asset.ASSET_EXT
+
+
 def metadata_path(asset: Path) -> Path:
     """Where an asset keeps its notes and tags, see Asset.metadata.
 
     `asset` is what the pool scan hands out: an asset folder, or a loose file
-    sitting directly in the pool. Decided by name so no stat is needed.
+    sitting directly in the pool. The file is named after the model, which
+    for a folder means reading it to find out which file that is.
     """
-    if asset.suffix.lower() in Asset.ASSET_EXT:
+    if _is_loose_file(asset):
         return asset.parent / f"{asset.stem}.json"
-    return asset / f"{asset.name}.json"
+
+    try:
+        model = find_model(asset, os.listdir(asset))
+    except OSError:
+        model = None
+
+    stem = model.stem if model is not None else asset.name
+    return asset / f"{stem}.json"
+
+
+def _load_json(path: Path) -> Any:
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except OSError, ValueError:
+        return None
 
 
 def read_tags(asset: Path) -> frozenset[str]:
     """An asset's tags straight from its metadata file, empty if it has none."""
-    try:
-        with open(metadata_path(asset), "r") as f:
-            data = json.load(f)
-    except OSError, ValueError:
-        return frozenset()
+    # Try the usual name first, decided by name alone: on a network pool the
+    # directory read metadata_path needs would double the round trips, and
+    # it is only wanted for a model that has drifted from its folder name.
+    if _is_loose_file(asset):
+        data = _load_json(asset.parent / f"{asset.stem}.json")
+    else:
+        named = asset / f"{asset.name}.json"
+        data = _load_json(named)
+        if data is None:
+            resolved = metadata_path(asset)
+            if resolved != named:
+                data = _load_json(resolved)
 
     tags = data.get("tags") if isinstance(data, dict) else None
     if not isinstance(tags, list):

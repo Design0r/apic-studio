@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, Signal
 
-from apic_studio.core import db
+from apic_studio.core import db, metadata_path
 from shared.logger import Logger
 
 
@@ -83,7 +83,8 @@ def _metadata_files(pool: Path) -> Iterator[Path]:
 
     for entry in entries:
         if entry.is_dir():
-            yield Path(entry.path) / f"{entry.name}.json"
+            # named after the model, which may have drifted from the folder
+            yield metadata_path(Path(entry.path))
         elif entry.name.lower().endswith(".json"):
             yield Path(entry.path)
 
