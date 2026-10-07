@@ -216,9 +216,7 @@ class Sidebar(Toolbar):
         self.settings_btn.set_tooltip("Settings")
         self.settings_btn.clicked.connect(self.open_settings)
 
-        # self.conn_btn = QPushButton("D")
         self.conn_btn = ConnectionButton()
-        self.conn_btn.setToolTip("Cinema 4D connection, click to reconnect")
 
     def open_settings(self):
         SettingsDialog(self.window()).exec()

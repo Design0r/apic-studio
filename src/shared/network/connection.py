@@ -4,31 +4,28 @@ import json
 import select
 import socket
 import threading
-from typing import Any, Callable, Optional, Self
+from collections.abc import Callable
+from typing import Any, Self
 
 from shared.logger import Logger
 from shared.messaging.message import Message
 
 
 class Connection:
-    def __init__(self, socket: socket.socket, timeout: Optional[float] = None) -> None:
+    def __init__(
+        self,
+        socket: socket.socket,
+        timeout: float | None = None,
+        name: str = "apic studio connector",
+    ) -> None:
         self.socket = socket
+        self.name = name
 
         self.timeout = timeout
         self._on_connect: list[Callable[[], None]] = []
         self._on_disconnect: list[Callable[[], None]] = []
         self.is_connected = False
 
-        # Guards a request/response pair, nothing else. On the studio side more
-        # than one thread talks over this socket (the GUI thread for every DCC
-        # call, the ping thread every few seconds), and the wire is a stream of
-        # length prefixed frames with no request ids, so an interleaved pair
-        # leaves each thread holding the other's reply and both ends desync.
-        #
-        # Deliberately NOT taken by send() or recv() on their own: the connector
-        # parks a reader thread in recv() until the next message arrives, while
-        # replies are sent from C4D's main thread. A lock spanning that read
-        # would block the host UI until the client disconnects.
         self._txn_lock = threading.RLock()
 
     def send(self, data: bytes | Message) -> Self:
@@ -54,8 +51,6 @@ class Connection:
             return self.recv()
 
     def _recv_exactly(self, size: int) -> bytes:
-        # TCP is a stream: a single recv() can return a short read, so keep
-        # pulling until the full frame is here.
         buffer = bytearray()
         while len(buffer) < size:
             ready, _, _ = select.select([self.socket], [], [], self.timeout)
@@ -81,9 +76,9 @@ class Connection:
 
         try:
             rjson = json.loads(response)
-        except json.JSONDecodeError as e:
+        except json.JSONDecodeError:
             Logger.error("failed to decode message")
-            raise e
+            raise
 
         Logger.debug(f"receiving message: {rjson.get('message')}")
         return rjson
@@ -92,8 +87,8 @@ class Connection:
         self.is_connected = False
         try:
             self.socket.close()
-        except Exception:
-            pass
+        except Exception as e:
+            Logger.exception(e)
 
     def status(self) -> bool:
         msg = Message("core.status")
@@ -117,13 +112,8 @@ class Connection:
 
         return status == 200
 
-    def try_status(self) -> Optional[bool]:
-        """status(), but never queues behind an in flight call.
+    def try_status(self) -> bool | None:
 
-        Returns None when another thread holds the line. A DCC operation can run
-        for far longer than the ping timeout, so waiting for it would both delay
-        that operation and report a healthy connector as dead.
-        """
         if not self._txn_lock.acquire(blocking=False):
             return None
 
@@ -133,8 +123,6 @@ class Connection:
             self._txn_lock.release()
 
     def _notify(self, callbacks: list[Callable[[], None]]) -> None:
-        # These run on whatever thread noticed the state change, so a listener
-        # that has gone away must not take that thread down with it.
         for c in callbacks:
             try:
                 c()
@@ -143,36 +131,34 @@ class Connection:
 
     def _disconnect(self):
         self.is_connected = False
-        Logger.error("lost connection to apic studio connector")
+        Logger.error(f"lost connection to {self.name}")
         self._notify(self._on_disconnect)
 
     def connect(self, address: tuple[str, int]) -> Self:
-        Logger.info("connecting to apic studio connector...")
+        Logger.info(f"connecting to {self.name}...")
         if self.is_connected and self.status():
             return self
 
-        # client side only, the connector never dials out: holding the lock
-        # keeps a DCC call from racing the socket being rebound below
         with self._txn_lock:
             try:
                 self.socket.connect(address)
             except ConnectionRefusedError:
                 self._disconnect()
                 Logger.error(
-                    f"connection refused, disconnecting from socket {address}, apic studio connector is not available"
+                    f"connection refused, disconnecting from socket {address}, {self.name} is not available"
                 )
                 return self
             except OSError as e:
                 Logger.exception(e)
                 self.close()
-                self.socket = self.client_connection().socket
+                self.socket = self.client_connection(name=self.name).socket
                 return self.connect(address)
             except Exception as e:
                 Logger.exception(e)
                 self._disconnect()
                 return self
 
-            Logger.info("connected to apic studio connector")
+            Logger.info(f"connected to {self.name}")
             self.is_connected = True
 
         self._notify(self._on_connect)
@@ -186,14 +172,16 @@ class Connection:
         self._on_disconnect.append(fn)
 
     @classmethod
-    def client_connection(cls, timeout: Optional[float] = None) -> Connection:
+    def client_connection(
+        cls, timeout: float | None = None, name: str = "apic studio connector"
+    ) -> Connection:
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        return Connection(client_socket, timeout)
+        return Connection(client_socket, timeout, name)
 
     @classmethod
     def server_connection(
-        cls, adress: tuple[str, int], timeout: Optional[float] = None
-    ) -> Optional[Connection]:
+        cls, adress: tuple[str, int], timeout: float | None = None
+    ) -> Connection | None:
         try:
             server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

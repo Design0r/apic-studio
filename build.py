@@ -103,7 +103,7 @@ def main():
     b = Builder(CWD / "dist")
 
     b.set_namespace("apic_connector_plugin")
-    b.add_ressource(CWD / "src" / "run_connector.py", rename="apic_connector.pyp")
+    b.add_ressource(CWD / "src" / "c4d_connector.py", rename="apic_connector.pyp")
     b.add_ressource(CWD / "src" / "shared")
     b.add_ressource(CWD / "src" / "apic_connector")
 
@@ -130,6 +130,12 @@ def main():
     b.add_ext_copy(
         CWD / "dist" / "Apic Studio",
         Path("W:/Pipeline/Apic Studio"),
+    )
+
+    # nuke
+    b.add_ext_copy(
+        CWD / "dist" / "apic_connector_plugin" / "apic_connector",
+        Path("W:/Pipeline/Apic_Nuke_Pipeline/apic_connector"),
     )
 
     b.build()

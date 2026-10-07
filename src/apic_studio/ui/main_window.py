@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from threading import Thread
 from typing import Any, override
 
 from PySide6.QtCore import Qt
@@ -33,6 +34,7 @@ class MainWindow(QWidget):
     def __init__(
         self,
         dcc: DCCBridge,
+        nuke: DCCBridge,
         settings: SettingsManager,
         parent: QWidget | None = None,
     ):
@@ -41,6 +43,8 @@ class MainWindow(QWidget):
         self.loader = AssetLoader()
         self.screenshot = Screenshot()
         self.dcc = dcc
+        self.nuke = nuke
+        self._reconnects: dict[str, Thread] = {}
 
         self.vp_map: dict[str, Any] = {
             "materials": self.settings.MaterialSettings,
@@ -142,11 +146,10 @@ class MainWindow(QWidget):
         s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
         s.hdris.clicked.connect(lambda: self.set_view("hdris"))
         s.utilities.clicked.connect(lambda: self.set_view("utilities"))
-        self.dcc.on_connect(s.conn_btn.connected.emit)
-        self.dcc.on_disconnect(s.conn_btn.disconnected.emit)
-        s.conn_btn.clicked.connect(
-            lambda: self.dcc.connect(self.settings.CoreSettings.address)
-        )
+        for key, bridge in (("c4d", self.dcc), ("nuke", self.nuke)):
+            bridge.on_connect(lambda k=key: s.conn_btn.status_changed.emit(k, True))
+            bridge.on_disconnect(lambda k=key: s.conn_btn.status_changed.emit(k, False))
+        s.conn_btn.clicked.connect(self.reconnect)
         self.viewport.asset_clicked.connect(self.attrib_editor.load.emit)
         self.material_tb.render_previews.connect(self.render_previews)
         self.toggle_details.activated.connect(self.splitter.toggle_panel)
@@ -162,6 +165,26 @@ class MainWindow(QWidget):
                 lambda x: self.draw(x[0], filter=x[1])  # type: ignore
             )
             t.tag_filter_changed.connect(lambda _: self.apply_tag_filter())
+
+    def reconnect(self):
+        core = self.settings.CoreSettings
+        targets = (
+            ("c4d", self.dcc, core.address),
+            ("nuke", self.nuke, core.nuke_address),
+        )
+        for key, bridge, address in targets:
+            if self.sidebar.conn_btn.is_connected(key):
+                continue
+
+            # a refused connect to localhost takes seconds on windows, keep it
+            # off the gui thread and don't stack attempts on the same socket
+            running = self._reconnects.get(key)
+            if running and running.is_alive():
+                continue
+
+            thread = Thread(target=bridge.connect, args=(address,), daemon=True)
+            self._reconnects[key] = thread
+            thread.start()
 
     def closeEvent(self, event: QCloseEvent) -> None:
         geo = self.geometry()

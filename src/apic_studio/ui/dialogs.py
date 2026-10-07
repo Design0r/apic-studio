@@ -730,6 +730,9 @@ class SettingsDialog(BaseDialog):
         self.socket_port = QSpinBox()
         self.socket_port.setRange(1, 2**16 - 1)
         self.socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.nuke_socket_port = QSpinBox()
+        self.nuke_socket_port.setRange(1, 2**16 - 1)
+        self.nuke_socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.addr = QLineEdit()
         self.addr.setPlaceholderText("localhost")
         self.root_path = QLineEdit()
@@ -783,8 +786,9 @@ class SettingsDialog(BaseDialog):
         self.root_layout.addWidget(self.browse_root)
 
         self.core_settings_layout = QFormLayout(self.core_settings)
-        self.core_settings_layout.addRow("Cinema 4D socket address", self.addr)
+        self.core_settings_layout.addRow("Socket address", self.addr)
         self.core_settings_layout.addRow("Cinema 4D socket port", self.socket_port)
+        self.core_settings_layout.addRow("Nuke socket port", self.nuke_socket_port)
         self.core_settings_layout.addRow("Root Path", self.root_layout)
 
         self.render_scene_layout = QHBoxLayout()
@@ -856,6 +860,7 @@ class SettingsDialog(BaseDialog):
         mod = self.settings.ModelSettings
 
         self.socket_port.setValue(core.socket_port)
+        self.nuke_socket_port.setValue(core.nuke_socket_port)
         self.addr.setText(core.socket_addr)
         self.root_path.setText(core.root_path)
 
@@ -875,6 +880,7 @@ class SettingsDialog(BaseDialog):
         mod = self.settings.ModelSettings
 
         core.socket_port = self.socket_port.value()
+        core.nuke_socket_port = self.nuke_socket_port.value()
         core.socket_addr = self.addr.text().strip() or "localhost"
         root = self.root_path.text().strip()
         if root and root != core.root_path:

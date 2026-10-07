@@ -135,6 +135,7 @@ class CoreSettings(Settings):
 
         self.socket_addr = "localhost"
         self.socket_port = 1337
+        self.nuke_socket_port = 1338
 
         root = Path(__file__).parent.parent.parent
         self.root_path = str(root)
@@ -147,6 +148,10 @@ class CoreSettings(Settings):
     @property
     def address(self) -> tuple[str, int]:
         return (self.socket_addr, self.socket_port)
+
+    @property
+    def nuke_address(self) -> tuple[str, int]:
+        return (self.socket_addr, self.nuke_socket_port)
 
     def set_root_path(self, value: str):
         self.root_path = value

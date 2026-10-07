@@ -17,8 +17,14 @@ class Application:
     def __init__(self) -> None:
         self.settings = SettingsManager()
         self.app = QApplication(sys.argv)
-        self.connection = Connection.client_connection(timeout=5)
+        self.connection = Connection.client_connection(
+            timeout=5, name="cinema 4d connector"
+        )
         self.dcc = DCCBridge(self.connection)
+        self.nuke_connection = Connection.client_connection(
+            timeout=5, name="nuke connector"
+        )
+        self.nuke = DCCBridge(self.nuke_connection)
         self.window: MainWindow
 
     def init(self):
@@ -33,29 +39,30 @@ class Application:
         db.init_db()
 
         self.app.setStyle("Fusion")
-        self.window = MainWindow(self.dcc, self.settings)
+        self.window = MainWindow(self.dcc, self.nuke, self.settings)
 
     def shutdown(self):
         Logger.info("shutting down Apic Studio...")
         self.settings.save_settings()
 
-        try:
-            self.connection.close()
-        except ConnectionRefusedError as e:
-            Logger.exception(e)
+        for conn in (self.connection, self.nuke_connection):
+            try:
+                conn.close()
+            except ConnectionRefusedError as e:
+                Logger.exception(e)
 
         self.app.exit()
 
     def run(self):
         Logger.info("starting Apic Studio...")
 
-        Thread(
-            target=self.connection.connect,
-            args=(self.settings.CoreSettings.address,),
-            daemon=True,
-        ).start()
-
-        PingService(self.connection)
+        core = self.settings.CoreSettings
+        for conn, address in (
+            (self.connection, core.address),
+            (self.nuke_connection, core.nuke_address),
+        ):
+            Thread(target=conn.connect, args=(address,), daemon=True).start()
+            PingService(conn)
 
         self.window.show()
         self.app.exec()
