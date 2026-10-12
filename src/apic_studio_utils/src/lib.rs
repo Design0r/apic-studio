@@ -9,6 +9,7 @@ use image::imageops::FilterType;
 use image::ImageDecoder;
 use image::ImageReader;
 use image::{DynamicImage, ImageBuffer, Rgb, Rgba};
+use pyo3::exceptions::{PyIOError, PyValueError};
 use pyo3::prelude::*;
 use std::fs::File;
 use std::io::BufReader;
@@ -21,7 +22,9 @@ fn sdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     } else if input.ends_with(".exr") {
         return exr_to_jpg(input, output, resize_width);
     } else {
-        unreachable!("Unsupported file format");
+        return Err(PyValueError::new_err(format!(
+            "unsupported file format: {input}"
+        )));
     }
 }
 
@@ -49,7 +52,7 @@ fn exr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
 
     let image: Image<Layer<SpecificChannels<image::RgbaImage, RgbaChannels>>> = reader
         .from_file(input)
-        .expect("run the `1_write_rgba` example to generate the required file");
+        .map_err(|e| io_err("read", input, e))?;
 
     let jpg_buffer = &image.layer_data.channel_data.pixels;
     let resize_factor = jpg_buffer.width() as f32 / resize_width as f32;
@@ -61,21 +64,25 @@ fn exr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
         resize_height as u32,
         FilterType::Lanczos3,
     );
-    resized.save(output).unwrap();
+    resized
+        .save(output)
+        .map_err(|e| io_err("save", output, e))?;
 
     return Ok(());
 }
 
 #[pyfunction]
 fn hdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
-    let file = File::open(input).expect("Unable to open file");
+    let file = File::open(input).map_err(|e| io_err("open", input, e))?;
     let buf_reader = BufReader::new(file);
 
-    let hdr_decoder = HdrDecoder::new(buf_reader).unwrap();
+    let hdr_decoder = HdrDecoder::new(buf_reader).map_err(|e| io_err("decode", input, e))?;
     let metadata = hdr_decoder.metadata();
 
     let mut hdr_bytes = vec![0u8; hdr_decoder.total_bytes() as usize];
-    hdr_decoder.read_image(&mut hdr_bytes).unwrap();
+    hdr_decoder
+        .read_image(&mut hdr_bytes)
+        .map_err(|e| io_err("decode", input, e))?;
 
     let hdr_data_flat: Vec<f32> = hdr_bytes
         .chunks_exact(4)
@@ -84,7 +91,7 @@ fn hdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
 
     let hdr_image: ImageBuffer<Rgb<f32>, _> =
         ImageBuffer::from_raw(metadata.width as u32, metadata.height as u32, hdr_data_flat)
-            .unwrap();
+            .ok_or_else(|| PyValueError::new_err(format!("truncated pixel data: {input}")))?;
 
     let (width, height) = hdr_image.dimensions();
     let mut img = ImageBuffer::<Rgb<u8>, _>::new(width, height);
@@ -103,7 +110,9 @@ fn hdr_to_jpg(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     let ldr_image = DynamicImage::ImageRgb8(img);
     let ldr_image_resized = ldr_image.resize(resize_width, resize_height, FilterType::Lanczos3);
 
-    ldr_image_resized.save(output).unwrap();
+    ldr_image_resized
+        .save(output)
+        .map_err(|e| io_err("save", output, e))?;
 
     return Ok(());
 }
@@ -237,9 +246,9 @@ fn screenshot(
 fn apply_srgb_gamma(file: &str) -> PyResult<()> {
     // Open + decode with the image crate (re-exported via xcap::image)
     let dynimg = ImageReader::open(file)
-        .expect("Failed to open image")
+        .map_err(|e| io_err("open", file, e))?
         .decode()
-        .expect("Failed to decode image");
+        .map_err(|e| io_err("decode", file, e))?;
 
     // Work in RGBA8 so we can preserve alpha
     let mut rgba = dynimg.to_rgba8();
@@ -262,20 +271,22 @@ fn apply_srgb_gamma(file: &str) -> PyResult<()> {
     // Save back to the same path (format inferred from extension)
     DynamicImage::ImageRgba8(rgba)
         .save(file)
-        .expect("failed to save image");
+        .map_err(|e| io_err("save", file, e))?;
     Ok(())
 }
 
 #[pyfunction]
 fn downscale_sdr_image(input: &str, output: &str, resize_width: u32) -> PyResult<()> {
     let img = ImageReader::open(input)
-        .expect("Failed to open image")
+        .map_err(|e| io_err("open", input, e))?
         .decode()
-        .expect("Failed to decode image");
+        .map_err(|e| io_err("decode", input, e))?;
 
     let resized = img.thumbnail(resize_width, resize_width);
 
-    resized.save(output).unwrap();
+    resized
+        .save(output)
+        .map_err(|e| io_err("save", output, e))?;
     Ok(())
 }
 
@@ -288,6 +299,13 @@ fn rust_thumbnails(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(apply_srgb_gamma, m)?)?;
     m.add_function(wrap_pyfunction!(downscale_sdr_image, m)?)?;
     Ok(())
+}
+
+// a panic unwinds through every frame on the way back to python (an SEH
+// exception on windows) and takes the process down when that unwind fails,
+// so failures go back as a regular python exception instead
+fn io_err(action: &str, path: &str, err: impl std::fmt::Display) -> PyErr {
+    PyIOError::new_err(format!("could not {action} {path}: {err}"))
 }
 
 fn tone_map(linear: f32) -> u8 {

@@ -84,8 +84,7 @@ def main():
     PyInstaller.__main__.run(
         [
             "src/apic_studio.py",
-            # "--onefile",
-            "--onedir",
+            "--onefile",
             "--noupx",
             "--optimize",
             "2",
@@ -109,7 +108,7 @@ def main():
 
     b.add_ext_copy(
         CWD / "src" / "apic_studio" / "scripts",
-        CWD / "dist" / "Apic Studio" / "scripts",
+        CWD / "dist" / "scripts",
     )
 
     b.add_ext_copy(
@@ -128,8 +127,13 @@ def main():
     )
 
     b.add_ext_copy(
-        CWD / "dist" / "Apic Studio",
-        Path("W:/Pipeline/Apic Studio"),
+        CWD / "src" / "apic_studio" / "scripts",
+        Path("W:/Pipeline/Apic Studio/scripts"),
+    )
+
+    b.add_ext_copy(
+        CWD / "dist" / "Apic Studio.exe",
+        Path("W:/Pipeline/Apic Studio/Apic Studio.exe"),
     )
 
     b.build()

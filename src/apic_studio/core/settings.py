@@ -46,10 +46,10 @@ class Settings(ABC):
             setattr(self, key, data.get(key, default))
 
 
-T = TypeVar("T", bound="Settings")
+T = TypeVar("T", bound=Settings)
 
 
-def register(settings: type[T]) -> type[T]:
+def register[T: Settings](settings: type[T]) -> type[T]:
     setting_name = settings.__name__
     if setting_name not in Settings.settings:
         Settings.settings[setting_name] = settings
