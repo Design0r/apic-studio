@@ -116,7 +116,9 @@ class Logger:
             ):
                 return
 
-        file_handler = logging.FileHandler(path)
+        # every machine appends to the same log, so don't let it depend on the
+        # python version's default encoding
+        file_handler = logging.FileHandler(path, encoding="utf-8")
         file_handler.setLevel(level)
 
         hostname = socket.gethostname()

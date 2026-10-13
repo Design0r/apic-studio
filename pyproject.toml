@@ -4,11 +4,7 @@ version = "0.8.0"
 description = "An Asset Browser for Cinema4D"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = [
-    "pyside6>=6.12.0",
-    "rust-thumbnails",
-    "ty>=0.0.86",
-]
+dependencies = ["pyside6>=6.12.0", "rust-thumbnails"]
 
 [dependency-groups]
 dev = [
@@ -16,6 +12,7 @@ dev = [
     "pyinstaller>=6.22.3",
     "ruff>=0.17.0",
     "snakeviz>=2.2.2",
+    "ty>=0.0.86",
 ]
 
 [tool.uv.workspace]
