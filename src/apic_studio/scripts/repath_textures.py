@@ -23,7 +23,7 @@ def parse_args() -> Namespace:
     return p.parse_args(sys.argv[1:])
 
 
-def get_assets_to_copy(doc: "c4d.BaseDocument", target: Path) -> list[dict[str, Any]]:
+def get_assets_to_copy(doc: c4d.BaseDocument, target: Path) -> list[dict[str, Any]]:
     assets: list[dict[str, Any]] = []
     res = c4d.documents.GetAllAssetsNew(
         doc,

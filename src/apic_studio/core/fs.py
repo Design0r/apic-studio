@@ -2,12 +2,11 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Union
 
 from shared.logger import Logger
 
 
-def create_dir(path: Union[str, Path]) -> None:
+def create_dir(path: str | Path) -> None:
     if not path:
         Logger.error(f"can't create directory, path: {path} is invalid")
         return
@@ -27,7 +26,7 @@ def create_dir(path: Union[str, Path]) -> None:
     return
 
 
-def remove_dir(path: Union[str, Path]) -> None:
+def remove_dir(path: str | Path) -> None:
     if not path:
         Logger.error(f"can't delete directory, path: {path} is invalid")
         return
@@ -47,7 +46,7 @@ def remove_dir(path: Union[str, Path]) -> None:
     return
 
 
-def open_dir(path: Union[str, Path]) -> None:
+def open_dir(path: str | Path) -> None:
     if not path:
         Logger.error(f"can't open path, {path} does not exist")
 

@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 
 import os
 
@@ -17,7 +16,7 @@ def get_port():
     try:
         return int(os.environ.get("APIC_NUKE_PORT", DEFAULT_PORT))
     except ValueError:
-        Logger.error("invalid APIC_NUKE_PORT, using {}".format(DEFAULT_PORT))
+        Logger.error(f"invalid APIC_NUKE_PORT, using {DEFAULT_PORT}")
         return DEFAULT_PORT
 
 

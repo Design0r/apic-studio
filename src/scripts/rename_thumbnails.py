@@ -15,7 +15,9 @@ def run():
     db.init_db()
     paths = db.select(db.Tables.APIC_MODELS)
 
-    for k, v in paths.items():
+    assert isinstance(paths, dict), "expected dict result"
+
+    for v in paths.values():
         path = Path(v)
         if not path.exists():
             continue

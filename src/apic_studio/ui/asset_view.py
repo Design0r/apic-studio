@@ -94,11 +94,8 @@ class AssetModel(QAbstractListModel):
         self._rows: list[AssetRow] = []
         self._by_key: dict[str, int] = {}
 
-    def rowCount(self, parent: Index = QModelIndex()) -> int:
-        if (
-            isinstance(parent, (QModelIndex, QPersistentModelIndex))
-            and parent.isValid()
-        ):
+    def rowCount(self, parent: Index) -> int:
+        if parent.isValid():
             return 0
         return len(self._rows)
 

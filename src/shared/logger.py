@@ -3,7 +3,7 @@ import socket
 import sys
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 LoggerCallback = Callable[[str, str], None]
 
@@ -18,7 +18,7 @@ class Logger:
 
     _logger_obj = None
 
-    _callbacks: list[LoggerCallback] = []
+    _callbacks: ClassVar[list[LoggerCallback]] = []
 
     @classmethod
     def logger_obj(cls):

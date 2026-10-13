@@ -140,7 +140,7 @@ def select(table: Tables) -> dict[str, Path] | list[str]:
     data = {}
     with connection() as conn:
         try:
-            if table.value == "TAGS":
+            if table.value == Tables.TAGS:
                 query = f"SELECT name FROM {table.name};"
                 cursor = conn.execute(query)
                 p = [name for name in cursor.fetchall()]

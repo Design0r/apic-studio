@@ -3,9 +3,10 @@ from __future__ import annotations
 import shutil
 import time
 from collections import OrderedDict
+from functools import partial
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
+from PySide6.QtCore import QModelIndex, QPoint, QSize, Qt, Signal
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -179,7 +180,7 @@ class Viewport(QWidget):
 
     def asset_files(self) -> list[Path]:
         """Every asset's model file, including tiles that have not loaded yet."""
-        files = []
+        files: list[Path] = []
         for asset in self.model.assets():
             file = self.loader.asset_file(asset)
             if file is not None:
@@ -370,7 +371,7 @@ class Viewport(QWidget):
 
         return row
 
-    def on_item_clicked(self, index) -> None:
+    def on_item_clicked(self, index: QModelIndex) -> None:
         row = self.model.row_at(self.proxy.mapToSource(index))
         if not row:
             return
@@ -468,7 +469,13 @@ class Viewport(QWidget):
 
         menu.addSeparator()
 
-        if self.curr_view in ("models", "apic_models", "lightsets"):
+        if self.curr_view in (
+            "models",
+            "apic_models",
+            "lightsets",
+            "utilities",
+            "nuke",
+        ):
             menu.addAction(screenshot_act)
             menu.addAction(delete_preview_act)
             menu.addAction(backup_act)
@@ -539,7 +546,7 @@ class Viewport(QWidget):
 
     def rename_asset(self, file: Path):
         dialog = RenameAssetDialog(file.stem, self.window())
-        dialog.asset_renamed.connect(lambda x: self.on_rename_asset(file, x))  # type: ignore
+        dialog.asset_renamed.connect(partial(self.on_rename_asset, file))
         dialog.exec()
 
     def on_rename_asset(self, file: Path, name: str):

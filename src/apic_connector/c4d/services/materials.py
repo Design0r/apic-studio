@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 
 import c4d
 
@@ -33,7 +32,7 @@ def get_material_names() -> list[str]:
     return [m.GetName() for m in materials]
 
 
-def get_materials(name_filter: Optional[list[str]]) -> list[c4d.BaseMaterial]:
+def get_materials(name_filter: list[str] | None) -> list[c4d.BaseMaterial]:
     doc = c4d.documents.GetActiveDocument()
     materials = doc.GetMaterials()
     if name_filter:
@@ -44,7 +43,7 @@ def get_materials(name_filter: Optional[list[str]]) -> list[c4d.BaseMaterial]:
 
 
 def export_materials(
-    names: Optional[list[str]], path: str, globalize_textures: bool
+    names: list[str] | None, path: str, globalize_textures: bool
 ) -> bool:
     if globalize_textures:
         globalize_filenames()

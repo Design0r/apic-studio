@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import json
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable, Optional, Self
+from typing import TYPE_CHECKING, Any, Self
 
 if TYPE_CHECKING:
     from ..network import Connection
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
 @dataclass(slots=True)
 class Message:
     message: str
-    data: Optional[Any] = None
+    data: Any | None = None
 
     def as_json(self, encoding: str = "utf-8") -> bytes:
         message = asdict(self)

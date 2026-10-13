@@ -3,11 +3,11 @@ from __future__ import annotations
 import os
 import shutil
 from collections import OrderedDict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from queue import LifoQueue
 from threading import Event, Lock, Thread
-from typing import Callable, Optional
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QThread, QThreadPool, Signal
 from PySide6.QtGui import QImage, QImageReader
@@ -32,9 +32,9 @@ CACHE_SIZE = 512
 class AssetLoaderWorker(QObject):
     asset_loaded = Signal(object)
     pool_scanned = Signal(object, object)  # (pool: Path, assets: list[Path])
-    _default_icon_cache: Optional[QImage] = None
+    _default_icon_cache: QImage | None = None
 
-    def __init__(self, app_settings: SettingsManager, parent: Optional[QObject] = None):
+    def __init__(self, app_settings: SettingsManager, parent: QObject | None = None):
         super().__init__(parent)
         # keyed by asset folder, oldest first: the least recently used entries
         # fall off the front once CACHE_SIZE is reached
@@ -72,11 +72,11 @@ class AssetLoaderWorker(QObject):
                 # invalidated, mark it so its result is dropped, not cached
                 self._invalidated.add(path)
 
-    def get_asset(self, path: Path) -> Optional[Asset]:
+    def get_asset(self, path: Path) -> Asset | None:
         with self._lock:
             return self._take(path)
 
-    def _take(self, path: Path) -> Optional[Asset]:
+    def _take(self, path: Path) -> Asset | None:
         """Read through the cache, marking the entry as freshly used. Lock held."""
         asset = self._cache.get(path)
         if asset is not None:
@@ -84,7 +84,7 @@ class AssetLoaderWorker(QObject):
 
         return asset
 
-    def asset_file(self, path: Path) -> Optional[Path]:
+    def asset_file(self, path: Path) -> Path | None:
         """Name an asset's model file without decoding its thumbnail.
 
         A tile that has never scrolled into view has no Asset behind it, so
@@ -212,7 +212,7 @@ class AssetLoaderWorker(QObject):
             )
         return AssetLoaderWorker._default_icon_cache
 
-    def load_asset(self, path: Path) -> Optional[Asset]:
+    def load_asset(self, path: Path) -> Asset | None:
         while True:
             with self._lock:
                 if cached := self._take(path):
@@ -230,8 +230,8 @@ class AssetLoaderWorker(QObject):
 
         return self._decode_asset(path)
 
-    def _decode_asset(self, path: Path) -> Optional[Asset]:
-        asset: Optional[Asset] = None
+    def _decode_asset(self, path: Path) -> Asset | None:
+        asset: Asset | None = None
         try:
             asset = self._build_asset(path)
         finally:
@@ -250,7 +250,7 @@ class AssetLoaderWorker(QObject):
 
         return asset
 
-    def _build_asset(self, path: Path) -> Optional[Asset]:
+    def _build_asset(self, path: Path) -> Asset | None:
         scan = self._scans.pop(path, None)
         if scan is None:
             scan = self._resolve_asset(path)
@@ -276,7 +276,7 @@ class AssetLoaderWorker(QObject):
 
         return Asset(model, icon, Path(thumb))
 
-    def _resolve_asset(self, path: Path) -> tuple[Optional[Path], str]:
+    def _resolve_asset(self, path: Path) -> tuple[Path | None, str]:
         """Find an asset folder's model file and thumbnail in one directory read.
 
         Both names follow from the folder name, so a single scandir replaces the
@@ -362,7 +362,7 @@ class AssetLoader(QObject):
     # (pool: Path, tags: dict[Path, frozenset[str]]), keyed by asset path
     tags_indexed = Signal(object, object)
 
-    def __init__(self, parent: Optional[QObject] = None):
+    def __init__(self, parent: QObject | None = None):
         super().__init__(parent)
         self.worker = AssetLoaderWorker(settings.SettingsManager())
         self.t = QThread()
@@ -373,7 +373,7 @@ class AssetLoader(QObject):
         self.worker.pool_scanned.connect(self.on_pool_scanned)
         self.t.start()
 
-    def get_asset(self, path: Path) -> Optional[Asset]:
+    def get_asset(self, path: Path) -> Asset | None:
         return self.worker.get_asset(path)
 
     def scan_pool(self, path: Path) -> None:
@@ -382,10 +382,10 @@ class AssetLoader(QObject):
     def cancel_pending(self) -> None:
         self.worker.cancel_pending()
 
-    def asset_file(self, path: Path) -> Optional[Path]:
+    def asset_file(self, path: Path) -> Path | None:
         return self.worker.asset_file(path)
 
-    def load_now(self, path: Path) -> Optional[Asset]:
+    def load_now(self, path: Path) -> Asset | None:
         """Decode on the calling thread. For the one asset a click needs."""
         return self.worker.load_asset(path)
 
@@ -418,7 +418,7 @@ class AssetLoader(QObject):
 
         Thread(target=run, name="tag-index", daemon=True).start()
 
-    def rename_asset(self, path: Path, name: str) -> Optional[Asset]:
+    def rename_asset(self, path: Path, name: str) -> Asset | None:
         asset = self.worker.get_asset(path)
         if not asset:
             Logger.error(f"unable to rename, asset does not exist {path}")
@@ -491,7 +491,7 @@ class AssetConverter(QObject):
     finished = Signal()
 
     def __init__(
-        self, root_path: Optional[Path] = None, parent: Optional[QObject] = None
+        self, root_path: Path | None = None, parent: QObject | None = None
     ):
         super().__init__(parent)
         self.root = root_path
@@ -503,7 +503,7 @@ class AssetConverter(QObject):
 
     def create_assets_from_files(
         self, files: list[str] | list[Path]
-    ) -> Optional[CopyTask]:
+    ) -> CopyTask | None:
         if not self.root:
             Logger.error("no root path set for asset converter")
             return
@@ -515,7 +515,7 @@ class AssetConverter(QObject):
     @staticmethod
     def crawl_assets(
         root: Path,
-        filter: Optional[Callable[[str], bool]] = None,
+        filter: Callable[[str], bool] | None = None,
         suffix: str = ".c4d",
     ) -> dict[str, Path]:
         result: dict[str, Path] = {}

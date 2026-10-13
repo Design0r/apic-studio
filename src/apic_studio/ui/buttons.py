@@ -1,4 +1,4 @@
-from typing import Optional, override
+from typing import override
 
 from PySide6.QtCore import QEvent, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QEnterEvent, QFont, QIcon, QPainter, QPaintEvent
@@ -12,7 +12,7 @@ class IconButton(QPushButton):
         self,
         size: tuple[int, int],
         checkable: bool = False,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ):
         super().__init__(parent)
         self.setCheckable(checkable)
@@ -57,7 +57,7 @@ class SidebarButton(QPushButton):
     def __init__(
         self,
         size: tuple[int, int],
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
         checkable: bool = True,
     ):
         super().__init__(parent)
@@ -92,7 +92,7 @@ class ConnectionButton(QPushButton):
     PILL_HEIGHT = 18
     PILL_SPACING = 3
 
-    def __init__(self, parent: Optional[QWidget] = None):
+    def __init__(self, parent: QWidget | None = None):
         super().__init__(parent)
         # key -> (pill label, tooltip name)
         self._dccs: dict[str, tuple[str, str]] = {}

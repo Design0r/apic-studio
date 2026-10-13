@@ -70,7 +70,7 @@ def PluginMessage(id: int, _) -> bool:
 
         importlib.reload(apic_studio)
         for name, mod in list(sys.modules.items()):
-            if name.startswith("apic_connector.") or name.startswith("shared."):
+            if name.startswith(("apic_connector.", "shared.")):
                 importlib.reload(mod)
 
         main()
@@ -87,10 +87,7 @@ def is_headless() -> bool:
     ):
         return True
 
-    if c4d.GeGetCinemaInfo(c4d.CINEMAINFO_FORBID_GUI):
-        return True
-
-    return False
+    return bool(c4d.GeGetCinemaInfo(c4d.CINEMAINFO_FORBID_GUI))
 
 
 def main() -> None:
@@ -100,7 +97,7 @@ def main() -> None:
     global thread
 
     if thread is not None:
-        return None
+        return
 
     router = (
         MessageRouter()

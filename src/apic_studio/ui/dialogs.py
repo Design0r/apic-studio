@@ -21,7 +21,6 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QAbstractSpinBox,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -65,6 +64,10 @@ QLineEdit, QTextEdit, QSpinBox, QTreeWidget, QScrollArea {{
     padding: 2px;
 }}
 QLineEdit:focus, QSpinBox:focus {{border: 1px solid {ACCENT}}}
+/* hides the step buttons, arrow keys and the wheel still step. Not done with
+   setButtonSymbols(NoButtons): together with this stylesheet Qt 6.12 shrinks
+   the spinbox's text area to 1px and the value disappears */
+QSpinBox::up-button, QSpinBox::down-button {{width: 0px; border: none}}
 
 QPushButton {{
     background-color: #444;
@@ -729,10 +732,8 @@ class SettingsDialog(BaseDialog):
         self.core_settings = QGroupBox("Core Settings")
         self.socket_port = QSpinBox()
         self.socket_port.setRange(1, 2**16 - 1)
-        self.socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.nuke_socket_port = QSpinBox()
         self.nuke_socket_port.setRange(1, 2**16 - 1)
-        self.nuke_socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.addr = QLineEdit()
         self.addr.setPlaceholderText("localhost")
         self.root_path = QLineEdit()
@@ -757,15 +758,11 @@ class SettingsDialog(BaseDialog):
             spin.setFixedWidth(90)
             spin.setRange(1, 5000)
             spin.setSuffix(" px")
-            spin.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
 
         self.model_settings = QGroupBox("Model Settings")
         self.screenshot_opacity = QSpinBox()
         self.screenshot_opacity.setRange(0, 100)
         self.screenshot_opacity.setSuffix(" %")
-        self.screenshot_opacity.setButtonSymbols(
-            QAbstractSpinBox.ButtonSymbols.NoButtons
-        )
         self.screenshot_opacity.setToolTip(
             "How dark the screenshot frame is, 0 % is fully see-through"
         )
@@ -1059,7 +1056,7 @@ class BackupDialog(BaseDialog):
             return None
 
         selected = selection[0]
-        if not self.get_item_level(selected) == 1:
+        if self.get_item_level(selected) != 1:
             Logger.error("select an archived version instead of the group")
             return None
 

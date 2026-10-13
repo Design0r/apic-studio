@@ -1,18 +1,16 @@
-from typing import Optional
-
 from PySide6.QtCore import QRect, QSize, Qt
 from PySide6.QtWidgets import QApplication, QLayout, QLayoutItem, QSizePolicy, QWidget
 
 
 class FlowLayout(QLayout):
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         if parent is not None:
             self.setContentsMargins(0, 0, 0, 0)
         self._item_list: list[QLayoutItem] = []
 
     def __del__(self) -> None:
-        item: Optional[QLayoutItem] = self.takeAt(0)
+        item: QLayoutItem | None = self.takeAt(0)
         while item:
             item = self.takeAt(0)
 
@@ -22,12 +20,12 @@ class FlowLayout(QLayout):
     def count(self) -> int:
         return len(self._item_list)
 
-    def itemAt(self, index: int) -> Optional[QLayoutItem]:
+    def itemAt(self, index: int) -> QLayoutItem | None:
         if 0 <= index < len(self._item_list):
             return self._item_list[index]
         return None
 
-    def takeAt(self, index: int) -> Optional[QLayoutItem]:
+    def takeAt(self, index: int) -> QLayoutItem | None:
         if 0 <= index < len(self._item_list):
             return self._item_list.pop(index)
         return None
@@ -106,7 +104,6 @@ class FlowLayout(QLayout):
                 item.setGeometry(QRect(x, y, w, h))
 
             x = next_x
-            if h > line_height:
-                line_height = h
+            line_height = max(line_height, h)
 
         return (y + line_height) - rect.y()

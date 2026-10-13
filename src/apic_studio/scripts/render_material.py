@@ -1,7 +1,6 @@
 import sys
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Optional
 
 import c4d
 
@@ -63,7 +62,7 @@ def bake_linear_to_srgb(bmp: c4d.bitmaps.BaseBitmap):
             bmp.SetPixel(x, y, r, g, b)
 
 
-def render_document_to_file(doc: "c4d.BaseDocument"):
+def render_document_to_file(doc: c4d.BaseDocument):
     rd = doc.GetActiveRenderData()
     bc = rd.GetDataInstance()
 
@@ -93,7 +92,7 @@ def render_document_to_file(doc: "c4d.BaseDocument"):
     print(f"Saved render to {out_path}")
 
 
-def set_render_camera(doc: "c4d.BaseDocument", name: str):
+def set_render_camera(doc: c4d.BaseDocument, name: str):
     cam = doc.SearchObject(name)
     if not cam:
         raise ValueError(f"Failed to set render camera. {name} not found.")
@@ -110,7 +109,7 @@ def set_render_camera(doc: "c4d.BaseDocument", name: str):
     c4d.EventAdd()
 
 
-def set_render_settings(doc: "c4d.BaseDocument", path: str, res: tuple[float, float]):
+def set_render_settings(doc: c4d.BaseDocument, path: str, res: tuple[float, float]):
     rd = doc.GetActiveRenderData()
     data = rd.GetDataInstance()
     data[c4d.RDATA_PATH] = path
@@ -123,7 +122,7 @@ def set_render_settings(doc: "c4d.BaseDocument", path: str, res: tuple[float, fl
     c4d.EventAdd()
 
 
-def apply_material(obj: c4d.BaseObject, mtl: Optional[c4d.BaseMaterial]):
+def apply_material(obj: c4d.BaseObject, mtl: c4d.BaseMaterial | None):
     if not mtl:
         return
     ttag = c4d.TextureTag()

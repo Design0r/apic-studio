@@ -19,3 +19,4 @@ settings
 
 apic-build.py
 *.prof
+log_crawler.py
