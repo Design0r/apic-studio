@@ -1,0 +1,5 @@
+# nuke 12.2 runs python 2.7, keep ruff from rewriting this package into py3 only syntax
+target-version = "py37"  # oldest version ruff supports
+
+[lint]
+ignore = ["UP"]

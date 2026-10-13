@@ -19,29 +19,27 @@ class PingWorker:
                 time.sleep(self._sleep_duration)
                 continue
 
-            Logger.debug("pinging apic studio connector...")
+            Logger.debug(f"pinging {self._conn.name}...")
 
             try:
                 status = self._conn.try_status()
             except Exception:
-                if self.retry():
-                    time.sleep(self._sleep_duration)
-                    continue
-                else:
-                    self._conn._disconnect()  # type: ignore
-                    break
+                status = False
 
             if status is None:
                 Logger.debug("connection busy, skipping ping")
                 time.sleep(self._sleep_duration)
                 continue
 
-            if not status and not self.retry():
-                self._conn._disconnect()  # type: ignore
-                break
+            if not status:
+                if not self.retry():
+                    # keep the worker alive, it idles until the next reconnect
+                    self._retry_counter = 0
+                    self._conn._disconnect()  # type: ignore
+                time.sleep(self._sleep_duration)
+                continue
 
-            if self._retry_counter > 0:
-                self._retry_counter = 0
+            self._retry_counter = 0
 
             Logger.debug("ping successful")
             time.sleep(self._sleep_duration)

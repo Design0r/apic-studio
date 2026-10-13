@@ -67,3 +67,7 @@ class TexturePoolManager(_AssetPoolManager):
 
 class UtilityPoolManager(_AssetPoolManager):
     POOL_TYPE = "utilities"
+
+
+class NukePoolManager(_AssetPoolManager):
+    POOL_TYPE = "nuke"

@@ -1,7 +1,5 @@
-import socket
 from queue import Queue
 from threading import Thread
-from typing import Optional
 
 from shared.logger import Logger
 from shared.messaging import Message, MessageRouter
@@ -14,7 +12,7 @@ class ConnectionHandler:
         self,
         connection: Connection,
         router: MessageRouter,
-        msg_queue: Optional[Queue[tuple[Connection, Message]]] = None,
+        msg_queue: Queue[tuple[Connection, Message]] | None = None,
     ) -> None:
         self.connection = connection
         self.router = router
@@ -55,18 +53,18 @@ class Server:
         self,
         addr: str = "localhost",
         port: int = 1337,
-        router: MessageRouter = MessageRouter(),
-        msg_queue: Optional[Queue[tuple[Connection, Message]]] = None,
-        socket_timeout: Optional[float] = None,
+        router: MessageRouter | None = None,
+        msg_queue: Queue[tuple[Connection, Message]] | None = None,
+        socket_timeout: float | None = None,
     ) -> None:
         self.addr = addr
         self.port = port
-        self.router = router
         self.timeout = socket_timeout
         self._running = False
         self.msg_queue = msg_queue
         self.handlers: list[ConnectionHandler] = []
-        self.socket: Optional[Connection] = None
+        self.socket: Connection | None = None
+        self.router = router or MessageRouter()
 
     def run(self):
         self._running = True
@@ -82,7 +80,7 @@ class Server:
         while self._running:
             try:
                 sock = self.socket.accept()
-            except socket.timeout:
+            except TimeoutError:
                 continue
             except Exception:
                 self.stop()

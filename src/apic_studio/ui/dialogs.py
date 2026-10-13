@@ -730,6 +730,9 @@ class SettingsDialog(BaseDialog):
         self.socket_port = QSpinBox()
         self.socket_port.setRange(1, 2**16 - 1)
         self.socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
+        self.nuke_socket_port = QSpinBox()
+        self.nuke_socket_port.setRange(1, 2**16 - 1)
+        self.nuke_socket_port.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)
         self.addr = QLineEdit()
         self.addr.setPlaceholderText("localhost")
         self.root_path = QLineEdit()
@@ -783,8 +786,9 @@ class SettingsDialog(BaseDialog):
         self.root_layout.addWidget(self.browse_root)
 
         self.core_settings_layout = QFormLayout(self.core_settings)
-        self.core_settings_layout.addRow("Cinema 4D socket address", self.addr)
+        self.core_settings_layout.addRow("Socket address", self.addr)
         self.core_settings_layout.addRow("Cinema 4D socket port", self.socket_port)
+        self.core_settings_layout.addRow("Nuke socket port", self.nuke_socket_port)
         self.core_settings_layout.addRow("Root Path", self.root_layout)
 
         self.render_scene_layout = QHBoxLayout()
@@ -856,6 +860,7 @@ class SettingsDialog(BaseDialog):
         mod = self.settings.ModelSettings
 
         self.socket_port.setValue(core.socket_port)
+        self.nuke_socket_port.setValue(core.nuke_socket_port)
         self.addr.setText(core.socket_addr)
         self.root_path.setText(core.root_path)
 
@@ -875,6 +880,7 @@ class SettingsDialog(BaseDialog):
         mod = self.settings.ModelSettings
 
         core.socket_port = self.socket_port.value()
+        core.nuke_socket_port = self.nuke_socket_port.value()
         core.socket_addr = self.addr.text().strip() or "localhost"
         root = self.root_path.text().strip()
         if root and root != core.root_path:
@@ -1507,6 +1513,68 @@ class ExportRenderSettingsDialog(BaseDialog):
             self.c4d_settings.isChecked(),
             self.rs_settings.isChecked(),
         )
+
+        self.finished.emit(data)
+
+
+class ExportNukeDialog(BaseDialog):
+    @dataclass
+    class Data:
+        name: str
+
+    finished = Signal(Data)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__("Export Nuke Script", parent)
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+        self.validate()
+
+    def init_widgets(self):
+        self.name_edit = QLineEdit("")
+        self.name_edit.setPlaceholderText("Preset name")
+        self.name_edit.setFixedHeight(30)
+
+        self.c4d_settings = QCheckBox()
+        self.c4d_settings.setChecked(True)
+        self.rs_settings = QCheckBox()
+        self.rs_settings.setChecked(True)
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+        self.ok_btn = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+
+        self.form_layout.addRow("Name", self.name_edit)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addWidget(self.hint)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        self.name_edit.textChanged.connect(self.validate)
+
+    def validate(self):
+        problem = name_problem(self.name_edit.text(), "preset")
+        self.set_problem(self.ok_btn, problem)
+
+    def accept(self) -> None:
+        if not self.ok_btn.isEnabled():
+            return
+
+        super().accept()
+
+        data = self.Data(self.name_edit.text().strip())
 
         self.finished.emit(data)
 

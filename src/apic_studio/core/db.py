@@ -59,6 +59,12 @@ ID INTEGER PRIMARY KEY AUTOINCREMENT,
 NAME CHAR(128) UNIQUE NOT NULL,
 PATH TEXT NOT NULL);
 """,
+    """
+CREATE TABLE IF NOT EXISTS nuke(
+ID INTEGER PRIMARY KEY AUTOINCREMENT,
+NAME CHAR(128) UNIQUE NOT NULL,
+PATH TEXT NOT NULL);
+""",
 ]
 
 
@@ -80,6 +86,7 @@ class Tables(StrEnum):
     APIC_MODELS = "apic_models"
     TEXTURES = "textures"
     UTILITIES = "utilities"
+    NUKE = "nuke"
 
     @classmethod
     def members(cls) -> tuple[str, ...]:
