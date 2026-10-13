@@ -205,7 +205,7 @@ class Sidebar(Toolbar):
         self.utilities.activated.connect(self.highlight_modes)
 
         self.nuke = SidebarButton(btn_size)
-        self.nuke.set_icon(":icons/tabler-icon-script.png", icon_size)
+        self.nuke.set_icon(":icons/nuke-logo.png", icon_size)
         self.nuke.set_tooltip("Nuke")
         self.nuke.activated.connect(self.highlight_modes)
 

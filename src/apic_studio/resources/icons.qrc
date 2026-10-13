@@ -27,5 +27,6 @@
     <file>icons/icon-power-on.png</file>
     <file>icons/icon-power-off.png</file>
     <file>icons/apic_logo.png</file>
+    <file>icons/nuke-logo.png</file>
   </qresource>
 </RCC>

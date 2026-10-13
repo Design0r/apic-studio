@@ -112,8 +112,8 @@ def main():
     )
 
     b.add_ext_copy(
-        CWD / "dist" / "apic_connector_plugin" / "apic_connector",
-        Path("W:/Pipeline/Apic_Cinema_Pipeline/Dependencies/apic_connector"),
+        CWD / "dist" / "apic_connector_plugin" / "apic_connector" / "c4d",
+        Path("W:/Pipeline/Apic_Cinema_Pipeline/Dependencies/apic_connector/c4d"),
     )
 
     b.add_ext_copy(
@@ -138,8 +138,8 @@ def main():
 
     # nuke
     b.add_ext_copy(
-        CWD / "dist" / "apic_connector_plugin" / "apic_connector",
-        Path("W:/Pipeline/Apic_Nuke_Pipeline/apic_connector"),
+        CWD / "dist" / "apic_connector_plugin" / "apic_connector" / "nuke",
+        Path("W:/Pipeline/Apic_Nuke_Pipeline/apic_connector/nuke"),
     )
 
     b.build()
