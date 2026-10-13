@@ -27,6 +27,58 @@ def open_file(file_path):
     return True
 
 
+def _same_path(a, b):
+    return os.path.normcase(os.path.normpath(a)) == os.path.normcase(
+        os.path.normpath(b)
+    )
+
+
+def open_file_in_place(file_path):
+    """
+    Opens the file in this session. The current script is cleared first, which
+    keeps nuke from starting a new instance but discards unsaved changes.
+    """
+    if not os.path.isfile(file_path):
+        Logger.error("open file failed, file does not exist: {}".format(file_path))
+        return False
+
+    root = nuke.root()
+    if root.modified():
+        Logger.warning("discarding unsaved changes of {}".format(root.name()))
+
+    try:
+        nuke.scriptClear()
+        nuke.scriptOpen(file_path)
+    except RuntimeError as e:
+        Logger.error("open file failed: {}: {}".format(file_path, e))
+        return False
+
+    # scriptOpen falls back to a new instance if it doesn't consider the
+    # cleared script empty, catch that instead of reporting success
+    if not _same_path(nuke.root().name(), file_path):
+        Logger.error("open file in place failed, opened in a new instance")
+        return False
+
+    Logger.info("open file in place succeeded: {}".format(file_path))
+    return True
+
+
+def import_file(file_path):
+    if not os.path.isfile(file_path):
+        Logger.error("import failed, file does not exist: {}".format(file_path))
+        return False
+
+    # same as File > Import Script, pastes the script's nodes into the open one
+    try:
+        nuke.nodePaste(file_path)
+    except RuntimeError as e:
+        Logger.error("import failed: {}: {}".format(file_path, e))
+        return False
+
+    Logger.info("import succeeded: {}".format(file_path))
+    return True
+
+
 def _project_directory():
     project_dir = nuke.root()["project_directory"].evaluate()
     return project_dir or os.getcwd()

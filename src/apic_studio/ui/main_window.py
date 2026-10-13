@@ -19,6 +19,7 @@ from apic_studio.ui.toolbar import (
     MaterialToolbar,
     ModelToolbar,
     MultiToolbar,
+    NukeToolbar,
     Sidebar,
     Statusbar,
     TextureToolbar,
@@ -34,7 +35,6 @@ class MainWindow(QWidget):
     def __init__(
         self,
         dcc: DCCBridge,
-        nuke: DCCBridge,
         settings: SettingsManager,
         parent: QWidget | None = None,
     ):
@@ -43,7 +43,6 @@ class MainWindow(QWidget):
         self.loader = AssetLoader()
         self.screenshot = Screenshot()
         self.dcc = dcc
-        self.nuke = nuke
         self._reconnects: dict[str, Thread] = {}
 
         self.vp_map: dict[str, Any] = {
@@ -54,6 +53,7 @@ class MainWindow(QWidget):
             "hdris": self.settings.HdriSettings,
             "textures": self.settings.TextureSettings,
             "utilities": self.settings.UtilitySettings,
+            "nuke": self.settings.NukeSettings,
         }
 
         self.setWindowTitle(f"Apic Studio - {__version__}")
@@ -97,6 +97,9 @@ class MainWindow(QWidget):
         self.utility_tb = UtilityToolbar(pools.UtilityPoolManager(), self.dcc)
         self.utility_tb.set_current_pool(self.settings.UtilitySettings.current_pool)
 
+        self.nuke_tb = NukeToolbar(pools.NukePoolManager(), self.dcc)
+        self.nuke_tb.set_current_pool(self.settings.NukeSettings.current_pool)
+
         self.toolbar = MultiToolbar(
             ToolbarDirection.Horizontal,
             {
@@ -107,6 +110,7 @@ class MainWindow(QWidget):
                 "hdris": self.hdri_tb,
                 "textures": self.textures_tb,
                 "utilities": self.utility_tb,
+                "nuke": self.nuke_tb,
             },
         )
         self.viewport = Viewport(self.dcc, self.settings, self.loader, self.screenshot)
@@ -146,9 +150,14 @@ class MainWindow(QWidget):
         s.lightsets.clicked.connect(lambda: self.set_view("lightsets"))
         s.hdris.clicked.connect(lambda: self.set_view("hdris"))
         s.utilities.clicked.connect(lambda: self.set_view("utilities"))
-        for key, bridge in (("c4d", self.dcc), ("nuke", self.nuke)):
+        s.nuke.clicked.connect(lambda: self.set_view("nuke"))
+
+        for bridge in self.dcc:
+            key = bridge.key
+            s.conn_btn.add_dcc(key, bridge.short_label, bridge.label)
             bridge.on_connect(lambda k=key: s.conn_btn.status_changed.emit(k, True))
             bridge.on_disconnect(lambda k=key: s.conn_btn.status_changed.emit(k, False))
+
         s.conn_btn.clicked.connect(self.reconnect)
         self.viewport.asset_clicked.connect(self.attrib_editor.load.emit)
         self.material_tb.render_previews.connect(self.render_previews)
@@ -167,23 +176,18 @@ class MainWindow(QWidget):
             t.tag_filter_changed.connect(lambda _: self.apply_tag_filter())
 
     def reconnect(self):
-        core = self.settings.CoreSettings
-        targets = (
-            ("c4d", self.dcc, core.address),
-            ("nuke", self.nuke, core.nuke_address),
-        )
-        for key, bridge, address in targets:
-            if self.sidebar.conn_btn.is_connected(key):
+        for bridge in self.dcc:
+            if self.sidebar.conn_btn.is_connected(bridge.key):
                 continue
 
             # a refused connect to localhost takes seconds on windows, keep it
             # off the gui thread and don't stack attempts on the same socket
-            running = self._reconnects.get(key)
+            running = self._reconnects.get(bridge.key)
             if running and running.is_alive():
                 continue
 
-            thread = Thread(target=bridge.connect, args=(address,), daemon=True)
-            self._reconnects[key] = thread
+            thread = Thread(target=bridge.connect, daemon=True)
+            self._reconnects[bridge.key] = thread
             thread.start()
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -255,6 +259,6 @@ class MainWindow(QWidget):
 
     def render_previews(self):
         materials = self.viewport.asset_files()
-        self.dcc.materials_preview_create_all(
+        self.dcc.c4d.materials_preview_create_all(
             materials, callback=lambda: self.draw(force=True)
         )

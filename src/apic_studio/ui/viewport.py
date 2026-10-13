@@ -40,6 +40,7 @@ VIEWS = (
     "hdris",
     "lightsets",
     "utilities",
+    "nuke",
 )
 
 VIEW_STYLE = """
@@ -396,14 +397,17 @@ class Viewport(QWidget):
         file = row.file
 
         open_act = QAction("Open")
-        open_act.triggered.connect(lambda: self.on_open_dialog(file))
+        if self.curr_view == "nuke":
+            open_act.triggered.connect(lambda: self.on_open_dialog(file, type="nuke"))
+        else:
+            open_act.triggered.connect(lambda: self.on_open_dialog(file, type="c4d"))
 
         open_exp_act = QAction("Open in Explorer")
         open_exp_act.triggered.connect(lambda: open_dir(file.parent))
 
         import_act = QAction("Import")
         import_as_area = QAction("Import as Arealight")
-        import_as_area.triggered.connect(lambda: self.dcc.hdri_import_as_area(file))
+        import_as_area.triggered.connect(lambda: self.dcc.c4d.hdri_import_as_area(file))
 
         reference_act = QAction("Reference")
 
@@ -411,18 +415,20 @@ class Viewport(QWidget):
         backup_act.triggered.connect(lambda: self.on_backup(file))
 
         repath_act = QAction("Repath Textures")
-        repath_act.triggered.connect(lambda: self.dcc.repath_textures(file))
+        repath_act.triggered.connect(lambda: self.dcc.c4d.repath_textures(file))
 
         if self.curr_view in ("models", "apic_models", "lightsets"):
-            import_act.triggered.connect(lambda: self.dcc.models_import(file))
-            reference_act.triggered.connect(lambda: self.dcc.models_reference(file))
+            import_act.triggered.connect(lambda: self.dcc.c4d.models_import(file))
+            reference_act.triggered.connect(lambda: self.dcc.c4d.models_reference(file))
         elif self.curr_view == "materials":
-            import_act.triggered.connect(lambda: self.dcc.materials_import(file))
+            import_act.triggered.connect(lambda: self.dcc.c4d.materials_import(file))
         elif self.curr_view == "hdris":
             import_act.setText("Import as Domelight")
-            import_act.triggered.connect(lambda: self.dcc.hdri_import_as_dome(file))
+            import_act.triggered.connect(lambda: self.dcc.c4d.hdri_import_as_dome(file))
         elif self.curr_view == "utilities":
-            import_act.triggered.connect(lambda: self.dcc.settings_import(file))
+            import_act.triggered.connect(lambda: self.dcc.c4d.settings_import(file))
+        elif self.curr_view == "nuke":
+            import_act.triggered.connect(lambda: self.dcc.nuke.file_import(file))
 
         render_act = QAction("Render Preview")
         render_act.triggered.connect(lambda: self.on_render(file))
@@ -443,6 +449,12 @@ class Viewport(QWidget):
 
         if self.curr_view not in ("hdris", "utilities"):
             menu.addAction(open_act)
+        if self.curr_view == "nuke":
+            open_inplace_act = QAction("Open in place")
+            open_inplace_act.triggered.connect(
+                lambda: self.dcc.nuke.file_open_in_place(file)
+            )
+            menu.addAction(open_inplace_act)
 
         if self.curr_view in ("models", "apic_models", "lightsets"):
             menu.addAction(reference_act)
@@ -476,7 +488,7 @@ class Viewport(QWidget):
         menu.exec_(self.view.viewport().mapToGlobal(point))
 
     def on_render(self, file: Path):
-        self.dcc.materials_preview_create(
+        self.dcc.c4d.materials_preview_create(
             file,
             callback=lambda: self.loader.load_asset(file.parent, refresh=True),
         )
@@ -484,14 +496,17 @@ class Viewport(QWidget):
     def on_backup(self, path: Path):
         self.backup.create(path)
 
-    def on_open_dialog(self, path: Path):
+    def on_open_dialog(self, path: Path, type: str = "c4d"):
         def on_backup_open(path: Path):
             self.backup.create(path)
-            self.dcc.file_open(path)
+            self.dcc.c4d.file_open(path)
 
         backup = CreateBackupDialog(self.window())
         backup.accepted.connect(lambda: on_backup_open(path))
-        backup.declined.connect(lambda: self.dcc.file_open(path))
+        if type == "c4d":
+            backup.declined.connect(lambda: self.dcc.c4d.file_open(path))
+        else:
+            backup.declined.connect(lambda: self.dcc.nuke.file_open(path))
         backup.exec()
 
     def on_del_preview(self, file: Path):
@@ -536,7 +551,7 @@ class Viewport(QWidget):
         if not new_asset:
             return
 
-        self.dcc.repath_textures(new_asset.file)
+        self.dcc.c4d.repath_textures(new_asset.file)
 
         self.backup.rename_from_asset(new_asset.path, name)
 

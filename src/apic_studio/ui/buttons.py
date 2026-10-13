@@ -1,4 +1,4 @@
-from typing import ClassVar, Optional, override
+from typing import Optional, override
 
 from PySide6.QtCore import QEvent, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QEnterEvent, QFont, QIcon, QPainter, QPaintEvent
@@ -84,12 +84,6 @@ class ConnectionButton(QPushButton):
     # directly: the queued connection hops the change back onto the GUI thread.
     status_changed = Signal(str, bool)
 
-    # key -> (pill label, tooltip name)
-    DCCS: ClassVar[dict[str, tuple[str, str]]] = {
-        "c4d": ("C4D", "Cinema 4D"),
-        "nuke": ("NK", "Nuke"),
-    }
-
     COLOR_ON = QColor("#2cd376")
     COLOR_ON_HOVER = QColor("#156337")
     COLOR_OFF = QColor("#c53a3e")
@@ -100,15 +94,25 @@ class ConnectionButton(QPushButton):
 
     def __init__(self, parent: Optional[QWidget] = None):
         super().__init__(parent)
-        self._status = dict.fromkeys(self.DCCS, False)
+        # key -> (pill label, tooltip name)
+        self._dccs: dict[str, tuple[str, str]] = {}
+        self._status: dict[str, bool] = {}
         self._hovered = False
 
-        count = len(self.DCCS)
         self.setFixedWidth(30)
-        self.setFixedHeight(count * self.PILL_HEIGHT + (count - 1) * self.PILL_SPACING)
+        self.setFixedHeight(self.PILL_HEIGHT)
 
         self.status_changed.connect(self.set_status, Qt.ConnectionType.QueuedConnection)
         self._update_tooltip()
+
+    def add_dcc(self, key: str, short_label: str, label: str):
+        self._dccs[key] = (short_label, label)
+        self._status.setdefault(key, False)
+
+        count = len(self._dccs)
+        self.setFixedHeight(count * self.PILL_HEIGHT + (count - 1) * self.PILL_SPACING)
+        self._update_tooltip()
+        self.update()
 
     def set_status(self, dcc: str, connected: bool):
         self._status[dcc] = connected
@@ -121,7 +125,7 @@ class ConnectionButton(QPushButton):
     def _update_tooltip(self):
         lines = [
             f"{name}: {'connected' if self._status[k] else 'not connected'}"
-            for k, (_, name) in self.DCCS.items()
+            for k, (_, name) in self._dccs.items()
         ]
         lines.append("Click to reconnect")
         self.setToolTip("\n".join(lines))
@@ -148,7 +152,7 @@ class ConnectionButton(QPushButton):
         font.setBold(True)
         painter.setFont(font)
 
-        for i, (key, (label, _)) in enumerate(self.DCCS.items()):
+        for i, (key, (label, _)) in enumerate(self._dccs.items()):
             if self._status[key]:
                 color = self.COLOR_ON_HOVER if self._hovered else self.COLOR_ON
             else:

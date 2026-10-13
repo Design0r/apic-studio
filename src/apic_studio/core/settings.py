@@ -114,6 +114,13 @@ class UtilitySettings(Settings):
 
 
 @register
+class NukeSettings(Settings):
+    def __init__(self):
+        super().__init__()
+        self.current_pool = ""
+
+
+@register
 class WindowSettings(Settings):
     def __init__(self) -> None:
         super().__init__()
@@ -173,6 +180,7 @@ class SettingsManager:
     HdriSettings: HdriSettings
     TextureSettings: TextureSettings
     UtilitySettings: UtilitySettings
+    NukeSettings: NukeSettings
 
     def __new__(cls):
         if cls._instance is None:

@@ -29,7 +29,41 @@ def open_file(conn, msg):
         conn.send(Message("error"))
 
 
-@router.register("file.save_as")
+@router.register("file.open_in_place")
+def open_file_in_place(conn, msg):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = core.open_file_in_place(path)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))
+
+
+@router.register("file.import")
+def import_file(conn, msg):
+    if msg.data is None:
+        conn.send(Message("error", "No file path provided for import."))
+        return
+    path = msg.data.get("path", "")
+    if not path:
+        conn.send(Message("error", "File path is empty."))
+        return
+
+    res = core.import_file(path)
+    if res:
+        conn.send(Message("success"))
+    else:
+        conn.send(Message("error"))
+
+
+@router.register("file.export")
 def save_file_as(conn, msg):
     if msg.data is None:
         conn.send(Message("error", "No file path provided for import."))

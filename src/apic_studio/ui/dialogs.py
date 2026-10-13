@@ -1517,6 +1517,68 @@ class ExportRenderSettingsDialog(BaseDialog):
         self.finished.emit(data)
 
 
+class ExportNukeDialog(BaseDialog):
+    @dataclass
+    class Data:
+        name: str
+
+    finished = Signal(Data)
+
+    def __init__(self, parent: QWidget | None = None):
+        super().__init__("Export Nuke Script", parent)
+
+        self.init_widgets()
+        self.init_layouts()
+        self.init_signals()
+
+        self.validate()
+
+    def init_widgets(self):
+        self.name_edit = QLineEdit("")
+        self.name_edit.setPlaceholderText("Preset name")
+        self.name_edit.setFixedHeight(30)
+
+        self.c4d_settings = QCheckBox()
+        self.c4d_settings.setChecked(True)
+        self.rs_settings = QCheckBox()
+        self.rs_settings.setChecked(True)
+
+        buttons = (
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box = QDialogButtonBox(buttons)
+        self.ok_btn = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+
+    def init_layouts(self):
+        self.main_layout = QVBoxLayout(self)
+        self.form_layout = QFormLayout()
+
+        self.form_layout.addRow("Name", self.name_edit)
+
+        self.main_layout.addLayout(self.form_layout)
+        self.main_layout.addWidget(self.hint)
+        self.main_layout.addWidget(self.button_box)
+
+    def init_signals(self):
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        self.name_edit.textChanged.connect(self.validate)
+
+    def validate(self):
+        problem = name_problem(self.name_edit.text(), "preset")
+        self.set_problem(self.ok_btn, problem)
+
+    def accept(self) -> None:
+        if not self.ok_btn.isEnabled():
+            return
+
+        super().accept()
+
+        data = self.Data(self.name_edit.text().strip())
+
+        self.finished.emit(data)
+
+
 HELP_TEXT = """
 <h3>Getting around</h3>
 <ul>

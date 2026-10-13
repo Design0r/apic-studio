@@ -178,6 +178,34 @@ def _call_directly(fn, args):
     fn(*args)
 
 
+def _disable_inherit(sock):
+    """
+    Keeps child processes from inheriting the socket. py2 sockets are
+    inheritable, so nuke's frame server workers would hold the port open after
+    nuke exits: clients connect but nobody answers, and the next nuke can't bind.
+    """
+    if hasattr(sock, "set_inheritable"):  # py3, already the default there
+        sock.set_inheritable(False)
+        return
+
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+
+        handle_flag_inherit = 0x1
+        set_info = ctypes.windll.kernel32.SetHandleInformation
+        set_info.argtypes = (wintypes.HANDLE, wintypes.DWORD, wintypes.DWORD)
+        set_info.restype = wintypes.BOOL
+        if not set_info(sock.fileno(), handle_flag_inherit, 0):
+            Logger.warning("failed to make the socket non-inheritable")
+        return
+
+    import fcntl
+
+    flags = fcntl.fcntl(sock.fileno(), fcntl.F_GETFD)
+    fcntl.fcntl(sock.fileno(), fcntl.F_SETFD, flags | fcntl.FD_CLOEXEC)
+
+
 def _start_daemon(target):
     # Thread(daemon=True) is py3 only
     thread = threading.Thread(target=target)
@@ -259,6 +287,7 @@ class Server(object):
             )
             return None
 
+        _disable_inherit(server_socket)
         server_socket.listen(1)
         server_socket.settimeout(1.0)
         return server_socket
@@ -284,6 +313,7 @@ class Server(object):
             # on windows py2 the accepted socket inherits the listening socket's
             # non-blocking mode without python knowing, force it back to blocking
             sock.setblocking(True)
+            _disable_inherit(sock)
 
             conn_handler = ConnectionHandler(
                 Connection(sock), self.router, self.dispatch

@@ -22,6 +22,7 @@ from apic_studio.ui.dialogs import (
     DeletePoolDialog,
     ExportMaterialDialog,
     ExportModelDialog,
+    ExportNukeDialog,
     ExportRenderSettingsDialog,
     HelpDialog,
     ImportModelsDialog,
@@ -144,6 +145,7 @@ class Sidebar(Toolbar):
             self.lightsets,
             self.hdris,
             self.utilities,
+            self.nuke,
             self.help,
             self.about,
             self.settings_btn,
@@ -156,6 +158,7 @@ class Sidebar(Toolbar):
             "hdris": self.hdris,
             "textures": self.textures,
             "utilities": self.utilities,
+            "nuke": self.nuke,
         }
 
     @override
@@ -201,6 +204,11 @@ class Sidebar(Toolbar):
         self.utilities.set_tooltip("Utilities")
         self.utilities.activated.connect(self.highlight_modes)
 
+        self.nuke = SidebarButton(btn_size)
+        self.nuke.set_icon(":icons/tabler-icon-script.png", icon_size)
+        self.nuke.set_tooltip("Nuke")
+        self.nuke.activated.connect(self.highlight_modes)
+
         self.help = SidebarButton(btn_size, checkable=False)
         self.help.set_icon(":icons/tabler-icon-help.png", icon_size)
         self.help.set_tooltip("Help")
@@ -243,6 +251,7 @@ class Sidebar(Toolbar):
         self.main_layout.addWidget(self.lightsets)
         self.main_layout.addWidget(self.hdris)
         self.main_layout.addWidget(self.utilities)
+        self.main_layout.addWidget(self.nuke)
         self.main_layout.addStretch()
         self.main_layout.addWidget(self.help)
         self.main_layout.addWidget(self.about)
@@ -326,7 +335,7 @@ class Statusbar(Toolbar):
         self.logs_btn.clicked.connect(self.show_logs)
 
     def update_info(self, level: str, text: str) -> None:
-        if not level == "Clear" and not text:
+        if level != "Clear" and not text:
             return
 
         self.info.setText(text)
@@ -641,9 +650,9 @@ class ModelToolbar(AssetToolbar):
 
     def backup_dialog(self):
         dialog = BackupDialog(self.current_pool, self.window())
-        dialog.imported.connect(lambda x: self.dcc.models_import(x))
-        dialog.opened.connect(lambda x: self.dcc.file_open(x))
-        dialog.referenced.connect(lambda x: self.dcc.models_reference(x))
+        dialog.imported.connect(lambda x: self.dcc.c4d.models_import(x))
+        dialog.opened.connect(lambda x: self.dcc.c4d.file_open(x))
+        dialog.referenced.connect(lambda x: self.dcc.c4d.models_reference(x))
         dialog.exec()
 
     def export_dialog(self):
@@ -697,16 +706,16 @@ class ModelToolbar(AssetToolbar):
         file_path = file_dir / f"{name}.{ext}"
 
         if export_type == ExportModelDialog.ExportType.SAVE:
-            self.dcc.save_as(file_path, globalize_textures=data.globalize_textures)
+            self.dcc.c4d.save_as(file_path, globalize_textures=data.globalize_textures)
         elif export_type == ExportModelDialog.ExportType.EXPORT:
-            self.dcc.models_export_selected(
+            self.dcc.c4d.models_export_selected(
                 file_path, globalize_textures=data.globalize_textures
             )
 
         self.force_refresh.emit(self.current_pool)
 
         if copy_textures:
-            self.dcc.repath_textures(file_path)
+            self.dcc.c4d.repath_textures(file_path)
 
 
 class MaterialToolbar(AssetToolbar):
@@ -774,8 +783,8 @@ class MaterialToolbar(AssetToolbar):
         self.searchbar.text_changed.connect(self.on_search)
 
     def export_dialog(self):
-        res = self.dcc.materials_list()
-        if self.dcc.is_err(res) or not res.data:
+        res = self.dcc.c4d.materials_list()
+        if self.dcc.c4d.is_err(res) or not res.data:
             Logger.error("Failed to get materials.list")
             return
 
@@ -785,8 +794,8 @@ class MaterialToolbar(AssetToolbar):
 
     def backup_dialog(self):
         dialog = BackupDialog(self.current_pool, self.window(), allow_reference=False)
-        dialog.imported.connect(lambda x: self.dcc.models_import(x))  # type: ignore
-        dialog.opened.connect(lambda x: self.dcc.file_open(x))  # type: ignore
+        dialog.imported.connect(lambda x: self.dcc.c4d.models_import(x))  # type: ignore
+        dialog.opened.connect(lambda x: self.dcc.c4d.file_open(x))  # type: ignore
         dialog.exec()
 
     def on_export_dialog_finished(self, data: ExportMaterialDialog.Data):
@@ -802,7 +811,7 @@ class MaterialToolbar(AssetToolbar):
             file_path = file_dir / f"{mtl}.{data.ext}"
             mtl_paths.append(file_path)
 
-        self.dcc.materials_export(
+        self.dcc.c4d.materials_export(
             data.materials,
             self.current_pool,
             globalize_tetxures=data.globalize_textures,
@@ -811,7 +820,7 @@ class MaterialToolbar(AssetToolbar):
         self.force_refresh.emit(self.current_pool)
 
         if data.copy_textures:
-            self.dcc.batch_repath_textures(mtl_paths)
+            self.dcc.c4d.batch_repath_textures(mtl_paths)
 
     def on_search(self, text: str):
         self.search_text_changed.emit((self.current_pool, text))
@@ -1029,10 +1038,84 @@ class UtilityToolbar(AssetToolbar):
         file_path = file_dir / f"{name}.dat"
 
         if data.export_c4d and data.export_rs:
-            self.dcc.settings_export_all(file_path)
+            self.dcc.c4d.settings_export_all(file_path)
         elif data.export_c4d:
-            self.dcc.settings_export_c4d(file_path)
+            self.dcc.c4d.settings_export_c4d(file_path)
         elif data.export_rs:
-            self.dcc.settings_export_redshift(file_path)
+            self.dcc.c4d.settings_export_redshift(file_path)
+
+        self.force_refresh.emit(self.current_pool)
+
+
+class NukeToolbar(AssetToolbar):
+    def __init__(
+        self,
+        pool: PoolManager,
+        dcc: DCCBridge,
+        label: str = "Nuke",
+        thickness: int = 40,
+        direction: ToolbarDirection = ToolbarDirection.Horizontal,
+        parent: QWidget | None = None,
+    ):
+        super().__init__(label, pool, dcc, thickness, direction, parent)
+
+    @override
+    def init_widgets(self):
+        super().init_widgets()
+        self.export_btn = IconButton((30, 30))
+        self.export_btn.set_icon(":icons/tabler-icon-file-export.png")
+        self.export_btn.set_tooltip("Export Nuke script")
+
+        self.refresh_btn = IconButton((30, 30))
+        self.refresh_btn.set_icon(":icons/tabler-icon-reload.png")
+        self.refresh_btn.set_tooltip("Refresh pool")
+
+        self.searchbar = Searchbar(max_width=None)
+
+    @override
+    def init_layouts(self):
+        super().init_layouts()
+
+        self.add_widgets(
+            [
+                self.export_btn,
+                VLine(),
+                self.refresh_btn,
+                VLine(),
+                self.tag_filter,
+                self.searchbar,
+            ],
+            stretch=False,
+        )
+
+    @override
+    def init_signals(self):
+        super().init_signals()
+        self.export_btn.clicked.connect(self.export_dialog)
+        self.refresh_btn.clicked.connect(
+            lambda: self.force_refresh.emit(self.current_pool)
+        )
+        self.searchbar.text_changed.connect(self.on_search)
+
+    def export_dialog(self):
+        dialog = ExportNukeDialog(self.window())
+        dialog.finished.connect(self.on_export_dialog_finished)
+        dialog.exec()
+
+    def on_search(self, text: str):
+        self.search_text_changed.emit((self.current_pool, text))
+
+    def on_export_dialog_finished(self, data: ExportNukeDialog.Data):
+        if not self.current_pool:
+            Logger.error("No current pool selected for export.")
+            return
+
+        name = data.name
+
+        file_dir = self.current_pool / name
+        file_dir.mkdir(parents=True, exist_ok=True)
+        file_path = file_dir / f"{name}.nk"
+
+        self.dcc.nuke.file_export(file_path)
 
         self.force_refresh.emit(self.current_pool)

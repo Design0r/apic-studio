@@ -10,21 +10,13 @@ from apic_studio.core.settings import SettingsManager
 from apic_studio.services import DCCBridge, PingService
 from apic_studio.ui.main_window import MainWindow
 from shared.logger import Logger
-from shared.network import Connection
 
 
 class Application:
     def __init__(self) -> None:
         self.settings = SettingsManager()
         self.app = QApplication(sys.argv)
-        self.connection = Connection.client_connection(
-            timeout=5, name="cinema 4d connector"
-        )
-        self.dcc = DCCBridge(self.connection)
-        self.nuke_connection = Connection.client_connection(
-            timeout=5, name="nuke connector"
-        )
-        self.nuke = DCCBridge(self.nuke_connection)
+        self.dcc = DCCBridge.create(timeout=5)
         self.window: MainWindow
 
     def init(self):
@@ -39,15 +31,15 @@ class Application:
         db.init_db()
 
         self.app.setStyle("Fusion")
-        self.window = MainWindow(self.dcc, self.nuke, self.settings)
+        self.window = MainWindow(self.dcc, self.settings)
 
     def shutdown(self):
         Logger.info("shutting down Apic Studio...")
         self.settings.save_settings()
 
-        for conn in (self.connection, self.nuke_connection):
+        for bridge in self.dcc:
             try:
-                conn.close()
+                bridge.close()
             except ConnectionRefusedError as e:
                 Logger.exception(e)
 
@@ -56,13 +48,9 @@ class Application:
     def run(self):
         Logger.info("starting Apic Studio...")
 
-        core = self.settings.CoreSettings
-        for conn, address in (
-            (self.connection, core.address),
-            (self.nuke_connection, core.nuke_address),
-        ):
-            Thread(target=conn.connect, args=(address,), daemon=True).start()
-            PingService(conn)
+        for bridge in self.dcc:
+            Thread(target=bridge.connect, daemon=True).start()
+            PingService(bridge.ctx)
 
         self.window.show()
         self.app.exec()
