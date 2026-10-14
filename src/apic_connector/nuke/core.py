@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 
 from .compat import Message, MessageRouter
 from .services import core

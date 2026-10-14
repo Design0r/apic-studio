@@ -10,6 +10,7 @@ a 4 byte big-endian length header followed by a utf-8 json body of
 Delete this module once nuke runs on Python 3 and import from `shared` instead.
 """
 
+from __future__ import absolute_import
 
 import json
 import logging
@@ -22,7 +23,7 @@ from collections import defaultdict
 _HEADER = struct.Struct(">I")
 
 
-class Logger:
+class Logger(object):
     LOGGER_NAME = "apic_studio"
 
     FORMAT_DEFAULT = "[%(name)s][%(levelname)s] %(message)s"
@@ -70,7 +71,7 @@ class Logger:
         cls.logger_obj().exception(msg)
 
 
-class Message:
+class Message(object):
     __slots__ = ("data", "message")
 
     def __init__(self, message, data=None):
@@ -86,20 +87,20 @@ class Message:
         return Message(message=data["message"], data=data.get("data"))
 
 
-class Connection:
+class Connection(object):
     def __init__(self, sock):
         self.socket = sock
 
     def send(self, data):
         if isinstance(data, Message):
-            Logger.debug(f"sending message: {data.message}")
+            Logger.debug("sending message: %s" % data.message)
             data = data.as_json()
         else:
-            Logger.debug(f"sending message: {len(data)} bytes")
+            Logger.debug("sending message: %s bytes" % len(data))
 
         try:
             self.socket.sendall(_HEADER.pack(len(data)) + data)
-        except OSError:
+        except socket.error:
             Logger.error("failed to send message, socket is already closed")
         except Exception as e:
             Logger.exception(e)
@@ -111,7 +112,7 @@ class Connection:
         while len(buffer) < size:
             chunk = self.socket.recv(size - len(buffer))
             if not chunk:
-                raise OSError("connection closed while receiving message")
+                raise socket.error("connection closed while receiving message")
 
             buffer += chunk
 
@@ -120,7 +121,7 @@ class Connection:
     def recv(self):
         (body_size,) = _HEADER.unpack(self._recv_exactly(_HEADER.size))
         if not body_size:
-            raise OSError("received an empty message")
+            raise socket.error("received an empty message")
 
         response = self._recv_exactly(body_size).decode("utf-8")
 
@@ -136,7 +137,7 @@ class Connection:
     def close(self):
         try:
             self.socket.shutdown(socket.SHUT_RDWR)
-        except OSError:
+        except socket.error:
             pass
 
         try:
@@ -145,7 +146,7 @@ class Connection:
             Logger.exception(e)
 
 
-class MessageRouter:
+class MessageRouter(object):
     def __init__(self, prefix=""):
         self.prefix = prefix
         self.routes = defaultdict(list)
@@ -213,7 +214,7 @@ def _start_daemon(target):
     return thread
 
 
-class ConnectionHandler:
+class ConnectionHandler(object):
     def __init__(self, connection, router, dispatch=_call_directly):
         self.connection = connection
         self.router = router
@@ -221,9 +222,9 @@ class ConnectionHandler:
         self._is_running = True
 
         ip, port = connection.socket.getpeername()[:2]
-        self.client_ip = f"{ip}:{port}"
+        self.client_ip = "%s:%s" % (ip, port)
 
-        Logger.info(f"client: {self.client_ip} connected")
+        Logger.info("client: %s connected" % self.client_ip)
 
     def run(self):
         while self._is_running:
@@ -235,7 +236,7 @@ class ConnectionHandler:
 
             try:
                 message = Message.from_dict(data)
-            except (KeyError, TypeError, AttributeError):
+            except Exception:
                 Logger.error("received malformed message")
                 continue
 
@@ -247,10 +248,10 @@ class ConnectionHandler:
 
         self._is_running = False
         self.connection.close()
-        Logger.info(f"client {self.client_ip} disconnected")
+        Logger.info("client %s disconnected" % self.client_ip)
 
 
-class Server:
+class Server(object):
     """
     `dispatch(fn, args)` decides where handlers run. Pass
     `nuke.executeInMainThread` so handlers can safely use the nuke api;
@@ -279,10 +280,10 @@ class Server:
                 opt = socket.SO_REUSEADDR
             server_socket.setsockopt(socket.SOL_SOCKET, opt, 1)
             server_socket.bind((self.addr, self.port))
-        except OSError as e:
+        except socket.error as e:
             Logger.warning(
-                f"failed to bind {self.addr}:{self.port}, another nuke instance is probably already "
-                f"serving apic studio: {e}"
+                "failed to bind %s:%s, another nuke instance is probably already "
+                "serving apic studio: %s" % (self.addr, self.port, str(e)),
             )
             return None
 
@@ -298,12 +299,12 @@ class Server:
         if not self.socket:
             return
 
-        Logger.info(f"connection server listening on {self.addr}:{self.port}")
+        Logger.info("connection server listening on %s:%s" % (self.addr, self.port))
 
         while self._running:
             try:
                 sock, _ = self.socket.accept()
-            except TimeoutError:
+            except socket.timeout:
                 continue
             except Exception:
                 self.stop()
