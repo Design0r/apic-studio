@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from pathlib import Path
 from socket import gethostname
-from typing import Any, TypeVar
+from typing import Any, ClassVar, TypeVar
 
 from shared.logger import Logger
 
@@ -20,7 +20,7 @@ class Renderer(Enum):
 
 
 class Settings(ABC):
-    settings: dict[str, type[Settings]] = {}
+    settings: ClassVar[dict[str, type[Settings]]] = {}
 
     def __init__(self):
         self.pools = {}
@@ -159,6 +159,14 @@ class CoreSettings(Settings):
     @property
     def nuke_address(self) -> tuple[str, int]:
         return (self.socket_addr, self.nuke_socket_port)
+
+    @property
+    def db_path(self) -> str:
+        return self._db_path
+
+    @property
+    def logging_path(self) -> str:
+        return self._logging_path
 
     def set_root_path(self, value: str):
         self.root_path = value

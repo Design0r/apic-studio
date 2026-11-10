@@ -1,24 +1,23 @@
 # Apic Studio
 
-Apic Studio is a desktop asset management and preview tool tightly integrated with Maxon Cinema 4D.  
-It provides structured pools for materials, models, HDRIs, and lightsets; supports preview rendering, backups, screenshots, and DCC communication to drive Cinema 4D operations (import/export, material previews, HDRI imports, etc.).
+Asset browser for Cinema 4D and Nuke. Assets live in pools on disk, Apic Studio talks to the running DCC to import, export and render previews.
 
 ![materials](./docs/apic-studio-materials.jpg)
+![model](./docs/apic-studio-models.jpg)
 ![hdris](./docs/apic-studio-hdris.jpg)
+![nuke](./docs/apic-studio-nuke.jpg)
 
-## Key Features
+## Features
 
-- Pool-based organization for **Materials**, **Models**, **HDRIs**, and **Lightsets**.
-- Cinema 4D bridge for:
-  - Importing/exporting models and materials.
-  - Rendering material previews.
-  - Loading HDRIs as dome/area lights.
-- Visual asset browser with thumbnails and metadata.
-- Backup system for versioned asset snapshots.
-- Screenshot utility for capturing regions.
-- Settings persistence per machine.
-- SQLite-based pool database.
-- UI built with **PySide6**.
+- Pools for materials, models, Apic models, lightsets, HDRIs, textures, render settings and Nuke scripts
+- Cinema 4D: import, export and reference models, import/export materials, render material previews, load HDRIs as dome or area light, repath textures
+- Render settings: save Cinema 4D and/or Redshift render settings to a pool and load them back into any scene
+- Nuke: export the current comp to a pool, import scripts or open them in place
+- Tags and notes per asset, filter by tags, rename or delete a tag across all pools
+- Search, rename, delete, open in Explorer
+- Archive/backups for models and materials, screenshot tool for thumbnails
+- Details panel (`Ctrl+I`) and a log viewer
+- Connection status for C4D and Nuke in the sidebar, click to reconnect
 
 ## Requirements
 
@@ -36,7 +35,9 @@ It provides structured pools for materials, models, HDRIs, and lightsets; suppor
 
 3. Set C4DPYTHONPATH311 Environment variable to the created directory.
 
-4. Run "Apic Studio.exe"
+4. Nuke (optional): put the directory on the Nuke plugin path and call `apic_connector.nuke.startup.start()` from your `init.py`. It listens on port 1338, change it with `APIC_NUKE_PORT` (has to match the Nuke port in the settings).
+
+5. Run "Apic Studio.exe"
 
 ---
 
@@ -44,7 +45,7 @@ It provides structured pools for materials, models, HDRIs, and lightsets; suppor
 
 #### Requirements
 
-- **Python 3.14**
+- **Python 3.15**
 - **rustup toolchain**
 - **UV Package Manager**
 - **Make** [Optional]
@@ -75,6 +76,5 @@ uv run build.py
 
 ## Future Improvements
 
-- Cross-platform Cinema 4D detection enhancements.
-- Improved error propagation to user dialogs.
-- Asset tagging/filtering UI.
+- Cross-platform Cinema 4D detection
+- Better error messages in dialogs
